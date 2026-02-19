@@ -1,6 +1,6 @@
 # project-1
 
-This folder contains the Life Science Lab Tools static site and legacy placeholder files.
+This folder contains the Life Science Lab Tools static site.
 
 ## Run
 
