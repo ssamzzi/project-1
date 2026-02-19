@@ -1,0 +1,83 @@
+[
+  {
+    "id": "pcr-template",
+    "calculatorId": "pcr-master-mix",
+    "tab": "protocol",
+    "title": "마스터믹스는 마지막에 넣고 피펫팅",
+    "body": "마스터믹스는 얼음에서 조제하고 가볍게 5회 혼합 후, 짧게 스핀하여 기포를 제거합니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "pcr-primer-high",
+    "calculatorId": "pcr-master-mix",
+    "tab": "mistakes",
+    "title": "프라이머 농도",
+    "body": "최종 프라이머 농도가 0.8 µM보다 높으면 비특이 산물이 증가할 수 있습니다.",
+    "severity": "warn",
+    "triggers": [{"field": "primerHigh", "op": "==", "value": true}]
+  },
+  {
+    "id": "pcr-volume",
+    "calculatorId": "pcr-master-mix",
+    "tab": "troubleshooting",
+    "title": "부피 불일치",
+    "body": "반응 부피를 넘는 경우, 구성요소 농도나 반응 부피를 조정하세요.",
+    "severity": "critical",
+    "triggers": [{"field": "waterNegative", "op": "==", "value": true}]
+  },
+  {
+    "id": "multistock-mw",
+    "calculatorId": "multi-stock-mix",
+    "tab": "mistakes",
+    "title": "질량 단위는 MW 필요",
+    "body": "mg/mL 또는 ng/µL와 같은 질량 단위를 농도 계산에 쓰려면 MW가 필요합니다.",
+    "severity": "critical",
+    "triggers": [{"field": "requiresMW", "op": "==", "value": true}]
+  },
+  {
+    "id": "serial-few",
+    "calculatorId": "serial-dilution",
+    "tab": "protocol",
+    "title": "초저량 전달은 역피펫팅",
+    "body": "1 µL 미만은 역피펫팅으로 전달 후 충분히 혼합하세요.",
+    "severity": "warn",
+    "triggers": [{"field": "transfer", "op": "<", "value": 1}]
+  },
+  {
+    "id": "copy-high-dilution",
+    "calculatorId": "copy-number",
+    "tab": "ranges",
+    "title": "큰 희석은 2단계로",
+    "body": "1000배 이상 필요할 때는 2단계 희석이 오차를 줄입니다.",
+    "severity": "info",
+    "triggers": [{"field": "copyDilutionFactor", "op": ">", "value": 1000}]
+  },
+  {
+    "id": "a260-warning",
+    "calculatorId": "a260",
+    "tab": "troubleshooting",
+    "title": "근사치 경고",
+    "body": "분자 구성이 정확도에 영향을 주므로 형광 기반 정량을 권장합니다.",
+    "severity": "critical",
+    "triggers": [{"field": "type", "op": "==", "value": "oligo"}]
+  },
+  {
+    "id": "cells-edge",
+    "calculatorId": "cell-seeding",
+    "tab": "protocol",
+    "title": "가장자리 웰 관리",
+    "body": "에지 효과를 줄이기 위해 96웰은 가장자리를 빈웰 또는 버퍼만 채우는 방식이 유리합니다.",
+    "severity": "warn",
+    "triggers": [{"field": "plateType", "op": "==", "value": "96"}]
+  },
+  {
+    "id": "hemo-counts",
+    "calculatorId": "hemocytometer",
+    "tab": "protocol",
+    "title": "경계 세포 규칙",
+    "body": "체크박스 경계 규칙을 팀 내에서 통일해 counting bias를 줄이세요.",
+    "severity": "warn",
+    "triggers": []
+  }
+]

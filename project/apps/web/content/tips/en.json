@@ -1,0 +1,93 @@
+[
+  {
+    "id": "pcr-template",
+    "calculatorId": "pcr-master-mix",
+    "tab": "protocol",
+    "title": "Mix master mix last and spin briefly",
+    "body": "Prepare master mix on ice, mix gently 5 times, pulse spin, then aliquot into tubes",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "pcr-primer-high",
+    "calculatorId": "pcr-master-mix",
+    "tab": "mistakes",
+    "title": "Primer final concentration",
+    "body": "If primer final concentration is above 0.8 µM, non-specific bands may increase.",
+    "severity": "warn",
+    "triggers": [{"field": "primerHigh", "op": "==", "value": true}],
+    "references": []
+  },
+  {
+    "id": "pcr-volume", 
+    "calculatorId": "pcr-master-mix",
+    "tab": "troubleshooting",
+    "title": "Volume mismatch",
+    "body": "If water volume is negative, reduce primer or probe volumes, or increase reaction volume.",
+    "severity": "critical",
+    "triggers": [{"field": "waterNegative", "op": "==", "value": true}]
+  },
+  {
+    "id": "multistock-mw",
+    "calculatorId": "multi-stock-mix",
+    "tab": "mistakes",
+    "title": "MW requirement for mass conversion",
+    "body": "Mass units need molecular weight. Enter MW if converting mg/mL to molar target.",
+    "severity": "critical",
+    "triggers": [{"field": "requiresMW", "op": "==", "value": true}]
+  },
+  {
+    "id": "serial-few",
+    "calculatorId": "serial-dilution",
+    "tab": "protocol",
+    "title": "Use reverse pipetting for small volumes",
+    "body": "Use reverse pipetting when transfer is small (<1 µL), then mix 10 times.",
+    "severity": "warn",
+    "triggers": [{"field": "transfer", "op": "<", "value": 1}]
+  },
+  {
+    "id": "copy-high-dilution",
+    "calculatorId": "copy-number",
+    "tab": "ranges",
+    "title": "Use 2-step dilution above 1,000x",
+    "body": "For large dilution factors, prefer 2-step dilution to reduce pipetting error.",
+    "severity": "info",
+    "triggers": [{"field": "copyDilutionFactor", "op": ">", "value": 1000}]
+  },
+  {
+    "id": "lig-oligo",
+    "calculatorId": "ligation",
+    "tab": "mistakes",
+    "title": "Check insert purity before ligation",
+    "body": "Unpurified insert often causes low transformation efficiency.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "a260-warning",
+    "calculatorId": "a260",
+    "tab": "troubleshooting",
+    "title": "Approximation caution",
+    "body": "This is an approximation; use fluorescent quantification when accuracy is required.",
+    "severity": "critical",
+    "triggers": [{"field": "type", "op": "==", "value": "oligo"}]
+  },
+  {
+    "id": "cells-edge", 
+    "calculatorId": "cell-seeding",
+    "tab": "protocol",
+    "title": "Avoid edge wells",
+    "body": "Use edge-well fill controls because evaporation can increase concentration near edges.",
+    "severity": "warn",
+    "triggers": [{"field": "plateType", "op": "==", "value": "96"}]
+  },
+  {
+    "id": "hemo-counts",
+    "calculatorId": "hemocytometer",
+    "tab": "protocol",
+    "title": "Border cell handling",
+    "body": "Count border cells consistently with your group to reduce bias.",
+    "severity": "warn",
+    "triggers": []
+  }
+]

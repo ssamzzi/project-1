@@ -1,0 +1,12 @@
+{
+  "name": "project-1-site",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "install:web": "npm install --prefix apps/web",
+    "dev": "npm run install:web && npm run dev --prefix apps/web",
+    "build": "npm run install:web && npm run build --prefix apps/web",
+    "test": "npm run install:web && npm run test --prefix apps/web",
+    "lint": "npm run install:web && npm run lint --prefix apps/web"
+  }
+}

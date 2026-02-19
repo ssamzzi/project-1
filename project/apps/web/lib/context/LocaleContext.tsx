@@ -1,0 +1,41 @@
+"use client";
+
+import React, { createContext, useContext, useMemo, useState } from 'react';
+import type { Locale } from '../types';
+import { translations, type TranslationKey, type TranslationMap } from '../i18n';
+
+interface LocaleContextValue {
+  locale: Locale;
+  t: (key: TranslationKey, fallback?: string) => string;
+  setLocale: (locale: Locale) => void;
+  translation: TranslationMap;
+}
+
+const LocaleContext = createContext<LocaleContextValue | undefined>(undefined);
+
+export function LocaleProvider({ children }: { children: React.ReactNode }) {
+  const [locale, setLocale] = useState<Locale>('en');
+
+  const value = useMemo(
+    () => ({
+      locale,
+      setLocale,
+      translation: translations[locale],
+      t: (key: TranslationKey, fallback?: string) => {
+        const v = (translations[locale] as Record<string, string>)[key];
+        return v || fallback || key;
+      },
+    }),
+    [locale]
+  );
+
+  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
+}
+
+export function useLocale() {
+  const ctx = useContext(LocaleContext);
+  if (!ctx) {
+    throw new Error('useLocale must be used inside <LocaleProvider>');
+  }
+  return ctx;
+}
