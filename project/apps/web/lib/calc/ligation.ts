@@ -8,6 +8,7 @@ export interface LigationInputs {
   vectorAmountNg: number;
   vectorConcentration?: number;
   vectorVolume?: number;
+  insertConcentrationNgPerUl?: number;
   desiredRatio: number;
   desiredFinalVolume?: number;
 }
@@ -21,7 +22,8 @@ export function calculateLigation(inputs: LigationInputs): CalcResult<{
   vectorFmol: number;
   requiredInsertFmol: number;
   requiredInsertNg: number;
-  requiredInsertVolume?: string;
+  requiredInsertVolume?: number;
+  requiredInsertVolumeUnit?: 'µL';
   formula: string[];
 }> {
   const warnings: ValidationMessage[] = [];
@@ -44,18 +46,27 @@ export function calculateLigation(inputs: LigationInputs): CalcResult<{
   const requiredInsertFmol = vectorFmol * inputs.desiredRatio;
   const requiredInsertNg = (requiredInsertFmol * inputs.insertLength * 660) / 1_000_000;
 
+  if (inputs.insertConcentrationNgPerUl !== undefined && inputs.insertConcentrationNgPerUl <= 0) {
+    warnings.push({
+      severity: 'warn',
+      code: 'insert-concentration',
+      message: 'Insert concentration must be positive to use the volume output.',
+    });
+  }
+
   const requiredInsertVolume =
-    inputs.vectorConcentration && inputs.vectorConcentration > 0
-      ? `${formatSigFigs(requiredInsertNg / inputs.vectorConcentration, 4)} µL`
+    inputs.insertConcentrationNgPerUl && inputs.insertConcentrationNgPerUl > 0
+      ? requiredInsertNg / inputs.insertConcentrationNgPerUl
       : undefined;
 
   return {
     values: {
-      vectorFmol: formatSigFigs(vectorFmol, 4),
-      requiredInsertFmol: formatSigFigs(requiredInsertFmol, 4),
-      requiredInsertNg: formatSigFigs(requiredInsertNg, 4),
+      vectorFmol: Number(formatSigFigs(vectorFmol, 4)),
+      requiredInsertFmol: Number(formatSigFigs(requiredInsertFmol, 4)),
+      requiredInsertNg: Number(formatSigFigs(requiredInsertNg, 4)),
       requiredInsertVolume,
-      formula: ['Insert/ngol ratio uses fmol and DNA molecular weight approximation 660 g/mol/bp.'],
+      requiredInsertVolumeUnit: requiredInsertVolume ? 'µL' : undefined,
+      formula: ['Insert:vector ratio uses fmol and DNA molecular weight approximation 660 g/mol/bp.'],
     },
     warnings,
     assumptions: ['Vector and insert should both be double-stranded DNA approximation; compatibility depends on chemistry.'],

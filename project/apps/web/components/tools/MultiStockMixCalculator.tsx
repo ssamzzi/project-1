@@ -7,6 +7,7 @@ import { UnitInput } from '../UnitInput';
 import type { CalculatorTip, ValidationMessage } from '../../lib/types';
 import { decodeCalculatorState } from '../../lib/share/url';
 import { CalculatorPageLayout } from './CalculatorPageLayout';
+import { DEFAULT_MASS_UNITS } from '../../lib/units';
 
 export function MultiStockMixCalculator({ locale, tips, toolName }: { locale: 'en' | 'ko'; tips: CalculatorTip[]; toolName: string }) {
   const search = useSearchParams();
@@ -44,8 +45,10 @@ export function MultiStockMixCalculator({ locale, tips, toolName }: { locale: 'e
   ]);
 
   const requiresMW = components.some((c) => {
-    const massUnit = typeof c.stockUnit === 'string' && c.stockUnit.includes('ng');
-    return massUnit && !(c.molecularWeight && c.molecularWeight > 0);
+    const massStock = DEFAULT_MASS_UNITS.includes(c.stockUnit as never);
+    const massTarget = DEFAULT_MASS_UNITS.includes(c.targetUnit as never);
+    const massToMolar = (massStock && !massTarget) || (massTarget && !massStock);
+    return massToMolar && !(c.molecularWeight && c.molecularWeight > 0);
   });
 
   const rows = result.values.rows.map((r) => ({ component: r.component, stock: r.stock, target: r.target, volume: r.volume }));

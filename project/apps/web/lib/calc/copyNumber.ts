@@ -1,4 +1,4 @@
-import { formatSigFigs, toMolar, toMassGramPerLiter } from '../units';
+import { formatSigFigs, toMolar } from '../units';
 import { positiveNumber } from '../validate';
 import type { ValidationMessage, CalcResult } from '../types';
 
@@ -36,18 +36,20 @@ export function calculateCopyNumber(inputs: CopyNumberInputs): CalcResult<{
   warnings.push(...positiveNumber('concentration', inputs.concentration));
 
   const isMolar = ['nM', 'µM', 'mM'].includes(inputs.concentrationUnit);
-  const molar =
-    inputs.concentrationUnit === 'nM'
-      ? inputs.concentration * 1e-9
-      : inputs.concentrationUnit === 'µM'
-      ? inputs.concentration * 1e-6
-      : inputs.concentrationUnit === 'mM'
-      ? inputs.concentration * 1e-3
-      : (() => {
-          const gL = toMassGramPerLiter(inputs.concentration, inputs.concentrationUnit);
-          const m = mw(inputs.type, inputs.length);
-          return m > 0 ? gL / m : 0;
-        })();
+  const molecularWeight = mw(inputs.type, inputs.length);
+  let molar = 0;
+  if (isMolar) {
+    molar = toMolar(inputs.concentration, inputs.concentrationUnit as 'nM' | 'µM' | 'mM');
+  } else if (inputs.concentrationUnit === 'ng/µL' || inputs.concentrationUnit === 'µg/µL' || inputs.concentrationUnit === 'mg/mL') {
+    molar = molecularWeight > 0 ? toMolar(inputs.concentration, inputs.concentrationUnit, molecularWeight) : 0;
+    if (molecularWeight <= 0) {
+      warnings.push({
+        severity: 'critical',
+        code: 'mw-missing',
+        message: 'Molecular weight is required to convert ng/µL or mg/mL to molar.',
+      });
+    }
+  }
 
   const copiesPerL = molar * AVOGADRO;
   const copiesPerUl = copiesPerL / 1e6;
@@ -62,15 +64,37 @@ export function calculateCopyNumber(inputs: CopyNumberInputs): CalcResult<{
   const approx = ['Copies are approximations because length-dependent MW is an estimate.'];
 
   let copyDilutionFactor: number | undefined;
+  const maxSingleStepFactor = 1000;
+  const preferredFirstStep = 100;
   if (inputs.targetCopies && inputs.targetCopies > 0 && copiesPerUl > inputs.targetCopies) {
     copyDilutionFactor = copiesPerUl / inputs.targetCopies;
-    if (copyDilutionFactor <= 1000) {
-      plan.push({ step: 1, factor: copyDilutionFactor, dilutionPerStep: copyDilutionFactor, mixVolume: '1000:1' });
+    if (copyDilutionFactor <= maxSingleStepFactor) {
+      const ratio = copyDilutionFactor - 1;
+      plan.push({
+        step: 1,
+        factor: copyDilutionFactor,
+        dilutionPerStep: copyDilutionFactor,
+        mixVolume: `1:${formatSigFigs(Math.max(1, ratio), 4)}`,
+      });
     } else {
-      const s1 = 100;
-      const s2 = copyDilutionFactor / s1;
-      plan.push({ step: 1, factor: s1, dilutionPerStep: s1, mixVolume: `1:${s1 - 1}` });
-      plan.push({ step: 2, factor: s2, dilutionPerStep: s2, mixVolume: `1:${Math.max(1, Math.ceil(s2 - 1))}` });
+      const step1 = preferredFirstStep;
+      const step2 = copyDilutionFactor / step1;
+      const step2Feasible = Math.max(2, step2);
+      plan.push({ step: 1, factor: step1, dilutionPerStep: step1, mixVolume: `1:${formatSigFigs(step1 - 1, 4)}` });
+      plan.push({
+        step: 2,
+        factor: step2Feasible,
+        dilutionPerStep: step2Feasible,
+        mixVolume: `1:${formatSigFigs(Math.max(1, step2Feasible - 1), 4)}`,
+      });
+      if (step2Feasible > step2) {
+        warnings.push({
+          severity: 'warn',
+          code: 'dilution-feasibility',
+          message:
+            'Second-step transfer is very small by default; step1 was adjusted to keep each pipetting ratio practical.',
+        });
+      }
     }
   }
 

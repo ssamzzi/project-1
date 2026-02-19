@@ -22,18 +22,19 @@ export function decodeCalculatorState(search: string): Record<string, unknown> {
   const output: Record<string, unknown> = {};
   params.forEach((value, key) => {
     try {
+      const normalized = key === 'mode' && value === 'syrb' ? 'sybr' : value;
       if (value.startsWith('{') || value.startsWith('[')) {
-        output[key] = JSON.parse(value);
+        output[key] = JSON.parse(normalized);
       } else {
-        if (value === 'true') {
+        if (normalized === 'true') {
           output[key] = true;
           return;
         }
-        if (value === 'false') {
+        if (normalized === 'false') {
           output[key] = false;
           return;
         }
-        const num = Number(value);
+        const num = Number(normalized);
         output[key] = Number.isNaN(num) ? value : num;
       }
     } catch {

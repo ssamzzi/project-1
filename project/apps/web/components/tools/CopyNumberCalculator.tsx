@@ -71,18 +71,18 @@ export function CopyNumberCalculator({ locale, tips, toolName }: { locale: 'en' 
           </label>
           <label className="text-sm text-slate-700">
             <span className="block">Concentration</span>
-            <div className="mt-1 flex gap-2">
+            <div className="mt-1 flex min-w-0 flex-wrap gap-2">
               <input
                 type="number"
                 min={0}
-                className="h-11 w-full rounded-lg border border-slate-300 px-3"
+                className="h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3"
                 value={concentration}
                 onChange={(e) => setConcentration(Number(e.target.value))}
               />
               <select
                 value={concentrationUnit}
                 onChange={(e) => setConcentrationUnit(e.target.value as typeof concentrationUnit)}
-                className="h-11 rounded-lg border border-slate-300 px-2"
+                className="h-11 min-w-0 rounded-lg border border-slate-300 px-2"
               >
                 <option>ng/µL</option>
                 <option>µg/µL</option>

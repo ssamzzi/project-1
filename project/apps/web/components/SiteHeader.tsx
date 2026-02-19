@@ -12,7 +12,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link href="/" className="font-semibold text-slate-900">
-          Life Science Lab Tools
+          BioLT
         </Link>
         <nav>
           <ul className="flex flex-wrap items-center gap-3 text-sm">

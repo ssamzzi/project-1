@@ -72,6 +72,30 @@ export const toolMetas: ToolMeta[] = [
     shortEn: 'Counts to viable cells and viability',
     shortKo: '세포 수와 생존율 계산',
   },
+  {
+    id: 'rcf-rpm',
+    slug: 'rcf-rpm',
+    nameEn: 'RCF / RPM Calculator',
+    nameKo: 'RCF ↔ RPM 계산기',
+    shortEn: 'Convert centrifuge force and speed',
+    shortKo: '원심력과 회전수 변환',
+  },
+  {
+    id: 'reconstitution',
+    slug: 'reconstitution',
+    nameEn: 'Reconstitution Helper',
+    nameKo: '리컨스티튜션 도우미',
+    shortEn: 'Dissolve mass to target concentration',
+    shortKo: '질량 기반 농도 맞춤 희석',
+  },
+  {
+    id: 'gel-loading',
+    slug: 'gel-loading',
+    nameEn: 'Gel Loading Calculator',
+    nameKo: '겔 로딩 계산기',
+    shortEn: 'Volume needed for target DNA mass',
+    shortKo: '겔에 적재할 부피 계산',
+  },
 ];
 
 export const relatedToolMap: Record<string, string[]> = {
@@ -83,6 +107,9 @@ export const relatedToolMap: Record<string, string[]> = {
   'a260': ['copy-number', 'cell-seeding'],
   'cell-seeding': ['serial-dilution', 'hemocytometer'],
   'hemocytometer': ['cell-seeding', 'serial-dilution'],
+  'rcf-rpm': ['cell-seeding', 'a260'],
+  'reconstitution': ['multi-stock-mix', 'copy-number'],
+  'gel-loading': ['copy-number', 'cell-seeding'],
 };
 
 export function labelFor(locale: 'en' | 'ko', tool: ToolMeta) {

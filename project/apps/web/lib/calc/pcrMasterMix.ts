@@ -1,7 +1,7 @@
 import { formatSigFigs, toMicroliter } from '../units';
 import type { ValidationMessage, CalcResult } from '../types';
 
-export type PcrMode = 'endpoint' | 'syrb' | 'taqman';
+export type PcrMode = 'endpoint' | 'sybr' | 'taqman';
 export type OverageType = 'percent' | 'extra' | 'dead';
 
 export interface PcrMasterMixInputs {
@@ -116,7 +116,8 @@ export function calculatePcrMasterMix(inputs: PcrMasterMixInputs): CalcResult<Pc
   } else if (inputs.overageType === 'extra') {
     totalReactions = Math.ceil(inputs.numberReactions + Math.max(0, inputs.overageValue));
   } else {
-    const extra = inputs.overageValue / 1000;
+    const deadVolume_uL = inputs.overageValue;
+    const extra = deadVolume_uL / rxnVol;
     totalReactions = Math.ceil(inputs.numberReactions + (extra > 0 ? extra : 0));
   }
 

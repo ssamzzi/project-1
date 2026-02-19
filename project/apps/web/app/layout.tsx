@@ -4,8 +4,8 @@ import { SiteHeader } from '../components/SiteHeader';
 import { LocaleProvider } from '../lib/context/LocaleContext';
 
 export const metadata: Metadata = {
-  title: 'Life Science Lab Tools',
-  description: 'A practical and free static portal for molecular biology calculations.',
+  title: 'BioLT (Bio Lab Tools)',
+  description: 'A free static portal for practical life science lab calculations.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

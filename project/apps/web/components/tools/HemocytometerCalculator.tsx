@@ -23,7 +23,11 @@ export function HemocytometerCalculator({ locale, tips, toolName }: { locale: 'e
   const [liveCountsText, setLiveCountsText] = useState<string>((query.liveCounts as string) || '45,48,50,46');
   const [totalCountsText, setTotalCountsText] = useState<string>((query.totalCounts as string) || '55,60,52,58');
   const [dilution, setDilution] = useState<number>(Number(query.dilution) || 2);
-  const [trypanBlueRatio, setTrypanBlueRatio] = useState<number>(Number(query.trypanBlueRatio) || 1);
+  const [trypanBlueRatioMode, setTrypanBlueRatioMode] = useState<'1:1' | '1:4' | 'custom'>(
+    (query.trypanBlueRatioMode as '1:1' | '1:4' | 'custom') || '1:1'
+  );
+  const [trypanBlueRatioValue, setTrypanBlueRatioValue] = useState<number>(Number(query.trypanBlueRatioValue) || 1);
+  const [trypanBlueRatioText, setTrypanBlueRatioText] = useState<string>((query.trypanBlueRatioText as string) || '1:1');
   const [sampleVolume, setSampleVolume] = useState<number>(Number(query.sampleVolume) || 500);
   const [sampleVolumeUnit, setSampleVolumeUnit] = useState<'µL' | 'mL'>((query.sampleVolumeUnit as any) || 'µL');
 
@@ -37,11 +41,13 @@ export function HemocytometerCalculator({ locale, tips, toolName }: { locale: 'e
         liveCounts,
         totalCounts,
         dilution,
-        trypanBlueRatio,
+        trypanBlueRatioMode,
+        trypanBlueRatioValue: trypanBlueRatioValue,
+        trypanBlueRatioText,
         sampleVolume,
         sampleVolumeUnit,
       }),
-    [liveCounts, totalCounts, dilution, trypanBlueRatio, sampleVolume, sampleVolumeUnit]
+    [liveCounts, totalCounts, dilution, trypanBlueRatioMode, trypanBlueRatioValue, trypanBlueRatioText, sampleVolume, sampleVolumeUnit]
   );
 
   const rows = [
@@ -87,28 +93,47 @@ export function HemocytometerCalculator({ locale, tips, toolName }: { locale: 'e
             />
           </label>
           <label className="text-sm text-slate-700">
-            <span className="block">Trypan blue ratio (sample:blue)</span>
-            <input
-              type="number"
-              min={0.5}
-              step={0.1}
-              className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3"
-              value={trypanBlueRatio}
-              onChange={(e) => setTrypanBlueRatio(Number(e.target.value))}
-            />
+            <span className="block">Trypan-blue ratio (sample:blue)</span>
+            <div className="mt-1 flex min-w-0 flex-wrap gap-2">
+              <select
+                value={trypanBlueRatioMode}
+                onChange={(e) => setTrypanBlueRatioMode(e.target.value as '1:1' | '1:4' | 'custom')}
+                className="h-11 min-w-0 w-full rounded-lg border border-slate-300 px-2"
+                >
+                <option value="1:1">1:1</option>
+                <option value="1:4">1:4</option>
+                <option value="custom">custom</option>
+              </select>
+              {trypanBlueRatioMode === 'custom' ? (
+                <input
+                  type="text"
+                  placeholder="ex) 2:1"
+                  className="h-11 min-w-0 w-full rounded-lg border border-slate-300 px-3"
+                  value={trypanBlueRatioText}
+                  onChange={(e) => setTrypanBlueRatioText(e.target.value)}
+                />
+              ) : (
+                <input
+                  type="text"
+                  readOnly
+                  className="h-11 min-w-0 w-full rounded-lg border border-slate-200 bg-slate-50 px-3"
+                  value={trypanBlueRatioMode}
+                />
+              )}
+            </div>
           </label>
           <label className="text-sm text-slate-700 md:col-span-2">
             <span className="block">Total sample volume (optional)</span>
-            <div className="mt-1 flex gap-2">
+            <div className="mt-1 flex min-w-0 flex-wrap gap-2">
               <input
                 type="number"
                 min={0}
-                className="h-11 flex-1 rounded-lg border border-slate-300 px-3"
+                className="h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3"
                 value={sampleVolume}
                 onChange={(e) => setSampleVolume(Number(e.target.value))}
               />
               <select
-                className="h-11 rounded-lg border border-slate-300 px-2"
+                className="h-11 min-w-0 w-full rounded-lg border border-slate-300 px-2"
                 value={sampleVolumeUnit}
                 onChange={(e) => setSampleVolumeUnit(e.target.value as 'µL' | 'mL')}
               >
@@ -124,8 +149,17 @@ export function HemocytometerCalculator({ locale, tips, toolName }: { locale: 'e
       formulas={result.values.formula}
       assumptions={result.assumptions}
       validations={result.warnings as ValidationMessage[]}
-      context={{ values: { dilution, trypanBlueRatio }, computed: { dilution, totalSquares: liveCounts.length } }}
-      shareState={{ liveCounts: liveCountsText, totalCounts: totalCountsText, dilution, trypanBlueRatio, sampleVolume, sampleVolumeUnit }}
+      context={{ values: { dilution }, computed: { dilution, totalSquares: liveCounts.length } }}
+      shareState={{
+        liveCounts: liveCountsText,
+        totalCounts: totalCountsText,
+        dilution,
+        trypanBlueRatioMode,
+        trypanBlueRatioValue,
+        trypanBlueRatioText,
+        sampleVolume,
+        sampleVolumeUnit,
+      }}
       summary={`Hemocytometer: viable ${result.values.viablePerMl} cells/mL, viability ${result.values.viabilityPercent}%`}
     />
   );

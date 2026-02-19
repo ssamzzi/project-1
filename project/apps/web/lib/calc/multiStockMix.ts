@@ -1,4 +1,4 @@
-import { toMicroliter, toMolar, formatSigFigs, DEFAULT_CONC_UNITS, DEFAULT_MASS_UNITS } from '../units';
+import { toMicroliter, toMolar, toMassGramPerLiter, formatSigFigs, DEFAULT_CONC_UNITS, DEFAULT_MASS_UNITS, MassConcentrationUnit, LengthConcentrationUnit } from '../units';
 import { positiveNumber, ambiguityHint } from '../validate';
 import type { ValidationMessage, CalcResult } from '../types';
 
@@ -37,17 +37,20 @@ function isConcentrationUnit(unit: string): boolean {
   return [...DEFAULT_CONC_UNITS, ...DEFAULT_MASS_UNITS].includes(unit as never);
 }
 
-function toMolarWithValidation(value: number, unit: string, mw?: number): number {
-  if (isConcentrationUnit(unit)) {
-    if (unit.includes('/')) {
-      if (!mw || mw <= 0) {
-        return Number.NaN;
-      }
-      return toMolar(value, unit as never, mw);
-    }
-    return toMolar(value, unit as never);
-  }
-  throw new Error(`Unsupported unit: ${unit}`);
+function isMassUnit(unit: string): boolean {
+  return DEFAULT_MASS_UNITS.includes(unit as MassConcentrationUnit);
+}
+
+function isMolarUnit(unit: string): boolean {
+  return DEFAULT_CONC_UNITS.includes(unit as LengthConcentrationUnit);
+}
+
+function toComparableMass(value: number, unit: string): number {
+  return toMassGramPerLiter(value, unit as never);
+}
+
+function isMolarConversionNeeded(stockUnit: string, targetUnit: string): boolean {
+  return (isMassUnit(stockUnit) && isMolarUnit(targetUnit)) || (isMolarUnit(stockUnit) && isMassUnit(targetUnit));
 }
 
 export function calculateMultiStockMix(inputs: MultiStockMixInputs): CalcResult<MultiStockMixResult> {
@@ -67,13 +70,27 @@ export function calculateMultiStockMix(inputs: MultiStockMixInputs): CalcResult<
 
   for (const c of inputs.components) {
     if (!c.name.trim()) continue;
-    const stockM = toMolarWithValidation(c.stockValue, c.stockUnit, c.molecularWeight);
-    const targetM = toMolarWithValidation(c.targetValue, c.targetUnit, c.molecularWeight);
-    if (!Number.isFinite(stockM) || stockM <= 0 || !Number.isFinite(targetM) || targetM < 0) {
+    const stockNeedsMw = isMolarConversionNeeded(c.stockUnit, c.targetUnit);
+    const targetNeedsMw = isMolarConversionNeeded(c.targetUnit, c.stockUnit);
+    const needsMw = stockNeedsMw || targetNeedsMw;
+    if (needsMw && (!c.molecularWeight || c.molecularWeight <= 0)) {
+      warnings.push({ severity: 'critical', code: `${c.id}-mw-required`, message: `${c.name}: mass-to-molar conversion needs molecular weight.` });
+      continue;
+    }
+
+    const isBothMass = isMassUnit(c.stockUnit) && isMassUnit(c.targetUnit);
+    const stockConcentration = isBothMass
+      ? toComparableMass(c.stockValue, c.stockUnit)
+      : toMolar(c.stockValue, c.stockUnit as never, c.molecularWeight);
+    const targetConcentration = isBothMass
+      ? toComparableMass(c.targetValue, c.targetUnit)
+      : toMolar(c.targetValue, c.targetUnit as never, c.molecularWeight);
+
+    if (!Number.isFinite(stockConcentration) || stockConcentration <= 0 || !Number.isFinite(targetConcentration) || targetConcentration < 0) {
       warnings.push({ severity: 'critical', code: `${c.id}-invalid`, message: `${c.name}: invalid concentration values.` });
       continue;
     }
-    const vol = (fv * targetM) / stockM;
+    const vol = (fv * targetConcentration) / stockConcentration;
     rows.push({
       component: c.name,
       stock: `${c.stockValue} ${c.stockUnit}`,

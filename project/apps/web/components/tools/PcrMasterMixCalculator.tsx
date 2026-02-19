@@ -11,8 +11,9 @@ import { useSearchParams } from 'next/navigation';
 export function PcrMasterMixCalculator({ locale, tips, toolName }: { locale: 'en' | 'ko'; tips: CalculatorTip[]; toolName: string }) {
   const search = useSearchParams();
   const query = useMemo(() => decodeCalculatorState(search.toString()), [search]);
+  const initialMode = ((query.mode as string) === 'syrb' ? 'sybr' : (query.mode as PcrMode)) || 'endpoint';
 
-  const [mode, setMode] = useState<PcrMode>((query.mode as PcrMode) || 'endpoint');
+  const [mode, setMode] = useState<PcrMode>(initialMode === 'sybr' || initialMode === 'endpoint' || initialMode === 'taqman' ? initialMode : 'endpoint');
   const [reactionVolume, setReactionVolume] = useState<number>(Number(query.reactionVolume) || 20);
   const [reactionVolumeUnit, setReactionVolumeUnit] = useState<'µL' | 'mL'>((query.reactionVolumeUnit as 'µL' | 'mL') || 'µL');
   const [numberReactions, setNumberReactions] = useState<number>(Number(query.numberReactions) || 20);
@@ -155,7 +156,7 @@ export function PcrMasterMixCalculator({ locale, tips, toolName }: { locale: 'en
               onChange={(e) => setMode(e.target.value as PcrMode)}
             >
               <option value="endpoint">endpoint PCR</option>
-              <option value="syrb">SYBR qPCR</option>
+              <option value="sybr">SYBR qPCR</option>
               <option value="taqman">TaqMan qPCR</option>
             </select>
           </label>
@@ -179,11 +180,11 @@ export function PcrMasterMixCalculator({ locale, tips, toolName }: { locale: 'en
           </label>
           <label className="text-sm text-slate-700">
             <span className="block">Overage</span>
-            <div className="mt-1 flex gap-2">
+            <div className="mt-1 flex min-w-0 flex-wrap gap-2">
               <select
                 value={overageType}
                 onChange={(e) => setOverageType(e.target.value as OverageType)}
-                className="h-11 rounded-lg border border-slate-300 px-2"
+                className="h-11 min-w-0 rounded-lg border border-slate-300 px-2"
               >
                 <option value="percent">Percent</option>
                 <option value="extra">Extra reactions</option>
@@ -192,7 +193,7 @@ export function PcrMasterMixCalculator({ locale, tips, toolName }: { locale: 'en
               <input
                 type="number"
                 min={0}
-                className="h-11 flex-1 rounded-lg border border-slate-300 px-3"
+                className="h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3"
                 value={overageValue}
                 onChange={(e) => setOverageValue(Number(e.target.value))}
               />
@@ -312,7 +313,7 @@ export function PcrMasterMixCalculator({ locale, tips, toolName }: { locale: 'en
           <UnitInput
             label="Polymerase + buffer volume"
             value={polymeraseAndBufferVolume}
-            unit="µM"
+            unit="µL"
             units={['µL']}
             onValueChange={setPolymeraseAndBufferVolume}
             onUnitChange={() => undefined}

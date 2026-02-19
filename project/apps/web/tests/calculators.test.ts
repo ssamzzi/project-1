@@ -5,65 +5,45 @@ import { calculateCopyNumber } from '../lib/calc/copyNumber';
 import { calculateHemocytometer } from '../lib/calc/hemocytometer';
 import { calculateLigation } from '../lib/calc/ligation';
 import { calculateMultiStockMix } from '../lib/calc/multiStockMix';
+import { calculateReconstitution } from '../lib/calc/reconstitution';
+import { calculateRcfRpm } from '../lib/calc/rcfRpm';
 import { calculatePcrMasterMix } from '../lib/calc/pcrMasterMix';
 import { calculateSerialDilution } from '../lib/calc/serialDilution';
+import { calculateGelLoading } from '../lib/calc/gelLoading';
 
 const num = (value: string | number): number => (typeof value === 'number' ? value : Number(value));
 
 describe('PCR master mix calculator', () => {
+  const pcrBase = {
+    mode: 'endpoint' as const,
+    reactionVolume: 20,
+    reactionVolumeUnit: 'µL' as const,
+    numberReactions: 10,
+    includeTemplate: false,
+    templateVolume: 0,
+    masterMixType: 'two-x' as const,
+    twoXMasterMixVolume: 10,
+    primerStock: 10,
+    primerStockUnit: 'µM' as const,
+    primerFinal: 0.2,
+    primerFinalUnit: 'µM' as const,
+    dntpStock: 10,
+    dntpStockUnit: 'mM' as const,
+    dntpFinal: 0.2,
+    mgcl2Stock: 50,
+    mgcl2StockUnit: 'mM' as const,
+    mgcl2Final: 3,
+    polymeraseAndBufferVolume: 1,
+  };
+
   it('adds overage reactions with 2x master mix mode', () => {
-    const result = calculatePcrMasterMix({
-      mode: 'endpoint',
-      reactionVolume: 20,
-      reactionVolumeUnit: 'µL',
-      numberReactions: 4,
-      overageType: 'percent',
-      overageValue: 10,
-      includeTemplate: false,
-      templateVolume: 2,
-      masterMixType: 'two-x',
-      twoXMasterMixVolume: 10,
-      primerStock: 10,
-      primerStockUnit: 'µM',
-      primerFinal: 0.2,
-      probeStock: 10,
-      probeStockUnit: 'µM',
-      probeFinal: 0.25,
-      dntpStock: 10,
-      dntpStockUnit: 'mM',
-      dntpFinal: 0.2,
-      mgcl2Stock: 50,
-      mgcl2StockUnit: 'mM',
-      mgcl2Final: 3,
-      polymeraseAndBufferVolume: 0.5,
-    });
+    const result = calculatePcrMasterMix({ ...pcrBase, numberReactions: 4, overageType: 'percent', overageValue: 10, templateVolume: 2, probeStock: 10, probeStockUnit: 'µM', probeFinal: 0.25, polymeraseAndBufferVolume: 0.5 });
     expect(result.values.totalReactions).toBe(5);
     expect(result.values.rows.some((r) => r.component.includes('Water'))).toBe(true);
   });
 
   it('warns when water would be negative', () => {
-    const result = calculatePcrMasterMix({
-      mode: 'endpoint',
-      reactionVolume: 20,
-      reactionVolumeUnit: 'µL',
-      numberReactions: 1,
-      overageType: 'extra',
-      overageValue: 0,
-      includeTemplate: false,
-      templateVolume: 0,
-      masterMixType: 'two-x',
-      twoXMasterMixVolume: 25,
-      primerStock: 10,
-      primerStockUnit: 'µM',
-      primerFinal: 0.2,
-      dntpStock: 10,
-      dntpStockUnit: 'mM',
-      dntpFinal: 0.2,
-      mgcl2Stock: 50,
-      mgcl2StockUnit: 'mM',
-      mgcl2Final: 3,
-      polymeraseAndBufferVolume: 0.5,
-    });
+    const result = calculatePcrMasterMix({ ...pcrBase, numberReactions: 1, overageType: 'extra', overageValue: 0, twoXMasterMixVolume: 25 });
 
     expect(result.warnings.some((message) => message.code === 'water-negative')).toBe(true);
     const critical = result.warnings.filter((message) => message.severity === 'critical');
@@ -71,29 +51,23 @@ describe('PCR master mix calculator', () => {
   });
 
   it('detects suspicious small mL volume', () => {
-    const result = calculatePcrMasterMix({
-      mode: 'endpoint',
-      reactionVolume: 0.02,
-      reactionVolumeUnit: 'mL',
-      numberReactions: 1,
-      overageType: 'percent',
-      overageValue: 10,
-      includeTemplate: false,
-      templateVolume: 0,
-      masterMixType: 'two-x',
-      twoXMasterMixVolume: 10,
-      primerStock: 10,
-      primerStockUnit: 'µM',
-      primerFinal: 0.2,
-      dntpStock: 10,
-      dntpStockUnit: 'mM',
-      dntpFinal: 0.2,
-      mgcl2Stock: 50,
-      mgcl2StockUnit: 'mM',
-      mgcl2Final: 3,
-      polymeraseAndBufferVolume: 0.5,
-    });
+    const result = calculatePcrMasterMix({ ...pcrBase, reactionVolume: 0.02, reactionVolumeUnit: 'mL' as const, overageType: 'percent', overageValue: 10 });
     expect(result.warnings.some((message) => message.code === 'volume-ambiguity')).toBe(true);
+  });
+
+  it('supports percent, extra, and dead-volume overage modes', () => {
+    const percent = calculatePcrMasterMix({ ...pcrBase, overageType: 'percent', overageValue: 25 });
+    expect(percent.values.totalReactions).toBe(13);
+
+    const extra = calculatePcrMasterMix({
+      ...pcrBase,
+      overageType: 'extra',
+      overageValue: 2,
+    });
+    expect(extra.values.totalReactions).toBe(12);
+
+    const dead = calculatePcrMasterMix({ ...pcrBase, overageType: 'dead', overageValue: 40 });
+    expect(dead.values.totalReactions).toBe(12);
   });
 });
 
@@ -185,6 +159,56 @@ describe('serial dilution calculator', () => {
     expect(result.values.plateMap).toHaveLength(2);
     expect(result.values.plateMap[0]).toContain('A1');
   });
+
+  it('returns expected nM and µM display values', () => {
+    const nm = calculateSerialDilution({
+      mode: 'tubes',
+      startConc: 1000,
+      startUnit: 'nM',
+      dilutionFactor: 10,
+      steps: 1,
+      finalVolume: 100,
+      finalVolumeUnit: 'µL',
+      transferVolume: 10,
+    });
+    expect(nm.values.rows[0].concentration).toContain('100');
+
+    const uM = calculateSerialDilution({
+      mode: 'tubes',
+      startConc: 1,
+      startUnit: 'µM',
+      dilutionFactor: 2,
+      steps: 1,
+      finalVolume: 100,
+      finalVolumeUnit: 'µL',
+      transferVolume: 50,
+    });
+    expect(uM.values.rows[0].concentration).toContain('0.5');
+  });
+
+  it('returns expected mM and M display values', () => {
+    const mM = calculateSerialDilution({
+      mode: 'tubes',
+      startConc: 500,
+      startUnit: 'mM',
+      dilutionFactor: 2,
+      steps: 1,
+      finalVolume: 100,
+      finalVolumeUnit: 'µL',
+    });
+    expect(mM.values.rows[0].concentration).toContain('250');
+
+    const M = calculateSerialDilution({
+      mode: 'tubes',
+      startConc: 1,
+      startUnit: 'M',
+      dilutionFactor: 2,
+      steps: 1,
+      finalVolume: 100,
+      finalVolumeUnit: 'µL',
+    });
+    expect(M.values.rows[0].concentration).toContain('0.5');
+  });
 });
 
 describe('copy number calculator', () => {
@@ -210,6 +234,20 @@ describe('copy number calculator', () => {
     expect(result.values.copyDilutionFactor).toBeGreaterThan(1);
     expect(result.values.dilutionPlan.length).toBeGreaterThan(0);
   });
+
+  it('builds 2-step dilution plan for large factors', () => {
+    const result = calculateCopyNumber({
+      type: 'dsDNA',
+      length: 1000,
+      concentration: 1000,
+      concentrationUnit: 'ng/µL',
+      targetCopies: 1e9,
+    });
+    expect(result.values.copyDilutionFactor).toBeGreaterThan(1000);
+    expect(result.values.dilutionPlan.length).toBe(2);
+    expect(result.values.dilutionPlan[0].mixVolume).toContain('1:');
+    expect(result.values.dilutionPlan[1].mixVolume).toContain(':');
+  });
 });
 
 describe('ligation setup calculator', () => {
@@ -219,11 +257,12 @@ describe('ligation setup calculator', () => {
       insertLength: 1000,
       vectorAmountNg: 50,
       desiredRatio: 3,
+      insertConcentrationNgPerUl: 10,
       vectorConcentration: 25,
       vectorVolume: 2,
     });
     expect(result.values.requiredInsertNg).toBeCloseTo(50);
-    expect(result.values.requiredInsertVolume).toContain('µL');
+    expect(result.values.requiredInsertVolume).toBeCloseTo(5);
     expect(result.values.requiredInsertFmol).toBeGreaterThan(0);
   });
 
@@ -320,7 +359,7 @@ describe('hemocytometer calculator', () => {
       liveCounts: [40, 50, 60],
       totalCounts: [50, 60, 70],
       dilution: 2,
-      trypanBlueRatio: 1,
+      trypanBlueRatioMode: '1:1',
       sampleVolume: 500,
       sampleVolumeUnit: 'µL',
     });
@@ -334,7 +373,7 @@ describe('hemocytometer calculator', () => {
       liveCounts: [10.5, 5],
       totalCounts: [12, 10],
       dilution: 2,
-      trypanBlueRatio: 1,
+      trypanBlueRatioMode: '1:4',
     });
     expect(result.warnings.some((warning) => warning.code === 'count-format')).toBe(true);
   });
@@ -345,10 +384,74 @@ describe('hemocytometer calculator', () => {
       liveCounts: [50, 50],
       totalCounts: [55, 55],
       dilution: 10,
-      trypanBlueRatio: 1,
+      trypanBlueRatioMode: 'custom',
+      trypanBlueRatioText: '1:2',
       sampleVolume: 1000,
       sampleVolumeUnit: 'µL',
     });
     expect(result.values.totalViable).toBeGreaterThan(0);
+  });
+
+  it('applies Trypan ratio factor to concentration', () => {
+    const ratio1 = calculateHemocytometer({
+      mode: 'tube',
+      liveCounts: [40, 40],
+      totalCounts: [50, 50],
+      dilution: 10,
+      trypanBlueRatioMode: '1:1',
+    }).values.viablePerMl;
+
+    const ratio4 = calculateHemocytometer({
+      mode: 'tube',
+      liveCounts: [40, 40],
+      totalCounts: [50, 50],
+      dilution: 10,
+      trypanBlueRatioMode: '1:4',
+    }).values.viablePerMl;
+
+    expect(ratio4).toBeGreaterThan(ratio1);
+  });
+});
+
+describe('reconstitution helper', () => {
+  it('computes solvent from mass and target concentration', () => {
+    const result = calculateReconstitution({
+      vialMassMg: 10,
+      molecularWeight: 1000,
+      targetConcentration: 1,
+      targetConcentrationUnit: 'ng/µL',
+    });
+    expect(result.values.requiredSolventMl).toBeCloseTo(10, 3);
+    expect(result.values.formula.length).toBeGreaterThan(1);
+  });
+});
+
+describe('RCF / RPM calculator', () => {
+  it('converts RPM to RCF and back', () => {
+    const forward = calculateRcfRpm({
+      direction: 'rcfFromRpm',
+      radiusCm: 10,
+      rpm: 12000,
+    });
+    expect(forward.values.rcf).toBeGreaterThan(1);
+
+    const reverse = calculateRcfRpm({
+      direction: 'rpmFromRcf',
+      radiusCm: 10,
+      rcf: forward.values.rcf,
+    });
+    expect(reverse.values.rpm).toBeCloseTo(12000, 0);
+  });
+});
+
+describe('gel loading calculator', () => {
+  it('calculates loading volume from target mass and concentration', () => {
+    const result = calculateGelLoading({
+      sampleConcentrationNgPerUl: 25,
+      targetMassNg: 200,
+      wellMaxVolumeUl: 20,
+    });
+    expect(result.values.requiredSampleVolumeUl).toBeCloseTo(8);
+    expect(result.values.percentToMax).toBeCloseTo(40);
   });
 });

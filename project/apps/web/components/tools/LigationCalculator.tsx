@@ -17,6 +17,7 @@ export function LigationCalculator({ locale, tips, toolName }: { locale: 'en' | 
   const [desiredRatio, setDesiredRatio] = useState<number>(Number(query.desiredRatio) || 3);
   const [vectorConcentration, setVectorConcentration] = useState<number>(Number(query.vectorConcentration) || 0);
   const [vectorVolume, setVectorVolume] = useState<number>(Number(query.vectorVolume) || 0);
+  const [insertConcentrationNgPerUl, setInsertConcentrationNgPerUl] = useState<number>(Number(query.insertConcentrationNgPerUl) || 0);
 
   const result = useMemo(
     () =>
@@ -27,15 +28,20 @@ export function LigationCalculator({ locale, tips, toolName }: { locale: 'en' | 
         desiredRatio,
         vectorConcentration: vectorConcentration || undefined,
         vectorVolume: vectorVolume || undefined,
+        insertConcentrationNgPerUl: insertConcentrationNgPerUl || undefined,
       }),
-    [vectorLength, insertLength, vectorAmountNg, desiredRatio, vectorConcentration, vectorVolume]
+    [vectorLength, insertLength, vectorAmountNg, desiredRatio, vectorConcentration, vectorVolume, insertConcentrationNgPerUl]
   );
 
   const rows = [
     { key: 'vectorFmol', metric: 'Vector amount (fmol)', value: `${result.values.vectorFmol}` },
     { key: 'insertFmol', metric: 'Required insert (fmol)', value: `${result.values.requiredInsertFmol}` },
     { key: 'insertNg', metric: 'Required insert (ng)', value: `${result.values.requiredInsertNg}` },
-    { key: 'insertVol', metric: 'Insert volume (if vector conc supplied)', value: result.values.requiredInsertVolume || '-' },
+    {
+      key: 'insertVol',
+      metric: 'Insert volume (if insert conc supplied)',
+      value: result.values.requiredInsertVolume ? `${result.values.requiredInsertVolume} µL` : '-',
+    },
   ];
 
   return (
@@ -107,6 +113,16 @@ export function LigationCalculator({ locale, tips, toolName }: { locale: 'en' | 
               onChange={(e) => setVectorVolume(Number(e.target.value))}
             />
           </label>
+          <label className="text-sm text-slate-700">
+            <span className="block">Insert concentration (ng/µL, optional)</span>
+            <input
+              type="number"
+              min={0}
+              className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3"
+              value={insertConcentrationNgPerUl}
+              onChange={(e) => setInsertConcentrationNgPerUl(Number(e.target.value))}
+            />
+          </label>
         </div>
       }
       rows={rows}
@@ -115,7 +131,15 @@ export function LigationCalculator({ locale, tips, toolName }: { locale: 'en' | 
       assumptions={result.assumptions}
       validations={result.warnings as ValidationMessage[]}
       context={{ values: { ratio: desiredRatio, vectorLength, insertLength }, computed: { ratio: desiredRatio } }}
-      shareState={{ vectorLength, insertLength, vectorAmountNg, desiredRatio, vectorConcentration, vectorVolume }}
+      shareState={{
+        vectorLength,
+        insertLength,
+        vectorAmountNg,
+        desiredRatio,
+        vectorConcentration,
+        vectorVolume,
+        insertConcentrationNgPerUl,
+      }}
       summary={`Ligation setup: insert/vector fmol target ${desiredRatio}`}
     />
   );

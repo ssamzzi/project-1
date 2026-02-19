@@ -11,6 +11,9 @@ import { LigationCalculator } from './LigationCalculator';
 import { A260Calculator } from './A260Calculator';
 import { CellSeedingCalculator } from './CellSeedingCalculator';
 import { HemocytometerCalculator } from './HemocytometerCalculator';
+import { GelLoadingCalculator } from './GelLoadingCalculator';
+import { RcfRpmCalculator } from './RcfRpmCalculator';
+import { ReconstitutionCalculator } from './ReconstitutionCalculator';
 import type { CalculatorTip } from '../../lib/types';
 import enTipsRaw from '../../content/tips/en.json';
 import koTipsRaw from '../../content/tips/ko.json';
@@ -43,6 +46,12 @@ export function ToolCalculatorClient({ slug }: { slug: string }) {
         return <CellSeedingCalculator locale={locale} tips={tips} toolName={title} />;
       case 'hemocytometer':
         return <HemocytometerCalculator locale={locale} tips={tips} toolName={title} />;
+      case 'rcf-rpm':
+        return <RcfRpmCalculator locale={locale} tips={tips} toolName={title} />;
+      case 'reconstitution':
+        return <ReconstitutionCalculator locale={locale} tips={tips} toolName={title} />;
+      case 'gel-loading':
+        return <GelLoadingCalculator locale={locale} tips={tips} toolName={title} />;
       default:
         return <div>Tool not found</div>;
     }

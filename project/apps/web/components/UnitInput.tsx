@@ -36,10 +36,10 @@ export function UnitInput({
   return (
     <label className="block space-y-2">
       <span className="text-sm text-slate-700">{label}</span>
-      <div className="flex gap-2">
+      <div className="flex min-w-0 gap-2">
         <input
           aria-label={label}
-          className="h-11 flex-1 rounded-lg border border-slate-300 px-3"
+          className="h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3"
           type="number"
           min={min}
           step={step}
@@ -47,9 +47,10 @@ export function UnitInput({
           onChange={onNumberChange}
         />
         <select
-          className="h-11 rounded-lg border border-slate-300 px-2"
+          className="h-11 w-24 flex-none rounded-lg border border-slate-300 px-2"
           value={unit}
           onChange={(e) => onUnitChange(e.target.value)}
+          aria-label={`${label} unit`}
         >
           {units.map((u) => (
             <option key={u} value={u}>

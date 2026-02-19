@@ -1,4 +1,4 @@
-import { formatSigFigs, toMolar } from '../units';
+import { formatSigFigs, fromMolar, toMolar } from '../units';
 import { positiveNumber, ambiguityHint } from '../validate';
 import type { ValidationMessage, CalcResult } from '../types';
 
@@ -56,16 +56,17 @@ export function calculateSerialDilution(inputs: SerialDilutionInputs): CalcResul
   for (let i = 1; i <= inputs.steps; i += 1) {
     const diluent = Math.max(0, fv - transfer);
     const rowConc = conc / inputs.dilutionFactor;
+    const rowConcDisplay = fromMolar(rowConc, inputs.startUnit);
     rows.push({
       step: i,
       take: `${formatSigFigs(transfer, 4)} µL`,
       diluent: `${formatSigFigs(diluent, 4)} µL`,
-      concentration: `${formatSigFigs(rowConc, 4)} ${inputs.startUnit}`,
+      concentration: `${formatSigFigs(rowConcDisplay, 4)} ${inputs.startUnit}`,
     });
 
     if (inputs.mode === '96-well') {
       const well = `A${i}`;
-      const cLabel = `${formatSigFigs(rowConc, 4)} ${inputs.startUnit}`;
+      const cLabel = `${formatSigFigs(rowConcDisplay, 4)} ${inputs.startUnit}`;
       plateRows.push(`${well}: take ${formatSigFigs(transfer, 4)} µL from previous, add diluent ${formatSigFigs(diluent, 4)} µL => ${cLabel}`);
     }
     conc = rowConc;

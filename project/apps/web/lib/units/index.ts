@@ -2,6 +2,7 @@ export type VolumeUnit = 'nL' | 'uL' | 'µL' | 'mL' | 'L';
 export type LengthConcentrationUnit = 'nM' | 'µM' | 'mM' | 'M';
 export type MassConcentrationUnit = 'ng/µL' | 'µg/µL' | 'mg/µL' | 'ng/mL' | 'µg/mL' | 'mg/mL' | 'µg/mL' | 'ng/uL';
 export type Unit = VolumeUnit | LengthConcentrationUnit | MassConcentrationUnit | 'copies/µL' | 'cells/µL' | 'cells/mL' | 'cells/cm²' | 'cells/well';
+export type ConcentrationUnit = LengthConcentrationUnit | MassConcentrationUnit;
 
 export type NumberOrNull = number | null;
 
@@ -50,7 +51,15 @@ export function fromMicroliter(value: number, unit: VolumeUnit): number {
   return value / factor;
 }
 
-export function toMolar(value: number, unit: LengthConcentrationUnit, molecularWeightGPerMol?: number): number {
+function toGramPerLiter(value: number, unit: MassConcentrationUnit): number {
+  const factor = MASS_TO_G_PER_L[unit];
+  if (factor === undefined) {
+    throw new Error(`unsupported concentration unit ${unit}`);
+  }
+  return value * factor;
+}
+
+export function toMolar(value: number, unit: ConcentrationUnit, molecularWeightGPerMol?: number): number {
   assertPositive('concentration', value);
   if (unit in CONC_TO_MOLAR) {
     return value * CONC_TO_MOLAR[unit as LengthConcentrationUnit];
@@ -62,17 +71,26 @@ export function toMolar(value: number, unit: LengthConcentrationUnit, molecularW
   return gPerL / molecularWeightGPerMol;
 }
 
-export function toMassGramPerLiter(value: number, unit: MassConcentrationUnit): number {
-  return toGramPerLiter(value, unit);
-}
-
-function toGramPerLiter(value: number, unit: MassConcentrationUnit): number {
+export function fromMolar(value: number, unit: ConcentrationUnit, molecularWeightGPerMol?: number): number {
   assertPositive('concentration', value);
-  const factor = MASS_TO_G_PER_L[unit];
+  if (unit in CONC_TO_MOLAR) {
+    return value / CONC_TO_MOLAR[unit as LengthConcentrationUnit];
+  }
+
+  if (!molecularWeightGPerMol || molecularWeightGPerMol <= 0) {
+    throw new Error('MW required for mass-based back conversion');
+  }
+
+  const gPerL = value * molecularWeightGPerMol;
+  const factor = MASS_TO_G_PER_L[unit as MassConcentrationUnit];
   if (factor === undefined) {
     throw new Error(`unsupported concentration unit ${unit}`);
   }
-  return value * factor;
+  return gPerL / factor;
+}
+
+export function toMassGramPerLiter(value: number, unit: MassConcentrationUnit): number {
+  return toGramPerLiter(value, unit);
 }
 
 export function formatSigFigs(value: number, sigFigs: number): number {
