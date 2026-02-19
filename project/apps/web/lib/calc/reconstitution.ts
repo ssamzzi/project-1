@@ -1,4 +1,5 @@
-import { toMolar, fromMolar, positiveNumber } from '../units';
+import { toMolar, fromMolar } from '../units';
+import { positiveNumber } from '../validate';
 import type { CalcResult, ValidationMessage } from '../types';
 
 type ConcUnit = 'nM' | 'µM' | 'mM' | 'M' | 'mg/mL';

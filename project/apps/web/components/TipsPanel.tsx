@@ -67,7 +67,14 @@ interface DisqusLikeWindow extends Window {
   DISQUS?: {
     reset: (options: { reload: boolean }) => void;
   };
-  disqus_config?: () => void;
+  disqus_config?: (this: DisqusConfigContext) => void;
+}
+
+interface DisqusConfigContext {
+  page: {
+    url: string;
+    identifier: string;
+  };
 }
 
 export function TipsPanel({
@@ -107,15 +114,9 @@ export function TipsPanel({
     const identifier = `${window.location.pathname}::${calculatorId}`;
     const disqusWindow = window as DisqusLikeWindow;
 
-    disqusWindow.disqus_config = function () {
-      const context = this as {
-        page: {
-          url: string;
-          identifier: string;
-        };
-      };
-      context.page.url = pageUrl;
-      context.page.identifier = identifier;
+    disqusWindow.disqus_config = function (this: DisqusConfigContext) {
+      this.page.url = pageUrl;
+      this.page.identifier = identifier;
     };
 
     if (!document.getElementById('biolt-disqus-embed')) {
