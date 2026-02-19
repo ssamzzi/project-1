@@ -34,6 +34,13 @@ export function CalculatorShell({
   tipContext: { values: Record<string, unknown>; computed: Record<string, unknown> };
   related: string;
 }) {
+  const shareState = {
+    ...tipContext.values,
+    ...Object.fromEntries(
+      Object.entries(tipContext.computed).filter(([k]) => ['summary', 'status'].includes(k) === false)
+    ),
+  } as Record<string, unknown>;
+
   return (
     <div className="mx-auto grid max-w-6xl gap-4 px-4 py-4 lg:grid-cols-5">
       <div className="space-y-4 lg:col-span-3">
@@ -61,10 +68,7 @@ export function CalculatorShell({
             <div className="flex gap-2 pt-2">
               <ShareLinkButton
                 state={{
-                  ...tipContext.values,
-                  ...(Object.fromEntries(
-                    Object.entries(tipContext.computed).filter(([k]) => ['summary', 'status'].includes(k) === false)
-                  ) as Record<string, unknown>,
+                  ...shareState,
                 }}
               />
             </div>
