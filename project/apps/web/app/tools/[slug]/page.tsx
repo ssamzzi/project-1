@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { toolMetas } from '../../../lib/data/tools';
 import { ToolCalculatorClient } from '../../../components/tools/ToolCalculatorClient';
+import { Suspense } from 'react';
 
 export async function generateStaticParams() {
   return toolMetas.map((t) => ({ slug: t.slug }));
@@ -11,5 +12,9 @@ export default function ToolRoutePage({ params }: { params: { slug: string } }) 
   if (!allowed) {
     notFound();
   }
-  return <ToolCalculatorClient slug={params.slug} />;
+  return (
+    <Suspense fallback={<div>Loading calculator...</div>}>
+      <ToolCalculatorClient slug={params.slug} />
+    </Suspense>
+  );
 }
