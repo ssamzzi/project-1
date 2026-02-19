@@ -130,7 +130,7 @@ export function SerialDilutionCalculator({ locale, tips, toolName }: { locale: '
       formulas={result.values.formulas}
       assumptions={result.assumptions}
       validations={result.warnings as ValidationMessage[]}
-      context={{ values: { transfer }, computed: { transfer, copy: result.values }}
+      context={{ values: { transfer }, computed: { transfer, copy: result.values } }}
       shareState={{ mode, startConc, startUnit, dilutionFactor, steps, finalVolume, finalVolumeUnit, transfer }}
       summary={`Serial dilution: ${steps} steps, factor ${dilutionFactor}`}
     />
