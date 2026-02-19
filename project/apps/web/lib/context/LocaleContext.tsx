@@ -23,7 +23,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
       translation: translations[locale],
       t: (key: TranslationKey, fallback?: string) => {
         const v = (translations[locale] as Record<string, string>)[key];
-        return v || fallback || key;
+        return String(v || fallback || key);
       },
     }),
     [locale]
