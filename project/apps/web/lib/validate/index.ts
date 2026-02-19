@@ -16,7 +16,7 @@ export function positiveNumber(name: string, value: number, allowZero = false): 
   return [];
 }
 
-export function ambiguityHint(name: string, value: number, unit: 'uL' | 'mL'): RuleCheck[] {
+export function ambiguityHint(name: string, value: number, unit: 'uL' | 'µL' | 'mL'): RuleCheck[] {
   if (unit === 'mL' && value > 0 && value < 0.1) {
     return [
       {
@@ -26,12 +26,12 @@ export function ambiguityHint(name: string, value: number, unit: 'uL' | 'mL'): R
       },
     ];
   }
-  if (unit === 'uL' && value >= 1000) {
+  if ((unit === 'uL' || unit === 'µL') && value >= 1000) {
     return [
       {
         severity: 'warn',
         code: `${name}-uL-capacity`,
-        message: `${name} is ${value} µL. Please confirm using mL if this was meant as a milliliter value.`,
+        message: `${name} is ${value} µL. Please confirm if this should be entered in mL.`,
       },
     ];
   }
