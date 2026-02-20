@@ -29,7 +29,7 @@ export function CalculatorPageLayout({
   calculatorId: string;
   tips: CalculatorTip[];
   inputs: ReactNode;
-  rows: Array<Record<string, string>>;
+  rows: Array<Record<string, unknown>>;
   columns: { key: string; label: string }[];
   formulas: string[];
   assumptions: string[];

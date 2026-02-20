@@ -23,8 +23,7 @@ export function matchesTrigger(trigger: TipTrigger, context: TipContext): boolea
   const rhs = trigger.value;
   if (lhs === undefined || lhs === null) return false;
 
-  if (typeof lhs === 'number' && (typeof rhs === 'number' || rhs === undefined)) {
-    if (rhs === undefined) return false;
+  if (typeof lhs === 'number' && typeof rhs === 'number') {
     if (trigger.op === '<') return lhs < rhs;
     if (trigger.op === '<=') return lhs <= rhs;
     if (trigger.op === '>') return lhs > rhs;

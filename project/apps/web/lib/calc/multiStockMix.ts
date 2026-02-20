@@ -24,12 +24,12 @@ export interface MixRow {
   component: string;
   stock: string;
   target: string;
-  volume: string;
+  volume: number;
 }
 
 export interface MultiStockMixResult {
-  totalVolume: string;
-  solventVolume: string;
+  totalVolume: number;
+  solventVolume: number;
   rows: MixRow[];
 }
 
@@ -95,7 +95,7 @@ export function calculateMultiStockMix(inputs: MultiStockMixInputs): CalcResult<
       component: c.name,
       stock: `${c.stockValue} ${c.stockUnit}`,
       target: `${c.targetValue} ${c.targetUnit}`,
-      volume: `${formatSigFigs(vol, 4)} µL`,
+      volume: Number(formatSigFigs(vol, 4)),
     });
     used += vol;
   }
@@ -113,8 +113,8 @@ export function calculateMultiStockMix(inputs: MultiStockMixInputs): CalcResult<
 
   return {
     values: {
-      totalVolume: `${formatSigFigs(requiredTotal, 4)} µL`,
-      solventVolume: `${formatSigFigs(Math.max(0, solvent), 4)} µL`,
+      totalVolume: Number(formatSigFigs(requiredTotal, 4)),
+      solventVolume: Number(formatSigFigs(Math.max(0, solvent), 4)),
       rows,
     },
     warnings,

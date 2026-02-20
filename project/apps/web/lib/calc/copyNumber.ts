@@ -109,9 +109,9 @@ export function calculateCopyNumber(inputs: CopyNumberInputs): CalcResult<{
 
   return {
     values: {
-      copiesPerUl: Number.isFinite(copiesPerUl) ? formatSigFigs(copiesPerUl, 4) : 0,
-      copiesPerMl: Number.isFinite(copiesPerMl) ? formatSigFigs(copiesPerMl, 4) : 0,
-      copyDilutionFactor: copyDilutionFactor ? Number(formatSigFigs(copyDilutionFactor, 4)) : undefined,
+      copiesPerUl: Number.isFinite(copiesPerUl) ? copiesPerUl : 0,
+      copiesPerMl: Number.isFinite(copiesPerMl) ? copiesPerMl : 0,
+      copyDilutionFactor: copyDilutionFactor ? copyDilutionFactor : undefined,
       dilutionPlan: plan,
       formula,
       assumptions: approx,

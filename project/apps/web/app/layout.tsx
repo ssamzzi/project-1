@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { SiteHeader } from '../components/SiteHeader';
 import { LocaleProvider } from '../lib/context/LocaleContext';
+import { AdminProvider } from '../lib/context/AdminContext';
 
 export const metadata: Metadata = {
   title: 'BioLT (Bio Lab Tools)',
@@ -13,8 +14,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <LocaleProvider>
-          <SiteHeader />
-          <main>{children}</main>
+          <AdminProvider>
+            <SiteHeader />
+            <main>{children}</main>
+          </AdminProvider>
         </LocaleProvider>
       </body>
     </html>

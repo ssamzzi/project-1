@@ -17,8 +17,8 @@ export interface SerialDilutionInputs {
 
 export interface StepRow {
   step: number;
-  take: string;
-  diluent: string;
+  take: number;
+  diluent: number;
   concentration: string;
 }
 
@@ -59,8 +59,8 @@ export function calculateSerialDilution(inputs: SerialDilutionInputs): CalcResul
     const rowConcDisplay = fromMolar(rowConc, inputs.startUnit);
     rows.push({
       step: i,
-      take: `${formatSigFigs(transfer, 4)} µL`,
-      diluent: `${formatSigFigs(diluent, 4)} µL`,
+      take: Number(formatSigFigs(transfer, 4)),
+      diluent: Number(formatSigFigs(diluent, 4)),
       concentration: `${formatSigFigs(rowConcDisplay, 4)} ${inputs.startUnit}`,
     });
 

@@ -21,6 +21,13 @@ const CONC_TO_MOLAR: Record<LengthConcentrationUnit, number> = {
   M: 1,
 };
 
+const MOLAR_FROM_MOLAR: Record<LengthConcentrationUnit, number> = {
+  nM: 1e9,
+  'µM': 1e6,
+  'mM': 1e3,
+  M: 1,
+};
+
 const MASS_TO_G_PER_L: Record<MassConcentrationUnit, number> = {
   'ng/µL': 1e-3,
   'ng/uL': 1e-3,
@@ -74,7 +81,7 @@ export function toMolar(value: number, unit: ConcentrationUnit, molecularWeightG
 export function fromMolar(value: number, unit: ConcentrationUnit, molecularWeightGPerMol?: number): number {
   assertPositive('concentration', value);
   if (unit in CONC_TO_MOLAR) {
-    return value / CONC_TO_MOLAR[unit as LengthConcentrationUnit];
+    return value * MOLAR_FROM_MOLAR[unit as LengthConcentrationUnit];
   }
 
   if (!molecularWeightGPerMol || molecularWeightGPerMol <= 0) {

@@ -16,7 +16,7 @@ describe('unit conversion', () => {
   it('converts back from molar', () => {
     expect(fromMolar(1e-6, 'µM')).toBeCloseTo(1);
     expect(fromMolar(2e-6, 'nM')).toBeCloseTo(2000);
-    expect(fromMolar(1e-3, 'mM')).toBeCloseTo(1000);
+    expect(fromMolar(1e-3, 'mM')).toBeCloseTo(1);
   });
 
   it('supports molar↔mass conversion using molecular weight', () => {

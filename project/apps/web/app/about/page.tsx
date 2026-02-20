@@ -13,6 +13,12 @@ export default function AboutPage() {
             kkgh6721255@naver.com
           </a>
         </p>
+        <p className="mt-2 text-sm text-slate-700">
+          Instagram:{' '}
+          <a href={t('about.instagramUrl')} target="_blank" rel="noreferrer" className="underline">
+            {t('about.instagramLabel')}
+          </a>
+        </p>
         <p className="mt-2 text-sm text-slate-700">No data is stored. No login or database is used.</p>
       </SectionCard>
     </section>

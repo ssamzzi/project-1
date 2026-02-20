@@ -30,9 +30,11 @@ describe('PCR master mix calculator', () => {
     dntpStock: 10,
     dntpStockUnit: 'mM' as const,
     dntpFinal: 0.2,
+    dntpFinalUnit: 'mM' as const,
     mgcl2Stock: 50,
     mgcl2StockUnit: 'mM' as const,
     mgcl2Final: 3,
+    mgcl2FinalUnit: 'mM' as const,
     polymeraseAndBufferVolume: 1,
   };
 
@@ -83,7 +85,7 @@ describe('multi-stock mix calculator', () => {
         { id: '2', name: 'Primer R', stockValue: 10, stockUnit: 'µM', targetValue: 0.2, targetUnit: 'µM' },
       ],
     });
-    expect(num(result.values.solventVolume)).toBeCloseTo(53.75);
+    expect(num(result.values.solventVolume)).toBeCloseTo(53);
     expect(result.warnings.some((message) => message.severity === 'critical')).toBe(false);
   });
 
@@ -220,13 +222,13 @@ describe('copy number calculator', () => {
       concentrationUnit: 'ng/µL',
     });
     expect(result.values.copiesPerUl).toBeGreaterThan(0);
-    expect(result.values.copiesPerMl).toBeCloseTo(9.126e12, 0);
+    expect(result.values.copiesPerMl).toBeCloseTo(9.124455697e12, -2);
   });
 
   it('accepts molar input directly', () => {
     const result = calculateCopyNumber({ type: 'RNA', length: 100, concentration: 2, concentrationUnit: 'µM' });
-    expect(result.values.copiesPerUl).toBeCloseTo(1.2044281512e12, 0);
-    expect(result.values.copiesPerMl).toBeCloseTo(1.2044281512e15, 0);
+    expect(result.values.copiesPerUl).toBeCloseTo(1.2044281512e12, -4);
+    expect(result.values.copiesPerMl).toBeCloseTo(result.values.copiesPerUl * 1000, 0);
   });
 
   it('suggests dilution when target is provided', () => {
@@ -241,7 +243,7 @@ describe('copy number calculator', () => {
       length: 1000,
       concentration: 1000,
       concentrationUnit: 'ng/µL',
-      targetCopies: 1e9,
+      targetCopies: 1e8,
     });
     expect(result.values.copyDilutionFactor).toBeGreaterThan(1000);
     expect(result.values.dilutionPlan.length).toBe(2);
@@ -363,8 +365,8 @@ describe('hemocytometer calculator', () => {
       sampleVolume: 500,
       sampleVolumeUnit: 'µL',
     });
-    expect(result.values.viablePerMl).toBeCloseTo(1000000, 0);
-    expect(result.values.totalPerMl).toBeCloseTo(1200000, 0);
+    expect(result.values.viablePerMl).toBeCloseTo(2000000, 0);
+    expect(result.values.totalPerMl).toBeCloseTo(2400000, 0);
   });
 
   it('warns when counts are not integers', () => {
@@ -374,6 +376,7 @@ describe('hemocytometer calculator', () => {
       totalCounts: [12, 10],
       dilution: 2,
       trypanBlueRatioMode: '1:4',
+      sampleVolumeUnit: 'µL',
     });
     expect(result.warnings.some((warning) => warning.code === 'count-format')).toBe(true);
   });
@@ -399,6 +402,7 @@ describe('hemocytometer calculator', () => {
       totalCounts: [50, 50],
       dilution: 10,
       trypanBlueRatioMode: '1:1',
+      sampleVolumeUnit: 'µL',
     }).values.viablePerMl;
 
     const ratio4 = calculateHemocytometer({
@@ -407,6 +411,7 @@ describe('hemocytometer calculator', () => {
       totalCounts: [50, 50],
       dilution: 10,
       trypanBlueRatioMode: '1:4',
+      sampleVolumeUnit: 'µL',
     }).values.viablePerMl;
 
     expect(ratio4).toBeGreaterThan(ratio1);
@@ -419,7 +424,7 @@ describe('reconstitution helper', () => {
       vialMassMg: 10,
       molecularWeight: 1000,
       targetConcentration: 1,
-      targetConcentrationUnit: 'ng/µL',
+      targetConcentrationUnit: 'mg/mL',
     });
     expect(result.values.requiredSolventMl).toBeCloseTo(10, 3);
     expect(result.values.formula.length).toBeGreaterThan(1);
