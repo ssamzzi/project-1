@@ -3,15 +3,34 @@
 import Link from 'next/link';
 import { useLocale } from '../lib/context/LocaleContext';
 import { useAdmin } from '../lib/context/AdminContext';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 export function SiteHeader() {
   const { locale, setLocale, t } = useLocale();
   const { isAdmin, login, logout } = useAdmin();
   const [password, setPassword] = useState('');
   const [adminError, setAdminError] = useState('');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   const nextLocale = locale === 'en' ? 'ko' : 'en';
+  const nextTheme = theme === 'light' ? 'dark' : 'light';
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const stored = window.localStorage.getItem('biolt-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = stored === 'light' || stored === 'dark' ? stored : prefersDark ? 'dark' : 'light';
+    root.setAttribute('data-theme', initialTheme);
+    setTheme(initialTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const root = document.documentElement;
+    const updated = nextTheme;
+    root.setAttribute('data-theme', updated);
+    window.localStorage.setItem('biolt-theme', updated);
+    setTheme(updated);
+  };
 
   const handleAdminLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -54,6 +73,11 @@ export function SiteHeader() {
                 onClick={() => setLocale(nextLocale)}
               >
                 {t('nav.language')}: {locale.toUpperCase()} / {nextLocale.toUpperCase()}
+              </button>
+            </li>
+            <li>
+              <button type="button" className="rounded-md border border-slate-300 px-2 py-1" onClick={toggleTheme}>
+                {t('nav.theme')}: {theme === 'dark' ? t('nav.theme.dark') : t('nav.theme.light')}
               </button>
             </li>
             <li>

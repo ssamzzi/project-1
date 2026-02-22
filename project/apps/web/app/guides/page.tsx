@@ -5,12 +5,14 @@ import { useLocale } from '../../lib/context/LocaleContext';
 
 export default function GuidesPage() {
   const { locale, t } = useLocale();
+  const collator = locale === 'ko' ? 'ko-KR' : 'en-US';
+  const sortedGuides = [...guideMetas].sort((a, b) => (locale === 'ko' ? a.titleKo : a.titleEn).localeCompare(locale === 'ko' ? b.titleKo : b.titleEn, collator));
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="text-3xl font-semibold">{t('guides.title')}</h1>
       <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {guideMetas.map((g) => {
+        {sortedGuides.map((g) => {
           const title = locale === 'ko' ? g.titleKo : g.titleEn;
           const short = locale === 'ko' ? g.shortKo : g.shortEn;
           return (

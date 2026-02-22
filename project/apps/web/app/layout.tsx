@@ -7,7 +7,7 @@ import { AdminProvider } from '../lib/context/AdminContext';
 
 export const metadata: Metadata = {
   title: 'BioLT (Bio Lab Tools)',
-  description: 'A free static portal for practical life science lab calculations.',
+  description: 'A free static portal for practical bio lab calculations.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

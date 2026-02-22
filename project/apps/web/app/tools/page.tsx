@@ -6,13 +6,15 @@ import { SectionCard } from '../../components/SectionCard';
 
 export default function ToolsPage() {
   const { t, locale } = useLocale();
+  const collator = locale === 'ko' ? 'ko-KR' : 'en-US';
+  const sortedTools = [...toolMetas].sort((a, b) => (locale === 'ko' ? a.nameKo : a.nameEn).localeCompare(locale === 'ko' ? b.nameKo : b.nameEn, collator));
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="text-3xl font-semibold">{t('tools.title')}</h1>
       <p className="mt-2 text-slate-600">{t('tools.description')}</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {toolMetas.map((tool) => {
+        {sortedTools.map((tool) => {
           const title = locale === 'ko' ? tool.nameKo : tool.nameEn;
           const desc = locale === 'ko' ? tool.shortKo : tool.shortEn;
           return (

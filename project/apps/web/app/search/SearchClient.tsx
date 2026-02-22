@@ -65,12 +65,14 @@ export function SearchClient() {
   }, [allItems, query]);
 
   const grouped = useMemo(() => {
+    const collator = locale === 'ko' ? 'ko-KR' : 'en-US';
+    const sortByTitle = (a: SearchItem, b: SearchItem) => a.title.localeCompare(b.title, collator);
     return {
-      tools: filtered.filter((item) => item.kind === 'tool'),
-      workflows: filtered.filter((item) => item.kind === 'workflow'),
-      references: filtered.filter((item) => item.kind === 'reference'),
+      tools: filtered.filter((item) => item.kind === 'tool').sort(sortByTitle),
+      workflows: filtered.filter((item) => item.kind === 'workflow').sort(sortByTitle),
+      references: filtered.filter((item) => item.kind === 'reference').sort(sortByTitle),
     };
-  }, [filtered]);
+  }, [filtered, locale]);
 
   const hasAny = grouped.tools.length + grouped.workflows.length + grouped.references.length > 0;
 
