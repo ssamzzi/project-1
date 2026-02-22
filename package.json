@@ -5,7 +5,7 @@
   "scripts": {
     "install:web": "npm run install:web --prefix project",
     "setup": "npm run install:web",
-    "build": "npm run build --prefix project && mkdir -p apps/web && rm -rf apps/web/out && mkdir -p apps/web/out && cp -R project/apps/web/out/. apps/web/out/",
+    "build": "npm run setup && npm run build --prefix project && mkdir -p apps/web && rm -rf apps/web/out && mkdir -p apps/web/out && cp -R project/apps/web/out/. apps/web/out/",
     "dev": "npm run dev --prefix project",
     "test": "npm run test --prefix project",
     "lint": "npm run lint --prefix project"
