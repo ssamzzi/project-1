@@ -16,6 +16,8 @@ export function GelLoadingCalculator({ locale, tips, toolName }: { locale: 'en' 
   const [sampleConcentrationNgPerUl, setSampleConcentrationNgPerUl] = useState<number>(Number(query.sampleConcentrationNgPerUl) || 50);
   const [targetMassNg, setTargetMassNg] = useState<number>(Number(query.targetMassNg) || 500);
   const [wellMaxVolumeUl, setWellMaxVolumeUl] = useState<number>(Number(query.wellMaxVolumeUl) || 20);
+  const [dyeConcentrationX, setDyeConcentrationX] = useState<number>(Number(query.dyeConcentrationX) || 6);
+  const [predyeTotalVolumeUl, setPredyeTotalVolumeUl] = useState<number>(Number(query.predyeTotalVolumeUl) || 10);
 
   const result = useMemo(
     () =>
@@ -23,12 +25,17 @@ export function GelLoadingCalculator({ locale, tips, toolName }: { locale: 'en' 
         sampleConcentrationNgPerUl,
         targetMassNg,
         wellMaxVolumeUl: wellMaxVolumeUl || undefined,
+        dyeConcentrationX,
+        predyeTotalVolumeUl,
       }),
-    [sampleConcentrationNgPerUl, targetMassNg, wellMaxVolumeUl]
+    [sampleConcentrationNgPerUl, targetMassNg, wellMaxVolumeUl, dyeConcentrationX, predyeTotalVolumeUl]
   );
 
   const rows = [
-    { key: 'vol', metric: 'Volume to load (µL)', value: `${result.values.requiredSampleVolumeUl}` },
+    { key: 'sample', metric: 'Required sample volume (µL)', value: `${result.values.requiredSampleVolumeUl}` },
+    { key: 'water', metric: 'Water volume (µL)', value: `${result.values.waterVolumeUl}` },
+    { key: 'dye', metric: 'Loading dye volume (µL)', value: `${result.values.dyeVolumeUl}` },
+    { key: 'final', metric: 'Final well loading volume (µL)', value: `${result.values.finalLoadingVolumeUl}` },
     {
       key: 'ratio',
       metric: 'Capacity ratio',
@@ -77,6 +84,28 @@ export function GelLoadingCalculator({ locale, tips, toolName }: { locale: 'en' 
               onUnitChange={() => undefined}
             />
           </div>
+          <label className="text-sm text-slate-700">
+            <span className="block">Loading dye concentration (X)</span>
+            <input
+              type="number"
+              min={2}
+              step={1}
+              className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3"
+              value={dyeConcentrationX}
+              onChange={(e) => setDyeConcentrationX(Number(e.target.value))}
+            />
+          </label>
+          <label className="text-sm text-slate-700">
+            <span className="block">Pre-dye total volume (sample+water, µL)</span>
+            <input
+              type="number"
+              min={0}
+              step={0.1}
+              className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3"
+              value={predyeTotalVolumeUl}
+              onChange={(e) => setPredyeTotalVolumeUl(Number(e.target.value))}
+            />
+          </label>
         </div>
       }
       rows={rows}
@@ -84,9 +113,9 @@ export function GelLoadingCalculator({ locale, tips, toolName }: { locale: 'en' 
       formulas={result.values.formula}
       assumptions={result.assumptions}
       validations={result.warnings as ValidationMessage[]}
-      context={{ values: { sampleConcentrationNgPerUl, targetMassNg }, computed: { volume: result.values.requiredSampleVolumeUl } }}
-      shareState={{ sampleConcentrationNgPerUl, targetMassNg, wellMaxVolumeUl }}
-      summary={`Gel loading: load ${result.values.requiredSampleVolumeUl} µL for ${targetMassNg} ng`}
+      context={{ values: { sampleConcentrationNgPerUl, targetMassNg, dyeConcentrationX }, computed: { volume: result.values.finalLoadingVolumeUl } }}
+      shareState={{ sampleConcentrationNgPerUl, targetMassNg, wellMaxVolumeUl, dyeConcentrationX, predyeTotalVolumeUl }}
+      summary={`Gel loading: final ${result.values.finalLoadingVolumeUl} µL (${result.values.requiredSampleVolumeUl} µL sample + ${result.values.dyeVolumeUl} µL dye)`}
     />
   );
 }

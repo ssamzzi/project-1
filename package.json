@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "scripts": {
     "install:web": "npm run install:web --prefix project",
-    "build": "npm run install:web && npm run build --prefix project && mkdir -p apps/web && rm -rf apps/web/out && mkdir -p apps/web/out && cp -R project/apps/web/out/. apps/web/out/",
+    "setup": "npm run install:web",
+    "build": "npm run build --prefix project && mkdir -p apps/web && rm -rf apps/web/out && mkdir -p apps/web/out && cp -R project/apps/web/out/. apps/web/out/",
     "dev": "npm run dev --prefix project",
     "test": "npm run test --prefix project",
     "lint": "npm run lint --prefix project"

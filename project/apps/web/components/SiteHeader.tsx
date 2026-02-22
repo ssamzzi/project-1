@@ -45,6 +45,9 @@ export function SiteHeader() {
               <Link href="/about">{t('nav.about')}</Link>
             </li>
             <li>
+              <Link href="/search">{t('nav.search')}</Link>
+            </li>
+            <li>
               <button
                 type="button"
                 className="rounded-md border border-slate-300 px-2 py-1"
@@ -62,7 +65,7 @@ export function SiteHeader() {
                 <form onSubmit={handleAdminLogin} className="flex items-center gap-1">
                   <input
                     value={password}
-                    onChange={(e) => setPassword(e.target.value.replace(/[^0-9]/g, '').slice(0, 8))}
+                    onChange={(e) => setPassword(e.target.value)}
                     type="password"
                     placeholder={t('admin.loginPlaceholder')}
                     className="w-20 rounded border border-slate-300 px-1.5 py-1 text-xs"

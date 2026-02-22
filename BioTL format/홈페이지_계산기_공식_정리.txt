@@ -1,0 +1,79 @@
+PCR/qPCR Master Mix : V_component = V_rxn × (C_final / C_stock)
+PCR/qPCR Master Mix : V_water = V_rxn - ΣV_fixed_components
+PCR/qPCR Master Mix : N_total_reactions = N_input × (1 + overage%/100)  [percent mode]
+PCR/qPCR Master Mix : N_total_reactions = N_input + N_extra  [extra mode]
+PCR/qPCR Master Mix : N_total_reactions = N_input + (dead_volume / V_rxn)  [dead volume mode]
+
+Multi-Stock Mixing : Total_V = V_final × (1 + overage%/100)
+Multi-Stock Mixing : V_i = Total_V × (C_target,i / C_stock,i)
+Multi-Stock Mixing : V_solvent = Total_V - ΣV_i
+
+Serial Dilution Planner : C_(n+1) = C_n / DF
+Serial Dilution Planner : V_diluent = V_total - V_transfer
+
+DNA/RNA Copy Number : MW_dsDNA = 660 × length(bp)
+DNA/RNA Copy Number : MW_ssDNA = 330 × length(nt)
+DNA/RNA Copy Number : MW_RNA = 340 × length(nt)
+DNA/RNA Copy Number : n (mol/L) = mass(g/L) / MW(g/mol)
+DNA/RNA Copy Number : copies/L = n × 6.02214076×10^23
+DNA/RNA Copy Number : copies/µL = copies/L ÷ 10^6
+DNA/RNA Copy Number : copies/mL = copies/L ÷ 10^3
+DNA/RNA Copy Number : Dilution factor = (current copies/µL) / (target copies/µL)
+
+Ligation Setup : vector_fmol = (vector_ng × 10^6) / (vector_bp × 660)
+Ligation Setup : required_insert_fmol = vector_fmol × desired_ratio(insert:vector)
+Ligation Setup : required_insert_ng = (required_insert_fmol × insert_bp × 660) / 10^6
+Ligation Setup : required_insert_volume(µL) = required_insert_ng / insert_concentration(ng/µL)
+
+A260 Quantitation : c(µg/mL) = A260 × conversion_factor × dilution
+A260 Quantitation : c(ng/µL) = c(µg/mL)
+A260 Quantitation : A260/A280 = A260 ÷ A280
+A260 Quantitation : conversion_factor(dsDNA)=50, ssDNA=33, RNA=40, oligo=사용자입력(기본 33)
+
+Cell Seeding : target_cells_per_well = target_density  [cells/well mode]
+Cell Seeding : target_cells_per_well = target_density(cells/cm²) × well_area(cm²)  [cells/cm² mode]
+Cell Seeding : total_cells = target_cells_per_well × number_of_wells × (1 + overage%/100)
+Cell Seeding : total_suspension_volume(µL) = (total_cells / cell_concentration(cells/mL)) × 1000
+Cell Seeding : per_well_volume(µL) = (target_cells_per_well / cell_concentration(cells/mL)) × 1000
+
+Hemocytometer : trypan_factor = 2  [1:1 sample:blue]
+Hemocytometer : trypan_factor = 5  [1:4 sample:blue]
+Hemocytometer : trypan_factor = (sample + blue) / sample  [custom a:b]
+Hemocytometer : effective_dilution = dilution × trypan_factor
+Hemocytometer : cells/mL = average_count_per_large_square × 10^4 × effective_dilution
+Hemocytometer : viability(%) = (live_avg / total_avg) × 100
+Hemocytometer : total_viable_cells = viable_cells_per_mL × sample_volume(mL)
+
+RCF / RPM Calculator : RCF = 1.118×10^-5 × radius(cm) × RPM^2
+RCF / RPM Calculator : RPM = sqrt( RCF / (1.118×10^-5 × radius(cm)) )
+
+Reconstitution Helper : moles = mass(g) / MW(g/mol)
+Reconstitution Helper : V(L) = moles / target_concentration(mol/L)
+Reconstitution Helper : required_solvent(mL) = V(L) × 1000
+
+Gel Loading Calculator : required_sample_volume(µL) = target_DNA_mass(ng) / sample_concentration(ng/µL)
+Gel Loading Calculator : V_total(pre-dye) = required_sample_volume + V_water
+Gel Loading Calculator : V_dye = V_total(pre-dye) / (dye_concentration - 1)  [예: 6X면 /5]
+Gel Loading Calculator : well_loading_volume = V_total(pre-dye) + V_dye
+Gel Loading Calculator : %well_capacity = (well_loading_volume / well_max_volume) × 100
+
+qPCR Relative Quantification : dCt_sample = Ct_target_sample - Ct_reference_sample
+qPCR Relative Quantification : dCt_control = Ct_target_control - Ct_reference_control
+qPCR Relative Quantification : ddCt = dCt_sample - dCt_control
+qPCR Relative Quantification : Fold_Change = 2^(-ddCt)
+
+Cell Doubling Time : duration_hours = (end_date - start_date) × 24
+Cell Doubling Time : growth_rate(k) = ln(final_cell_count / initial_cell_count) / duration_hours
+Cell Doubling Time : doubling_time(hours) = ln(2) / growth_rate(k)
+
+Cloning Helper : amino_acid_count = DNA_length_bp / 3
+Cloning Helper : protein_MW_kDa = (amino_acid_count × 110) / 1000
+Cloning Helper : estimated_DNA_bp = (target_protein_kDa × 1000 / 110) × 3
+
+Acid Dilution : Stock_Molarity(M) = (percentage(%) × density(g/mL) × 10) / MW(g/mol)
+Acid Dilution : required_acid_vol(mL) = (target_Molarity × final_volume(mL)) / Stock_Molarity(M)
+Acid Dilution : water_vol(mL) = final_volume(mL) - required_acid_vol(mL)
+
+Transformation Efficiency : DNA_plated(µg) = (total_DNA_used(µg) / transformation_total_vol(µL)) × plated_vol(µL)
+Transformation Efficiency : Efficiency(CFU/µg) = colony_count / DNA_plated(µg)
+Transformation Efficiency : Log_Efficiency = log10(Efficiency(CFU/µg))

@@ -200,7 +200,7 @@ export function MultiStockMixCalculator({ locale, tips, toolName }: { locale: 'e
         { key: 'target', label: 'Target' },
         { key: 'volume', label: 'Volume' },
       ]}
-      formulas={result.values.solventVolume ? ['Volume per component: Vf = Vfinal×target/stock', `Solvent added = Vfinal×(1+overage)-sum(components)`] : []}
+      formulas={result.values.solventVolume ? ['Total_V = Vfinal×(1+overage%)', 'Vcomponent = Total_V×(Ctarget/Cstock)', 'Vsolvent = Total_V-sum(Vcomponent)'] : []}
       assumptions={result.assumptions}
       validations={result.warnings as ValidationMessage[]}
       context={{ values: { requiresMW, finalVolume }, computed: { requiresMW } }}

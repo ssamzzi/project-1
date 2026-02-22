@@ -29,3 +29,19 @@ select,
 button {
   font: inherit;
 }
+
+/* Keep long text/URLs/formulas from overflowing card and table boundaries. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+li,
+a,
+td,
+th,
+span {
+  overflow-wrap: anywhere;
+}

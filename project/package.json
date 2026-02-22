@@ -4,9 +4,13 @@
   "version": "0.1.0",
   "scripts": {
     "install:web": "npm install --prefix apps/web",
-    "dev": "npm run install:web && npm run dev --prefix apps/web",
-    "build": "npm run install:web && npm run build --prefix apps/web",
-    "test": "npm run install:web && npm run test --prefix apps/web",
-    "lint": "npm run install:web && npm run lint --prefix apps/web"
+    "setup": "npm run install:web",
+    "dev": "npm run dev --prefix apps/web",
+    "build": "bash ./scripts/run_with_heartbeat.sh npm run build --prefix apps/web",
+    "build:fast": "npm run build --prefix apps/web",
+    "test": "bash ./scripts/run_with_heartbeat.sh npm run test --prefix apps/web",
+    "test:fast": "npm run test --prefix apps/web",
+    "lint": "npm run lint --prefix apps/web",
+    "verify": "npm run test && npm run build"
   }
 }

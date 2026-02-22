@@ -64,6 +64,8 @@ export function calculateMultiStockMix(inputs: MultiStockMixInputs): CalcResult<
   checks.forEach((m) => warnings.push(m));
 
   const fv = toMicroliter(inputs.finalVolume, inputs.finalVolumeUnit);
+  const overage = 1 + Math.max(0, inputs.overagePercent) / 100;
+  const requiredTotal = fv * overage;
 
   const rows: MixRow[] = [];
   let used = 0;
@@ -90,7 +92,7 @@ export function calculateMultiStockMix(inputs: MultiStockMixInputs): CalcResult<
       warnings.push({ severity: 'critical', code: `${c.id}-invalid`, message: `${c.name}: invalid concentration values.` });
       continue;
     }
-    const vol = (fv * targetConcentration) / stockConcentration;
+    const vol = (requiredTotal * targetConcentration) / stockConcentration;
     rows.push({
       component: c.name,
       stock: `${c.stockValue} ${c.stockUnit}`,
@@ -100,8 +102,6 @@ export function calculateMultiStockMix(inputs: MultiStockMixInputs): CalcResult<
     used += vol;
   }
 
-  const overage = 1 + Math.max(0, inputs.overagePercent) / 100;
-  const requiredTotal = fv * overage;
   const solvent = requiredTotal - used;
   if (solvent < 0) {
     warnings.push({ severity: 'critical', code: 'volume-over', message: 'Sum of component volumes exceeds final volume. Reduce stocks or raise target volume.' });

@@ -19,7 +19,7 @@ export default function AboutPage() {
             {t('about.instagramLabel')}
           </a>
         </p>
-        <p className="mt-2 text-sm text-slate-700">No data is stored. No login or database is used.</p>
+        <p className="mt-2 text-sm text-slate-700">{t('about.privacy')}</p>
       </SectionCard>
     </section>
   );

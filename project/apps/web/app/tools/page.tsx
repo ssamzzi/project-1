@@ -19,7 +19,7 @@ export default function ToolsPage() {
             <SectionCard key={tool.id} title={title}>
               <p className="text-sm text-slate-600">{desc}</p>
               <Link className="mt-3 inline-block text-sm text-indigo-700 underline" href={`/tools/${tool.slug}`}>
-                Open
+                {t('global.open')}
               </Link>
             </SectionCard>
           );

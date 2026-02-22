@@ -1,5 +1,7 @@
 "use client";
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useLocale } from '../lib/context/LocaleContext';
 import { toolMetas } from '../lib/data/tools';
 import { workflowMetas } from '../lib/data/workflows';
@@ -7,6 +9,8 @@ import { guideMetas } from '../lib/data/guides';
 
 export default function HomePage() {
   const { t, locale } = useLocale();
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
@@ -24,8 +28,26 @@ export default function HomePage() {
           {t('global.description.workflows') || 'Workflows: checklist-style protocols to run experiments in order.'}
         </p>
         <p className="text-sm text-slate-700">
-          {t('global.description.guides') || 'Guides: short reference notes for decision making.'}
+          {t('global.description.guides') || 'References: short notes for faster lab decisions.'}
         </p>
+        <form
+          className="flex flex-wrap gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const q = searchQuery.trim();
+            router.push(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
+          }}
+        >
+          <input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={t('search.placeholder')}
+            className="h-11 w-full max-w-md rounded-lg border border-slate-300 bg-white px-3 text-sm"
+          />
+          <button type="submit" className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+            {t('nav.search')}
+          </button>
+        </form>
       </div>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link

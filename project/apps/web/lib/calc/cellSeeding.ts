@@ -39,6 +39,7 @@ export function calculateCellSeeding(inputs: CellSeedingInputs): CalcResult<{
   perWellVolumeUl: number;
   perWellTarget: number;
   capacityWarning?: string;
+  formula: string[];
   assumptions: string[];
 }> {
   const warnings: ValidationMessage[] = [];
@@ -83,6 +84,13 @@ export function calculateCellSeeding(inputs: CellSeedingInputs): CalcResult<{
       perWellVolumeUl: Number(formatSigFigs(perWellVol, 4)),
       perWellTarget: Number(formatSigFigs(targetPerWell, 4)),
       capacityWarning: perWellVol > cap ? 'Check well capacity' : undefined,
+      formula: [
+        'target cells/well = target density  [cells/well mode]',
+        'target cells/well = target density(cells/cm²) × well area(cm²)  [cells/cm² mode]',
+        'total cells = target cells/well × number of wells × (1 + overage/100)',
+        'total suspension volume(µL) = (total cells / cell concentration(cells/mL)) × 1000',
+        'per well volume(µL) = (target cells/well / cell concentration(cells/mL)) × 1000',
+      ],
       assumptions: ['Assumes even distribution and no settling within dispensing window.'],
     },
     warnings,

@@ -41,7 +41,7 @@ export function ResultTable({ columns, rows }: Props) {
             {rows.map((row, i) => (
               <tr key={i} className="border-t border-slate-100">
                 {columns.map((col) => (
-                  <td className="p-2" key={col.key}>
+                  <td className="break-words p-2" key={col.key}>
                     {String(row[col.key] ?? '')}
                   </td>
                 ))}

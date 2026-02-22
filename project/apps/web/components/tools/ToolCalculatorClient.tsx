@@ -14,6 +14,11 @@ import { HemocytometerCalculator } from './HemocytometerCalculator';
 import { GelLoadingCalculator } from './GelLoadingCalculator';
 import { RcfRpmCalculator } from './RcfRpmCalculator';
 import { ReconstitutionCalculator } from './ReconstitutionCalculator';
+import { QpcrRelativeQuantCalculator } from './QpcrRelativeQuantCalculator';
+import { CellDoublingTimeCalculator } from './CellDoublingTimeCalculator';
+import { CloningHelperCalculator } from './CloningHelperCalculator';
+import { AcidDilutionCalculator } from './AcidDilutionCalculator';
+import { TransformationEfficiencyCalculator } from './TransformationEfficiencyCalculator';
 import type { CalculatorTip } from '../../lib/types';
 import enTipsRaw from '../../content/tips/en.json';
 import koTipsRaw from '../../content/tips/ko.json';
@@ -52,8 +57,18 @@ export function ToolCalculatorClient({ slug }: { slug: string }) {
         return <ReconstitutionCalculator locale={locale} tips={tips} toolName={title} />;
       case 'gel-loading':
         return <GelLoadingCalculator locale={locale} tips={tips} toolName={title} />;
+      case 'qpcr-relative-quant':
+        return <QpcrRelativeQuantCalculator locale={locale} tips={tips} toolName={title} />;
+      case 'cell-doubling-time':
+        return <CellDoublingTimeCalculator locale={locale} tips={tips} toolName={title} />;
+      case 'cloning-helper':
+        return <CloningHelperCalculator locale={locale} tips={tips} toolName={title} />;
+      case 'acid-dilution':
+        return <AcidDilutionCalculator locale={locale} tips={tips} toolName={title} />;
+      case 'transformation-efficiency':
+        return <TransformationEfficiencyCalculator locale={locale} tips={tips} toolName={title} />;
       default:
-        return <div>Tool not found</div>;
+        return <div>{locale === 'ko' ? '도구를 찾을 수 없습니다.' : 'Tool not found.'}</div>;
     }
   }, [slug, tips, locale, title]);
 

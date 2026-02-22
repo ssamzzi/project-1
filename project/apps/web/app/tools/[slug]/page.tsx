@@ -13,7 +13,7 @@ export default function ToolRoutePage({ params }: { params: { slug: string } }) 
     notFound();
   }
   return (
-    <Suspense fallback={<div>Loading calculator...</div>}>
+    <Suspense fallback={<div>Loading calculator... / 계산기 불러오는 중...</div>}>
       <ToolCalculatorClient slug={params.slug} />
     </Suspense>
   );

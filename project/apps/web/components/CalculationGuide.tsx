@@ -35,10 +35,30 @@ const GUIDE: Record<string, { en: string; ko: string }> = {
     en: 'Count at least 4–8 squares for stable variance and always treat clumps as a warning condition.',
     ko: '분산 안정화를 위해 최소 4~8개 square를 카운트하고, clump는 즉시 기록하세요.',
   },
+  'qpcr-relative-quant': {
+    en: 'Use a stable reference gene and compare technical replicates before interpreting fold-change.',
+    ko: '안정적인 reference gene을 사용하고 기술 반복 간 편차를 먼저 확인한 뒤 해석하세요.',
+  },
+  'cell-doubling-time': {
+    en: 'Select only the log-phase interval; confluent culture windows can distort doubling-time estimates.',
+    ko: '로그 성장 구간만 선택하세요. confluent 구간을 포함하면 배가시간이 왜곡됩니다.',
+  },
+  'cloning-helper': {
+    en: 'Length-to-mass conversion is approximate; tags, linkers, and PTMs shift observed protein size.',
+    ko: '길이-분자량 변환은 근사치입니다. tag/linker/PTM에 따라 실제 밴드 크기가 달라집니다.',
+  },
+  'acid-dilution': {
+    en: 'Always add acid to water slowly with cooling and proper PPE; never reverse the order.',
+    ko: '반드시 산을 물에 천천히 넣고 보호장비를 착용하세요. 역순 혼합은 위험합니다.',
+  },
+  'transformation-efficiency': {
+    en: 'Use plated fraction and dilution factor consistently; mismatch here is the most common source of error.',
+    ko: '도말 분율과 희석배수를 일관되게 적용하세요. 이 부분의 불일치가 가장 흔한 오류입니다.',
+  },
 };
 
 export function CalculationGuide({ id, locale }: { id: string; locale: Locale }) {
-  const label = locale === 'ko' ? '계산식' : 'Formula';
+  const label = locale === 'ko' ? '실무 노트' : 'Quick note';
   const guide = GUIDE[id];
   if (!guide) return null;
 

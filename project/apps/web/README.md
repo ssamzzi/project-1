@@ -17,6 +17,7 @@ npm run build
 ```
 
 This project uses Next.js static export (`output: 'export'`), so the output folder is `out/`.
+Default build uses `next build --no-lint` for faster CI/local verification. Use `npm run build:full` to include Next lint checks.
 
 ## Cloudflare Pages settings
 

@@ -10,6 +10,11 @@ import { calculateRcfRpm } from '../lib/calc/rcfRpm';
 import { calculatePcrMasterMix } from '../lib/calc/pcrMasterMix';
 import { calculateSerialDilution } from '../lib/calc/serialDilution';
 import { calculateGelLoading } from '../lib/calc/gelLoading';
+import { calculateQpcrRelativeQuant } from '../lib/calc/qpcrRelativeQuant';
+import { calculateCellDoublingTime } from '../lib/calc/cellDoublingTime';
+import { calculateCloningHelper } from '../lib/calc/cloningHelper';
+import { calculateAcidDilution } from '../lib/calc/acidDilution';
+import { calculateTransformationEfficiency } from '../lib/calc/transformationEfficiency';
 
 const num = (value: string | number): number => (typeof value === 'number' ? value : Number(value));
 
@@ -85,7 +90,8 @@ describe('multi-stock mix calculator', () => {
         { id: '2', name: 'Primer R', stockValue: 10, stockUnit: 'µM', targetValue: 0.2, targetUnit: 'µM' },
       ],
     });
-    expect(num(result.values.solventVolume)).toBeCloseTo(53);
+    expect(num(result.values.rows[0].volume)).toBeCloseTo(1.1);
+    expect(num(result.values.solventVolume)).toBeCloseTo(52.8);
     expect(result.warnings.some((message) => message.severity === 'critical')).toBe(false);
   });
 
@@ -455,8 +461,82 @@ describe('gel loading calculator', () => {
       sampleConcentrationNgPerUl: 25,
       targetMassNg: 200,
       wellMaxVolumeUl: 20,
+      dyeConcentrationX: 6,
+      predyeTotalVolumeUl: 10,
     });
     expect(result.values.requiredSampleVolumeUl).toBeCloseTo(8);
-    expect(result.values.percentToMax).toBeCloseTo(40);
+    expect(result.values.dyeVolumeUl).toBeCloseTo(2);
+    expect(result.values.finalLoadingVolumeUl).toBeCloseTo(12);
+    expect(result.values.percentToMax).toBeCloseTo(60);
+  });
+});
+
+describe('qPCR relative quantification calculator', () => {
+  it('computes ddCt and fold change', () => {
+    const result = calculateQpcrRelativeQuant({
+      ctTargetSample: 22,
+      ctReferenceSample: 18,
+      ctTargetControl: 25,
+      ctReferenceControl: 18,
+    });
+    expect(result.values.dCtSample).toBe(4);
+    expect(result.values.dCtControl).toBe(7);
+    expect(result.values.ddCt).toBe(-3);
+    expect(result.values.foldChange).toBeCloseTo(8);
+  });
+});
+
+describe('cell doubling time calculator', () => {
+  it('computes growth rate and doubling time', () => {
+    const result = calculateCellDoublingTime({
+      startDateIso: '2026-01-01T00:00',
+      endDateIso: '2026-01-02T00:00',
+      initialCellCount: 100000,
+      finalCellCount: 400000,
+    });
+    expect(result.values.durationHours).toBeCloseTo(24);
+    expect(result.values.growthRateK).toBeGreaterThan(0);
+    expect(result.values.doublingTimeHours).toBeCloseTo(12, 0);
+  });
+});
+
+describe('cloning helper calculator', () => {
+  it('converts DNA length and protein size', () => {
+    const result = calculateCloningHelper({
+      dnaLengthBp: 1500,
+      targetProteinKDa: 55,
+    });
+    expect(result.values.aminoAcidCountFromDna).toBeCloseTo(500);
+    expect(result.values.proteinMwKDaFromDna).toBeCloseTo(55);
+    expect(result.values.estimatedDnaBpFromProtein).toBeCloseTo(1500);
+  });
+});
+
+describe('acid dilution calculator', () => {
+  it('converts % solution to molarity and required volume', () => {
+    const result = calculateAcidDilution({
+      percentage: 37,
+      densityGPerMl: 1.19,
+      molecularWeight: 36.46,
+      targetMolarity: 1,
+      finalVolumeMl: 100,
+    });
+    expect(result.values.stockMolarity).toBeCloseTo(12.08, 1);
+    expect(result.values.requiredAcidVolumeMl).toBeGreaterThan(8);
+    expect(result.values.waterVolumeMl).toBeLessThan(100);
+  });
+});
+
+describe('transformation efficiency calculator', () => {
+  it('calculates CFU/ug and log10 efficiency', () => {
+    const result = calculateTransformationEfficiency({
+      totalDnaUsedUg: 0.01,
+      transformationTotalVolumeUl: 1000,
+      platedVolumeUl: 100,
+      colonyCount: 250,
+    });
+    expect(result.values.dnaPlatedUg).toBeCloseTo(0.001);
+    expect(result.values.efficiencyCfuPerUg).toBeCloseTo(250000);
+    expect(result.values.logEfficiency).toBeCloseTo(5.3979, 3);
   });
 });

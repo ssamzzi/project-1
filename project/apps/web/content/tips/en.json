@@ -90,4 +90,374 @@
     "severity": "warn",
     "triggers": []
   }
+,
+  {
+    "id": "u-pcr-protocol",
+    "calculatorId": "pcr-master-mix",
+    "tab": "protocol",
+    "title": "Master-mix workflow",
+    "body": "Mix water, buffer, dNTPs, primers, and polymerase first. Add template DNA last, then aliquot.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-pcr-mistake",
+    "calculatorId": "pcr-master-mix",
+    "tab": "mistakes",
+    "title": "No overage",
+    "body": "Do not skip overage; include extra volume for pipetting loss.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-pcr-range",
+    "calculatorId": "pcr-master-mix",
+    "tab": "ranges",
+    "title": "Recommended setup range",
+    "body": "Use 10-20% overage and 10-50 uL reaction volume.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-pcr-trouble",
+    "calculatorId": "pcr-master-mix",
+    "tab": "troubleshooting",
+    "title": "Primer dimer response",
+    "body": "If primer dimer appears, increase annealing temperature or reduce primer concentration.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-multi-protocol",
+    "calculatorId": "multi-stock-mix",
+    "tab": "protocol",
+    "title": "Mixing sequence",
+    "body": "Calculate each stock volume from final target concentration, then add solvent to final volume.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-multi-mistake",
+    "calculatorId": "multi-stock-mix",
+    "tab": "mistakes",
+    "title": "Solvent-first overflow",
+    "body": "Do not add all solvent first; adding stocks later can exceed final volume.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-multi-range",
+    "calculatorId": "multi-stock-mix",
+    "tab": "ranges",
+    "title": "Pipetting lower bound",
+    "body": "Set stock concentrations so each pipetted volume is at least 1 uL.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-multi-trouble",
+    "calculatorId": "multi-stock-mix",
+    "tab": "troubleshooting",
+    "title": "Precipitation check",
+    "body": "If precipitation appears, verify buffer compatibility and mix gently at room temperature.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-serial-protocol",
+    "calculatorId": "serial-dilution",
+    "tab": "protocol",
+    "title": "Step transfer protocol",
+    "body": "Preload diluent, transfer fixed volume from high concentration to next tube, and mix thoroughly each step.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-serial-mistake",
+    "calculatorId": "serial-dilution",
+    "tab": "mistakes",
+    "title": "Tip carryover",
+    "body": "Change pipette tips between steps to avoid high-concentration carryover.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-serial-range",
+    "calculatorId": "serial-dilution",
+    "tab": "ranges",
+    "title": "Dilution factor range",
+    "body": "Recommended per-step dilution factor is 1:2 to 1:10.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-serial-trouble",
+    "calculatorId": "serial-dilution",
+    "tab": "troubleshooting",
+    "title": "Nonlinear curve",
+    "body": "If standard curve is nonlinear, vortex thoroughly before every transfer.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-copy-protocol",
+    "calculatorId": "copy-number",
+    "tab": "protocol",
+    "title": "Mass to copies workflow",
+    "body": "Measure ng/uL, convert mass to moles using sequence length, then multiply by Avogadro number.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-copy-mistake",
+    "calculatorId": "copy-number",
+    "tab": "mistakes",
+    "title": "ss/ds constant confusion",
+    "body": "Do not mix single-stranded and double-stranded molecular weight constants.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-copy-range",
+    "calculatorId": "copy-number",
+    "tab": "ranges",
+    "title": "Standard-curve window",
+    "body": "Typical standard curve range is 10^1 to 10^9 copies per reaction.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-copy-trouble",
+    "calculatorId": "copy-number",
+    "tab": "troubleshooting",
+    "title": "Low copy yield",
+    "body": "If copies are low, check extraction efficiency and A260/280 purity.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-lig-protocol",
+    "calculatorId": "ligation",
+    "tab": "protocol",
+    "title": "Ligation setup flow",
+    "body": "Calculate insert:vector molar ratio, then mix DNA, ligase buffer, and T4 ligase for incubation.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-lig-mistake",
+    "calculatorId": "ligation",
+    "tab": "mistakes",
+    "title": "Mass ratio misuse",
+    "body": "Use molar ratio (fmol), not mass ratio (ng), for insert:vector planning.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-lig-range",
+    "calculatorId": "ligation",
+    "tab": "ranges",
+    "title": "Insert:vector ratio",
+    "body": "A practical starting range is 3:1 to 5:1 insert:vector molar ratio.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-lig-trouble",
+    "calculatorId": "ligation",
+    "tab": "troubleshooting",
+    "title": "No colony recovery",
+    "body": "If no colonies appear, verify ligase buffer ATP quality or increase insert ratio.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-a260-protocol",
+    "calculatorId": "a260",
+    "tab": "protocol",
+    "title": "Blanking method",
+    "body": "Blank with the exact elution buffer, then read absorbance at 260 nm.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-a260-mistake",
+    "calculatorId": "a260",
+    "tab": "mistakes",
+    "title": "Wrong blank solution",
+    "body": "Do not blank with water if the sample is dissolved in another buffer.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-a260-range",
+    "calculatorId": "a260",
+    "tab": "ranges",
+    "title": "Read quality range",
+    "body": "A260 of 0.1-1.0 is practical; A260/A280 around 1.8 for DNA and 2.0 for RNA.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-a260-trouble",
+    "calculatorId": "a260",
+    "tab": "troubleshooting",
+    "title": "Low A260/280",
+    "body": "If A260/280 is below 1.6, protein contamination is likely; repurify the sample.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-cell-protocol",
+    "calculatorId": "cell-seeding",
+    "tab": "protocol",
+    "title": "Seeding sequence",
+    "body": "Count cells, calculate total cells/volume for well format, dilute, and plate evenly.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-cell-mistake",
+    "calculatorId": "cell-seeding",
+    "tab": "mistakes",
+    "title": "No pre-plating resuspension",
+    "body": "Resuspend right before dispensing; otherwise well-to-well density drifts.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-cell-range",
+    "calculatorId": "cell-seeding",
+    "tab": "ranges",
+    "title": "Density range",
+    "body": "Typical starting range is 10^4 to 10^5 cells/cm2 depending on cell type.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-cell-trouble",
+    "calculatorId": "cell-seeding",
+    "tab": "troubleshooting",
+    "title": "Center clumping",
+    "body": "If cells accumulate in center, move plate gently in cross motion (up-down, left-right).",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-hemo-protocol",
+    "calculatorId": "hemocytometer",
+    "tab": "protocol",
+    "title": "Trypan counting workflow",
+    "body": "Mix cells with Trypan blue at 1:1, load chamber, and count live/dead cells under microscope.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-hemo-mistake",
+    "calculatorId": "hemocytometer",
+    "tab": "mistakes",
+    "title": "Chamber overfill",
+    "body": "Overfilling changes fixed chamber volume assumptions and distorts counts.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-hemo-range",
+    "calculatorId": "hemocytometer",
+    "tab": "ranges",
+    "title": "Countable range",
+    "body": "Aim for 20-50 cells per large square for stable counting.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-hemo-trouble",
+    "calculatorId": "hemocytometer",
+    "tab": "troubleshooting",
+    "title": "Too many cells",
+    "body": "If cells are too dense to count, further dilute original sample and recount.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-rcf-protocol",
+    "calculatorId": "rcf-rpm",
+    "tab": "protocol",
+    "title": "Rotor-normalized conversion",
+    "body": "Measure actual rotor radius and convert RPM to RCF to standardize between instruments.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-rcf-mistake",
+    "calculatorId": "rcf-rpm",
+    "tab": "mistakes",
+    "title": "Paper RPM copy",
+    "body": "Do not copy RPM from literature without adjusting for rotor radius differences.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-rcf-range",
+    "calculatorId": "rcf-rpm",
+    "tab": "ranges",
+    "title": "Common force ranges",
+    "body": "Cell pelleting often uses 300-500 x g; DNA precipitation commonly uses >12,000 x g.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-rcf-trouble",
+    "calculatorId": "rcf-rpm",
+    "tab": "troubleshooting",
+    "title": "No pellet",
+    "body": "If pellet does not form, verify that target RCF was not mistakenly treated as RPM.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-gel-protocol",
+    "calculatorId": "gel-loading",
+    "tab": "protocol",
+    "title": "Dye-inclusive loading",
+    "body": "Mix DNA with loading dye to 1X final concentration (for 6X dye, 1 uL dye per 5 uL sample+water), then load total volume.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-gel-mistake",
+    "calculatorId": "gel-loading",
+    "tab": "mistakes",
+    "title": "Overloading risk",
+    "body": "Avoid excess DNA mass or exceeding well capacity; both can smear bands or spill into adjacent wells.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-gel-range",
+    "calculatorId": "gel-loading",
+    "tab": "ranges",
+    "title": "Loading window",
+    "body": "A practical target is 50-100 ng per expected band and below 70-80% of well maximum volume.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-gel-trouble",
+    "calculatorId": "gel-loading",
+    "tab": "troubleshooting",
+    "title": "Wavy or faint bands",
+    "body": "Check agarose percentage for target size and confirm running buffer (TAE/TBE) is fresh enough.",
+    "severity": "warn",
+    "triggers": []
+  }
 ]

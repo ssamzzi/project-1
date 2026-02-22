@@ -12,8 +12,8 @@
     "id": "pcr-primer-high",
     "calculatorId": "pcr-master-mix",
     "tab": "mistakes",
-    "title": "프라이머 농도",
-    "body": "최종 프라이머 농도가 0.8 µM보다 높으면 비특이 산물이 증가할 수 있습니다.",
+    "title": "primer 농도",
+    "body": "최종 primer 농도가 0.8 µM보다 높으면 비특이 산물이 증가할 수 있습니다.",
     "severity": "warn",
     "triggers": [{"field": "primerHigh", "op": "==", "value": true}]
   },
@@ -48,8 +48,8 @@
     "id": "copy-high-dilution",
     "calculatorId": "copy-number",
     "tab": "ranges",
-    "title": "큰 희석은 2단계로",
-    "body": "1000배 이상 필요할 때는 2단계 희석이 오차를 줄입니다.",
+    "title": "큰 dilution은 2단계로",
+    "body": "1000배 이상 필요할 때는 2단계 dilution이 오차를 줄입니다.",
     "severity": "info",
     "triggers": [{"field": "copyDilutionFactor", "op": ">", "value": 1000}]
   },
@@ -67,7 +67,7 @@
     "calculatorId": "cell-seeding",
     "tab": "protocol",
     "title": "가장자리 웰 관리",
-    "body": "에지 효과를 줄이기 위해 96웰은 가장자리를 빈웰 또는 버퍼만 채우는 방식이 유리합니다.",
+    "body": "에지 효과를 줄이기 위해 96웰은 가장자리를 빈웰 또는 buffer만 채우는 방식이 유리합니다.",
     "severity": "warn",
     "triggers": [{"field": "plateType", "op": "==", "value": "96"}]
   },
@@ -77,6 +77,376 @@
     "tab": "protocol",
     "title": "경계 세포 규칙",
     "body": "체크박스 경계 규칙을 팀 내에서 통일해 counting bias를 줄이세요.",
+    "severity": "warn",
+    "triggers": []
+  }
+,
+  {
+    "id": "u-pcr-protocol",
+    "calculatorId": "pcr-master-mix",
+    "tab": "protocol",
+    "title": "마스터믹스 작업 순서",
+    "body": "증류수, buffer, dNTP, primer, polymerase를 먼저 섞고 template DNA를 마지막에 넣은 뒤 분주하세요.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-pcr-mistake",
+    "calculatorId": "pcr-master-mix",
+    "tab": "mistakes",
+    "title": "여분 미반영",
+    "body": "파이펫팅 손실을 고려해 overage를 반드시 추가하세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-pcr-range",
+    "calculatorId": "pcr-master-mix",
+    "tab": "ranges",
+    "title": "권장 설정 범위",
+    "body": "여분 10~20%, 반응 부피 10~50 uL를 권장합니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-pcr-trouble",
+    "calculatorId": "pcr-master-mix",
+    "tab": "troubleshooting",
+    "title": "primer 다이머 대응",
+    "body": "primer 다이머가 보이면 annealing 온도를 높이거나 primer 농도를 낮추세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-multi-protocol",
+    "calculatorId": "multi-stock-mix",
+    "tab": "protocol",
+    "title": "혼합 기본 순서",
+    "body": "최종 농도 기준으로 각 스톡 부피를 계산한 뒤 최종 부피까지 용매를 채우세요.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-multi-mistake",
+    "calculatorId": "multi-stock-mix",
+    "tab": "mistakes",
+    "title": "용매 선투입 초과",
+    "body": "용매를 먼저 다 넣으면 나중에 스톡 추가 시 최종 부피를 넘길 수 있습니다.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-multi-range",
+    "calculatorId": "multi-stock-mix",
+    "tab": "ranges",
+    "title": "파이펫팅 하한",
+    "body": "핸들링 오차를 줄이기 위해 각 성분은 1 uL 이상 취하도록 설정하세요.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-multi-trouble",
+    "calculatorId": "multi-stock-mix",
+    "tab": "troubleshooting",
+    "title": "침전 발생",
+    "body": "침전이 생기면 buffer 호환성을 확인하고 상온에서 부드럽게 혼합하세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-serial-protocol",
+    "calculatorId": "serial-dilution",
+    "tab": "protocol",
+    "title": "연속 dilution 절차",
+    "body": "모든 튜브에 diluent를 넣고 고농도에서 다음 튜브로 일정 부피를 옮겨 매 단계 충분히 혼합하세요.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-serial-mistake",
+    "calculatorId": "serial-dilution",
+    "tab": "mistakes",
+    "title": "팁 미교체",
+    "body": "단계마다 팁을 교체하지 않으면 고농도 carryover가 발생합니다.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-serial-range",
+    "calculatorId": "serial-dilution",
+    "tab": "ranges",
+    "title": " dilution 배수 범위",
+    "body": "각 단계 dilution 비율은 1:2 ~ 1:10 범위를 권장합니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-serial-trouble",
+    "calculatorId": "serial-dilution",
+    "tab": "troubleshooting",
+    "title": "비선형 곡선",
+    "body": " dilution 곡선이 비선형이면 매 단계 전달 전 충분히 볼텍싱하세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-copy-protocol",
+    "calculatorId": "copy-number",
+    "tab": "protocol",
+    "title": "copy number 계산 순서",
+    "body": "ng/uL 농도와 길이 정보를 이용해 몰수로 바꾼 뒤 아보가드로 수를 곱하세요.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-copy-mistake",
+    "calculatorId": "copy-number",
+    "tab": "mistakes",
+    "title": "ss/ds 상수 혼동",
+    "body": "ss와 ds 분자량 상수를 혼동하면 결과가 크게 틀어집니다.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-copy-range",
+    "calculatorId": "copy-number",
+    "tab": "ranges",
+    "title": "표준곡선 범위",
+    "body": "표준곡선은 반응당 10^1 ~ 10^9 copies 범위를 자주 사용합니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-copy-trouble",
+    "calculatorId": "copy-number",
+    "tab": "troubleshooting",
+    "title": "copy number 저하",
+    "body": "copy number가 낮으면 추출 효율과 A260/280 순도를 확인하세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-lig-protocol",
+    "calculatorId": "ligation",
+    "tab": "protocol",
+    "title": "리가제이션 순서",
+    "body": "insert:vector molar ratio를 계산하고 DNA, ligase buffer, T4 ligase를 혼합해 반응시키세요.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-lig-mistake",
+    "calculatorId": "ligation",
+    "tab": "mistakes",
+    "title": "질량비 사용",
+    "body": "insert:vector는 ng 질량비가 아니라 fmol molar ratio로 계산하세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-lig-range",
+    "calculatorId": "ligation",
+    "tab": "ranges",
+    "title": "molar ratio 권장 범위",
+    "body": "insert:vector molar ratio는 3:1 ~ 5:1을 시작점으로 권장합니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-lig-trouble",
+    "calculatorId": "ligation",
+    "tab": "troubleshooting",
+    "title": "콜로니 없음",
+    "body": "콜로니가 없으면 ligase buffer ATP 상태를 확인하고 insert 비율을 높여보세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-a260-protocol",
+    "calculatorId": "a260",
+    "tab": "protocol",
+    "title": "블랭크 기준",
+    "body": "샘플과 동일한 용출 buffer로 블랭크를 맞춘 뒤 260nm absorbance를 측정하세요.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-a260-mistake",
+    "calculatorId": "a260",
+    "tab": "mistakes",
+    "title": "블랭크 불일치",
+    "body": "샘플이 녹아있는 buffer 대신 물로 블랭크를 잡지 마세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-a260-range",
+    "calculatorId": "a260",
+    "tab": "ranges",
+    "title": "권장 판독 범위",
+    "body": "A260 0.1~1.0, A260/A280은 DNA 약 1.8, RNA 약 2.0을 권장합니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-a260-trouble",
+    "calculatorId": "a260",
+    "tab": "troubleshooting",
+    "title": "A260/280 저하",
+    "body": "A260/280이 1.6 미만이면 단백질 오염 가능성이 높아 재정제를 권장합니다.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-cell-protocol",
+    "calculatorId": "cell-seeding",
+    "tab": "protocol",
+    "title": "시딩 절차",
+    "body": "세포 수를 센 뒤 웰 크기에 맞게 총 세포수/부피를 계산하고 균일하게 분주하세요.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-cell-mistake",
+    "calculatorId": "cell-seeding",
+    "tab": "mistakes",
+    "title": "분주 전 미혼합",
+    "body": "분주 직전 재현탁하지 않으면 웰 간 세포 밀도 편차가 커집니다.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-cell-range",
+    "calculatorId": "cell-seeding",
+    "tab": "ranges",
+    "title": "밀도 권장 범위",
+    "body": "세포 종류에 따라 10^4 ~ 10^5 cells/cm2 범위를 시작점으로 권장합니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-cell-trouble",
+    "calculatorId": "cell-seeding",
+    "tab": "troubleshooting",
+    "title": "중앙 몰림",
+    "body": "세포가 중앙에 몰리면 원형이 아닌 십자 방향(상하좌우)으로 부드럽게 흔드세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-hemo-protocol",
+    "calculatorId": "hemocytometer",
+    "tab": "protocol",
+    "title": "Trypan Blue counting",
+    "body": "cell suspension과 Trypan Blue를 1:1로 섞어 챔버에 로딩하고 현미경으로 생존/사멸을 계수하세요.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-hemo-mistake",
+    "calculatorId": "hemocytometer",
+    "tab": "mistakes",
+    "title": "챔버 과충전",
+    "body": "챔버를 과충전하면 고정 부피 가정이 깨져 계산이 틀어집니다.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-hemo-range",
+    "calculatorId": "hemocytometer",
+    "tab": "ranges",
+    "title": "계수 적정 범위",
+    "body": "큰 정사각형당 20~50개 세포가 보이도록 dilution하는 것이 안정적입니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-hemo-trouble",
+    "calculatorId": "hemocytometer",
+    "tab": "troubleshooting",
+    "title": "세포 과다",
+    "body": "세포가 너무 많아 계수가 어렵다면 원본 샘플을 더 dilution해 재측정하세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-rcf-protocol",
+    "calculatorId": "rcf-rpm",
+    "tab": "protocol",
+    "title": "로터 반지름 보정",
+    "body": "로터 반지름을 측정해 RPM을 RCF로 변환하면 장비 간 프로토콜 표준화에 유리합니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-rcf-mistake",
+    "calculatorId": "rcf-rpm",
+    "tab": "mistakes",
+    "title": "논문 RPM 그대로 사용",
+    "body": "로터 크기가 다르면 논문 RPM을 그대로 적용하지 말고 RCF로 환산하세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-rcf-range",
+    "calculatorId": "rcf-rpm",
+    "tab": "ranges",
+    "title": "자주 쓰는 centrifugal force",
+    "body": "cell pellet은 300~500 x g, DNA precipitation은 12,000 x g 이상이 흔히 사용됩니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-rcf-trouble",
+    "calculatorId": "rcf-rpm",
+    "tab": "troubleshooting",
+    "title": "펠렛 미형성",
+    "body": "펠렛이 안 생기면 RCF와 RPM을 혼동해 실제 centrifugal force가 부족했는지 확인하세요.",
+    "severity": "warn",
+    "triggers": []
+  },
+
+  {
+    "id": "u-gel-protocol",
+    "calculatorId": "gel-loading",
+    "tab": "protocol",
+    "title": "다이 포함 로딩",
+    "body": "샘플+물에 로딩 다이를 섞어 1X가 되게 맞추세요(6X 다이 기준 pre-dye 5 uL당 다이 1 uL).",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-gel-mistake",
+    "calculatorId": "gel-loading",
+    "tab": "mistakes",
+    "title": "과량 로딩",
+    "body": "DNA 질량 과다 또는 웰 최대 부피 초과는 band smearing 및 옆 웰 넘침을 유발합니다.",
+    "severity": "warn",
+    "triggers": []
+  },
+  {
+    "id": "u-gel-range",
+    "calculatorId": "gel-loading",
+    "tab": "ranges",
+    "title": "권장 로딩 범위",
+    "body": "예상 band당 50~100 ng, 총 부피는 웰 최대 용량의 70~80% 이하를 권장합니다.",
+    "severity": "info",
+    "triggers": []
+  },
+  {
+    "id": "u-gel-trouble",
+    "calculatorId": "gel-loading",
+    "tab": "troubleshooting",
+    "title": "밴드 휨/희미함",
+    "body": "타겟 크기에 맞는 아가로스 농도인지, TAE/TBE buffer가 오래되지 않았는지 확인하세요.",
     "severity": "warn",
     "triggers": []
   }

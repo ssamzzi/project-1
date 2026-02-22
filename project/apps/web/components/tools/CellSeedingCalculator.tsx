@@ -146,7 +146,7 @@ export function CellSeedingCalculator({ locale, tips, toolName }: { locale: 'en'
       }
       rows={rows}
       columns={[{ key: 'metric', label: 'Metric' }, { key: 'value', label: 'Value' }]}
-      formulas={result.assumptions}
+      formulas={result.values.formula}
       assumptions={result.assumptions}
       validations={result.warnings as ValidationMessage[]}
       context={{ values, computed: { plateType: plateType === 'custom' ? customWellArea : plateType } }}
