@@ -18,18 +18,27 @@ interface EuropePmcResponse {
   };
 }
 
-interface CrossrefItem {
-  DOI?: string;
-  title?: string[];
-  issued?: { 'date-parts'?: number[][] };
-  'container-title'?: string[];
-  author?: Array<{ given?: string; family?: string; name?: string }>;
+interface OpenAlexWork {
+  id?: string;
+  display_name?: string;
+  publication_year?: number;
+  primary_location?: {
+    source?: {
+      display_name?: string;
+    };
+  };
+  authorships?: Array<{
+    author?: {
+      display_name?: string;
+    };
+  }>;
+  ids?: {
+    doi?: string;
+  };
 }
 
-interface CrossrefResponse {
-  message?: {
-    items?: CrossrefItem[];
-  };
+interface OpenAlexResponse {
+  results?: OpenAlexWork[];
 }
 
 interface PaperResult {
@@ -68,11 +77,10 @@ function sanitizeKeyword(keyword: string): string[] {
     .filter(Boolean);
 }
 
-function resolvePaperUrl(result: EuropePmcResult): string {
-  if (result.pmid) return `https://pubmed.ncbi.nlm.nih.gov/${result.pmid}/`;
-  if (result.doi) return `https://doi.org/${result.doi}`;
-  if (result.id) return `https://europepmc.org/article/MED/${result.id}`;
-  return 'https://europepmc.org';
+function resolveOpenAlexUrl(work: OpenAlexWork): string {
+  if (work.ids?.doi) return work.ids.doi;
+  if (work.id) return work.id;
+  return 'https://openalex.org';
 }
 
 export function ToolPaperSearchPanel({ calculatorId, locale, toolTitle }: { calculatorId: string; locale: 'en' | 'ko'; toolTitle: string }) {
@@ -83,11 +91,18 @@ export function ToolPaperSearchPanel({ calculatorId, locale, toolTitle }: { calc
 
   const searchTerms = QUERY_HINTS[calculatorId] ?? [toolTitle];
   const aiQuery = useMemo(() => {
-    const base = `(${searchTerms.map((term) => `"${term}"`).join(' OR ')})`;
     const extra = sanitizeKeyword(keyword);
-    const extraClause = extra.length ? `(${extra.map((term) => `"${term}"`).join(' AND ')})` : '';
-    return [base, extraClause].filter(Boolean).join(' AND ');
+    return [...searchTerms, ...extra].join(' ');
   }, [keyword, searchTerms]);
+
+  const pubmedUrl = useMemo(
+    () => `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(aiQuery)}`,
+    [aiQuery]
+  );
+  const europePmcUrl = useMemo(
+    () => `https://europepmc.org/search?query=${encodeURIComponent(aiQuery)}`,
+    [aiQuery]
+  );
 
   const labels = locale === 'ko'
     ? {
@@ -97,10 +112,13 @@ export function ToolPaperSearchPanel({ calculatorId, locale, toolTitle }: { calc
         submit: '검색',
         loading: '논문 검색 중...',
         empty: '결과가 없습니다.',
-        error: '논문 검색 중 오류가 발생했습니다.',
+        error: '내장 검색 연결에 실패했습니다. 아래 링크로 바로 검색해 주세요.',
         year: '연도',
         journal: '저널',
         authors: '저자',
+        quickLinks: '바로 검색',
+        pubmed: 'PubMed 열기',
+        europePmc: 'Europe PMC 열기',
       }
     : {
         title: 'AI Paper Search',
@@ -109,60 +127,38 @@ export function ToolPaperSearchPanel({ calculatorId, locale, toolTitle }: { calc
         submit: 'Search',
         loading: 'Searching papers...',
         empty: 'No results.',
-        error: 'Paper search failed.',
+        error: 'Embedded search failed. Use direct links below.',
         year: 'Year',
         journal: 'Journal',
         authors: 'Authors',
+        quickLinks: 'Direct search',
+        pubmed: 'Open PubMed',
+        europePmc: 'Open Europe PMC',
       };
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError('');
-    const query = aiQuery;
     try {
-      const endpoint = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=8&sort=RELEVANCE&query=${encodeURIComponent(
-        aiQuery
-      )}`;
-      const response = await fetch(endpoint);
-      if (response.ok) {
-        const payload = (await response.json()) as EuropePmcResponse;
-        const results = payload.resultList?.result ?? [];
-        setRows(
-          results.map((item, index) => ({
-            id: `${item.id || item.pmid || index}`,
-            title: item.title || '(No title)',
-            year: item.pubYear || '-',
-            journal: item.journalTitle || '-',
-            authors: item.authorString || '-',
-            url: resolvePaperUrl(item),
-          }))
-        );
-      } else {
-        throw new Error(`EuropePMC ${response.status}`);
-      }
+      const endpoint = `https://api.openalex.org/works?search=${encodeURIComponent(aiQuery)}&per-page=8&sort=relevance_score:desc`;
+      const response = await fetch(endpoint, { method: 'GET' });
+      if (!response.ok) throw new Error(`OpenAlex ${response.status}`);
+      const payload = (await response.json()) as OpenAlexResponse;
+      const works = payload.results ?? [];
+      setRows(
+        works.map((work, index) => ({
+          id: `${work.id || index}`,
+          title: work.display_name || '(No title)',
+          year: work.publication_year ? String(work.publication_year) : '-',
+          journal: work.primary_location?.source?.display_name || '-',
+          authors: work.authorships?.map((a) => a.author?.display_name).filter(Boolean).join(', ') || '-',
+          url: resolveOpenAlexUrl(work),
+        }))
+      );
     } catch {
-      try {
-        const fallback = `https://api.crossref.org/works?rows=8&query=${encodeURIComponent(query)}`;
-        const response = await fetch(fallback);
-        if (!response.ok) throw new Error(`Crossref ${response.status}`);
-        const payload = (await response.json()) as CrossrefResponse;
-        const items = payload.message?.items ?? [];
-        setRows(
-          items.map((item, index) => ({
-            id: `${item.DOI || index}`,
-            title: item.title?.[0] || '(No title)',
-            year: String(item.issued?.['date-parts']?.[0]?.[0] ?? '-'),
-            journal: item['container-title']?.[0] || '-',
-            authors:
-              item.author?.map((a) => a.name || [a.given, a.family].filter(Boolean).join(' ')).filter(Boolean).join(', ') || '-',
-            url: item.DOI ? `https://doi.org/${item.DOI}` : 'https://api.crossref.org',
-          }))
-        );
-      } catch {
-        setRows([]);
-        setError(labels.error);
-      }
+      setRows([]);
+      setError(labels.error);
     } finally {
       setLoading(false);
     }
@@ -193,6 +189,17 @@ export function ToolPaperSearchPanel({ calculatorId, locale, toolTitle }: { calc
       {loading ? <p className="text-xs text-slate-600">{labels.loading}</p> : null}
       {error ? <p className="text-xs text-rose-600">{error}</p> : null}
       {!loading && !error && rows.length === 0 ? <p className="text-xs text-slate-500">{labels.empty}</p> : null}
+      <div className="rounded border border-slate-200 bg-slate-50 p-2">
+        <p className="text-[11px] font-medium text-slate-700">{labels.quickLinks}</p>
+        <div className="mt-1 flex flex-wrap gap-2">
+          <a href={pubmedUrl} target="_blank" rel="noreferrer" className="text-[11px] text-indigo-700 underline">
+            {labels.pubmed}
+          </a>
+          <a href={europePmcUrl} target="_blank" rel="noreferrer" className="text-[11px] text-indigo-700 underline">
+            {labels.europePmc}
+          </a>
+        </div>
+      </div>
 
       <div className="space-y-2">
         {rows.map((row) => (
