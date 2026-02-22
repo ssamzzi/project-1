@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocale } from '../../lib/context/LocaleContext';
 import { toolMetas } from '../../lib/data/tools';
 import { workflowMetas } from '../../lib/data/workflows';
@@ -21,9 +21,14 @@ function normalize(value: string): string {
   return value.toLowerCase().trim();
 }
 
-export function SearchClient({ initialQuery }: { initialQuery: string }) {
+export function SearchClient() {
   const { locale, t } = useLocale();
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('q') || '';
+    setQuery(q);
+  }, []);
 
   const allItems = useMemo<SearchItem[]>(() => {
     const tools = toolMetas.map((tool) => ({
