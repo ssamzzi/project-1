@@ -13,13 +13,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <meta name="google-adsense-account" content="ca-pub-6511826255220683" />
+      </head>
       <body>
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6511826255220683"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-65LXZ9XN6V" strategy="afterInteractive" />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
