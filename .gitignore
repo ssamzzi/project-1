@@ -1,0 +1,23 @@
+# Node
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS/editor
+.vscode/
+.DS_Store
+
+# Local work directories (not part of deployable site)
+fludashlocal/
+ig_audit/
+searching/
+secret-homepage/
+
+# Local helper files
+Run-Codex.bat
