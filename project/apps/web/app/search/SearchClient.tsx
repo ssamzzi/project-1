@@ -4,10 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocale } from '../../lib/context/LocaleContext';
 import { toolMetas } from '../../lib/data/tools';
-import { workflowMetas } from '../../lib/data/workflows';
-import { guideMetas } from '../../lib/data/guides';
 
-type SearchKind = 'tool' | 'workflow' | 'reference';
+type SearchKind = 'tool';
 
 interface SearchItem {
   kind: SearchKind;
@@ -39,23 +37,7 @@ export function SearchClient() {
       haystack: [tool.nameEn, tool.nameKo, tool.shortEn, tool.shortKo, tool.slug].join(' '),
     }));
 
-    const workflows = workflowMetas.map((workflow) => ({
-      kind: 'workflow' as const,
-      title: locale === 'ko' ? workflow.titleKo : workflow.titleEn,
-      summary: locale === 'ko' ? workflow.shortKo : workflow.shortEn,
-      href: `/workflows/${workflow.slug}`,
-      haystack: [workflow.titleEn, workflow.titleKo, workflow.shortEn, workflow.shortKo, workflow.slug].join(' '),
-    }));
-
-    const references = guideMetas.map((guide) => ({
-      kind: 'reference' as const,
-      title: locale === 'ko' ? guide.titleKo : guide.titleEn,
-      summary: locale === 'ko' ? guide.shortKo : guide.shortEn,
-      href: `/guides/${guide.slug}`,
-      haystack: [guide.titleEn, guide.titleKo, guide.shortEn, guide.shortKo, guide.slug].join(' '),
-    }));
-
-    return [...tools, ...workflows, ...references];
+    return tools;
   }, [locale]);
 
   const filtered = useMemo(() => {
@@ -69,12 +51,10 @@ export function SearchClient() {
     const sortByTitle = (a: SearchItem, b: SearchItem) => a.title.localeCompare(b.title, collator);
     return {
       tools: filtered.filter((item) => item.kind === 'tool').sort(sortByTitle),
-      workflows: filtered.filter((item) => item.kind === 'workflow').sort(sortByTitle),
-      references: filtered.filter((item) => item.kind === 'reference').sort(sortByTitle),
     };
   }, [filtered, locale]);
 
-  const hasAny = grouped.tools.length + grouped.workflows.length + grouped.references.length > 0;
+  const hasAny = grouped.tools.length > 0;
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
@@ -90,35 +70,11 @@ export function SearchClient() {
       {!hasAny ? <p className="mt-6 text-sm text-slate-600">{t('search.empty')}</p> : null}
 
       {hasAny ? (
-        <div className="mt-6 grid gap-6 md:grid-cols-3">
+        <div className="mt-6">
           <section>
             <h2 className="text-lg font-semibold">{t('search.tools')}</h2>
-            <ul className="mt-2 space-y-2 text-sm">
+            <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
               {grouped.tools.map((item) => (
-                <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
-                  <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
-                  <p className="mt-1 text-slate-600">{item.summary}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold">{t('search.workflows')}</h2>
-            <ul className="mt-2 space-y-2 text-sm">
-              {grouped.workflows.map((item) => (
-                <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
-                  <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
-                  <p className="mt-1 text-slate-600">{item.summary}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold">{t('search.references')}</h2>
-            <ul className="mt-2 space-y-2 text-sm">
-              {grouped.references.map((item) => (
                 <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
                   <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
                   <p className="mt-1 text-slate-600">{item.summary}</p>
