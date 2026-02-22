@@ -18,6 +18,20 @@ interface EuropePmcResponse {
   };
 }
 
+interface CrossrefItem {
+  DOI?: string;
+  title?: string[];
+  issued?: { 'date-parts'?: number[][] };
+  'container-title'?: string[];
+  author?: Array<{ given?: string; family?: string; name?: string }>;
+}
+
+interface CrossrefResponse {
+  message?: {
+    items?: CrossrefItem[];
+  };
+}
+
 interface PaperResult {
   id: string;
   title: string;
@@ -50,7 +64,7 @@ function sanitizeKeyword(keyword: string): string[] {
   return keyword
     .trim()
     .split(/\s+/)
-    .map((token) => token.replace(/[^\p{L}\p{N}\-_.]/gu, ''))
+    .map((token) => token.replace(/[^\w\-_.가-힣]/g, ''))
     .filter(Boolean);
 }
 
@@ -105,27 +119,50 @@ export function ToolPaperSearchPanel({ calculatorId, locale, toolTitle }: { calc
     event.preventDefault();
     setLoading(true);
     setError('');
+    const query = aiQuery;
     try {
       const endpoint = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=8&sort=RELEVANCE&query=${encodeURIComponent(
         aiQuery
       )}`;
       const response = await fetch(endpoint);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = (await response.json()) as EuropePmcResponse;
-      const results = payload.resultList?.result ?? [];
-      setRows(
-        results.map((item, index) => ({
-          id: `${item.id || item.pmid || index}`,
-          title: item.title || '(No title)',
-          year: item.pubYear || '-',
-          journal: item.journalTitle || '-',
-          authors: item.authorString || '-',
-          url: resolvePaperUrl(item),
-        }))
-      );
+      if (response.ok) {
+        const payload = (await response.json()) as EuropePmcResponse;
+        const results = payload.resultList?.result ?? [];
+        setRows(
+          results.map((item, index) => ({
+            id: `${item.id || item.pmid || index}`,
+            title: item.title || '(No title)',
+            year: item.pubYear || '-',
+            journal: item.journalTitle || '-',
+            authors: item.authorString || '-',
+            url: resolvePaperUrl(item),
+          }))
+        );
+      } else {
+        throw new Error(`EuropePMC ${response.status}`);
+      }
     } catch {
-      setRows([]);
-      setError(labels.error);
+      try {
+        const fallback = `https://api.crossref.org/works?rows=8&query=${encodeURIComponent(query)}`;
+        const response = await fetch(fallback);
+        if (!response.ok) throw new Error(`Crossref ${response.status}`);
+        const payload = (await response.json()) as CrossrefResponse;
+        const items = payload.message?.items ?? [];
+        setRows(
+          items.map((item, index) => ({
+            id: `${item.DOI || index}`,
+            title: item.title?.[0] || '(No title)',
+            year: String(item.issued?.['date-parts']?.[0]?.[0] ?? '-'),
+            journal: item['container-title']?.[0] || '-',
+            authors:
+              item.author?.map((a) => a.name || [a.given, a.family].filter(Boolean).join(' ')).filter(Boolean).join(', ') || '-',
+            url: item.DOI ? `https://doi.org/${item.DOI}` : 'https://api.crossref.org',
+          }))
+        );
+      } catch {
+        setRows([]);
+        setError(labels.error);
+      }
     } finally {
       setLoading(false);
     }
