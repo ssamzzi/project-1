@@ -27,7 +27,7 @@ export const onRequestPost: PagesFunction = async (context) => {
   if (!token) return json({ error: 'Missing Hugging Face token' }, { status: 400 });
   if (!model) return json({ error: 'Missing model id' }, { status: 400 });
 
-  const endpoint = `https://api-inference.huggingface.co/models/${encodeURIComponent(model)}`;
+  const endpoint = `https://router.huggingface.co/hf-inference/models/${encodeURIComponent(model)}`;
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -48,4 +48,3 @@ export const onRequestPost: PagesFunction = async (context) => {
     return json({ error: 'Failed to reach Hugging Face API from server.' }, { status: 502 });
   }
 };
-
