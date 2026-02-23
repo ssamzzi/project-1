@@ -29,6 +29,7 @@ interface HuggingFaceInferencePayload {
 }
 interface HuggingFaceErrorPayload {
   error?: string;
+  estimated_time?: number;
 }
 
 function isSupported(id: string): id is SupportedCalculatorId {
@@ -277,6 +278,33 @@ function extractHfText(payload: unknown): string {
   return '';
 }
 
+function extractHfError(payload: unknown): { message: string; estimatedTimeSec?: number } | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const maybe = payload as HuggingFaceErrorPayload;
+  if (typeof maybe.error !== 'string' || !maybe.error.trim()) return null;
+  const time = typeof maybe.estimated_time === 'number' ? maybe.estimated_time : undefined;
+  return { message: maybe.error.trim(), estimatedTimeSec: time };
+}
+
+function toErrorMessage(status: number, detail: string, locale: 'en' | 'ko') {
+  if (status === 401 || status === 403) {
+    return locale === 'ko'
+      ? `Hugging Face Token 권한 오류(${status}): Inference 권한이 있는지 확인하세요. ${detail}`
+      : `Hugging Face token permission error (${status}): check Inference access. ${detail}`;
+  }
+  if (status === 429) {
+    return locale === 'ko'
+      ? `요청 제한(429): 잠시 후 다시 시도하세요. ${detail}`
+      : `Rate limited (429): try again later. ${detail}`;
+  }
+  if (status === 503) {
+    return locale === 'ko'
+      ? `모델 준비 중(503): 잠시 후 다시 시도하세요. ${detail}`
+      : `Model is loading (503): try again shortly. ${detail}`;
+  }
+  return locale === 'ko' ? `AI 호출 실패(${status}): ${detail}` : `AI call failed (${status}): ${detail}`;
+}
+
 export function ToolFailureAnalysisPanel({
   calculatorId,
   locale,
@@ -396,12 +424,22 @@ export function ToolFailureAnalysisPanel({
             temperature: 0.2,
             return_full_text: false,
           },
+          options: {
+            wait_for_model: true,
+            use_cache: false,
+          },
         }),
       });
-      if (!response.ok) {
-        throw new Error(`HF_${response.status}`);
-      }
       const payload = await response.json();
+      if (!response.ok) {
+        const hfError = extractHfError(payload);
+        const detail = hfError
+          ? hfError.estimatedTimeSec
+            ? `${hfError.message} (estimated ${Math.ceil(hfError.estimatedTimeSec)}s)`
+            : hfError.message
+          : 'Unknown response';
+        throw new Error(toErrorMessage(response.status, detail, locale));
+      }
       const rawText = extractHfText(payload);
       const text = extractJsonText(rawText);
       const aiCauses = safeParseAiResult(text);
@@ -419,7 +457,7 @@ export function ToolFailureAnalysisPanel({
         actionKo: item.action,
       }));
       setResults(normalized);
-    } catch {
+    } catch (error) {
       let causes: CauseItem[] = [];
       if (calculatorId === 'pcr-master-mix') {
         causes = getPcrCauses(context.values, context.computed, combined);
@@ -430,7 +468,13 @@ export function ToolFailureAnalysisPanel({
       }
       causes.sort((a, b) => b.score - a.score);
       setResults(causes.slice(0, 5));
-      setAnalysisError(trimmedKey ? labels.aiError : labels.apiKeyMissing);
+      if (!trimmedKey) {
+        setAnalysisError(labels.apiKeyMissing);
+      } else if (error instanceof Error && error.message) {
+        setAnalysisError(error.message);
+      } else {
+        setAnalysisError(labels.aiError);
+      }
     } finally {
       setIsAnalyzing(false);
     }
