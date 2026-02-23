@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useAdmin } from '../../lib/context/AdminContext';
 import { useLocale } from '../../lib/context/LocaleContext';
+import { OPENAI_KEY_STORAGE_KEY } from '../../lib/ai/config';
 
 type CommentTab = 'advice' | 'questions';
 type LegacyTab = 'protocol' | 'mistakes' | 'ranges' | 'troubleshooting' | 'comments';
@@ -98,6 +99,7 @@ export default function AdminPage() {
   const { isAdmin } = useAdmin();
   const { locale } = useLocale();
   const [rows, setRows] = useState<AdminRow[]>(() => parseRows());
+  const [apiKey, setApiKey] = useState<string>(() => (typeof window === 'undefined' ? '' : window.localStorage.getItem(OPENAI_KEY_STORAGE_KEY) || ''));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | CommentTab>('all');
@@ -119,6 +121,10 @@ export default function AdminPage() {
             tool: '도구',
             created: '작성',
             updated: '수정',
+            apiTitle: 'AI 설정',
+            apiLabel: 'OpenAI API Key',
+            apiSave: '저장',
+            apiSaved: '저장됨',
           }
         : {
             title: 'Admin Panel',
@@ -134,6 +140,10 @@ export default function AdminPage() {
             tool: 'Tool',
             created: 'Created',
             updated: 'Updated',
+            apiTitle: 'AI Settings',
+            apiLabel: 'OpenAI API Key',
+            apiSave: 'Save',
+            apiSaved: 'Saved',
           },
     [locale]
   );
@@ -173,6 +183,36 @@ export default function AdminPage() {
           ))}
         </select>
       </div>
+
+      <section className="rounded border border-slate-200 bg-white p-3">
+        <h2 className="text-sm font-semibold">{labels.apiTitle}</h2>
+        <label className="mt-2 block text-xs text-slate-600">
+          {labels.apiLabel}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(event) => setApiKey(event.target.value)}
+              className="h-10 min-w-[280px] rounded border border-slate-300 px-2"
+              placeholder="sk-..."
+            />
+            <button
+              className="rounded bg-slate-900 px-2 py-1.5 text-xs text-white"
+              onClick={() => {
+                try {
+                  window.localStorage.setItem(OPENAI_KEY_STORAGE_KEY, apiKey.trim());
+                  window.dispatchEvent(new Event('biolt-ai-key-change'));
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              {labels.apiSave}
+            </button>
+          </div>
+        </label>
+        <p className="mt-1 text-[11px] text-slate-500">{labels.apiSaved}: {apiKey.trim() ? 'OK' : '-'}</p>
+      </section>
 
       <div className="space-y-2">
         {filtered.length === 0 ? <p className="text-sm text-slate-600">{labels.empty}</p> : null}

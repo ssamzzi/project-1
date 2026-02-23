@@ -3,6 +3,7 @@
 import { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ValidationMessage } from '../lib/types';
+import { OPENAI_KEY_STORAGE_KEY, OPENAI_MODEL } from '../lib/ai/config';
 
 type SupportedCalculatorId = 'pcr-master-mix' | 'ligation' | 'cell-seeding';
 
@@ -23,9 +24,15 @@ interface AiCauseItem {
   check: string;
   action: string;
 }
-
-const OPENAI_KEY_STORAGE_KEY = 'biolt-openai-key';
-const OPENAI_MODEL = 'gpt-4.1-mini';
+interface OpenAIResponsesPayload {
+  output_text?: string;
+  output?: Array<{
+    content?: Array<{
+      type?: string;
+      text?: string;
+    }>;
+  }>;
+}
 
 function isSupported(id: string): id is SupportedCalculatorId {
   return id === 'pcr-master-mix' || id === 'ligation' || id === 'cell-seeding';
@@ -252,6 +259,19 @@ function safeParseAiResult(raw: string): AiCauseItem[] {
     .slice(0, 5);
 }
 
+function extractOutputText(payload: OpenAIResponsesPayload): string {
+  if (payload.output_text && payload.output_text.trim()) return payload.output_text;
+  const parts: string[] = [];
+  for (const item of payload.output || []) {
+    for (const content of item.content || []) {
+      if (typeof content.text === 'string' && content.text.trim()) {
+        parts.push(content.text);
+      }
+    }
+  }
+  return parts.join('\n').trim();
+}
+
 export function ToolFailureAnalysisPanel({
   calculatorId,
   locale,
@@ -280,6 +300,23 @@ export function ToolFailureAnalysisPanel({
     } catch {
       // ignore
     }
+  }, []);
+
+  useEffect(() => {
+    const syncKey = () => {
+      try {
+        const stored = window.localStorage.getItem(OPENAI_KEY_STORAGE_KEY) || '';
+        setApiKey(stored);
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('storage', syncKey);
+    window.addEventListener('biolt-ai-key-change', syncKey);
+    return () => {
+      window.removeEventListener('storage', syncKey);
+      window.removeEventListener('biolt-ai-key-change', syncKey);
+    };
   }, []);
 
   const labels =
@@ -372,8 +409,8 @@ export function ToolFailureAnalysisPanel({
       if (!response.ok) {
         throw new Error(`OPENAI_${response.status}`);
       }
-      const payload = (await response.json()) as { output_text?: string };
-      const text = payload.output_text || '';
+      const payload = (await response.json()) as OpenAIResponsesPayload;
+      const text = extractOutputText(payload);
       const aiCauses = safeParseAiResult(text);
       if (!aiCauses.length) {
         throw new Error('AI_PARSE');
