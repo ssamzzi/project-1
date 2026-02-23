@@ -13,6 +13,10 @@ export default function HomePage() {
   const sortedTools = [...toolMetas].sort((a, b) => (locale === 'ko' ? a.nameKo : a.nameEn).localeCompare(locale === 'ko' ? b.nameKo : b.nameEn, collator));
   const topTools = sortedTools.slice(0, 12);
   const quickStartTitle = locale === 'ko' ? '빠른 시작' : 'Quick Start';
+  const contactHref = t('about.placeholder');
+  const contactEmail = contactHref.replace(/^mailto:/, '');
+  const creatorLabel = locale === 'ko' ? '제작자' : 'Creator';
+  const contactLabel = locale === 'ko' ? '문의' : 'Contact';
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
@@ -20,6 +24,20 @@ export default function HomePage() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-700">Bio Lab</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">{t('home.title')}</h1>
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-700 sm:text-lg">{t('home.subtitle')}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-700">
+          <p>
+            {creatorLabel}:{' '}
+            <a href={t('about.instagramUrl')} target="_blank" rel="noreferrer" className="font-medium underline">
+              @biossom_._
+            </a>
+          </p>
+          <p>
+            {contactLabel}:{' '}
+            <a href={contactHref} className="font-medium underline">
+              {contactEmail}
+            </a>
+          </p>
+        </div>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
             href="/tools"
