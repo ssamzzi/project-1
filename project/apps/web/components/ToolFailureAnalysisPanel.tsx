@@ -26,7 +26,7 @@ interface AiCauseItem {
 }
 interface HuggingFaceInferencePayload {
   generated_text?: string;
-  choices?: Array<{ message?: { content?: string } }>;
+  choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
 }
 interface HuggingFaceErrorPayload {
   error?: string | { message?: string };
@@ -301,6 +301,14 @@ function extractHfText(payload: unknown): string {
     const firstChoice = one.choices[0];
     const content = firstChoice?.message?.content;
     if (typeof content === 'string') return content;
+    if (Array.isArray(content)) {
+      const joined = content
+        .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+      if (joined) return joined;
+    }
   }
   if ('generated_text' in one && typeof one.generated_text === 'string') return one.generated_text;
   return '';
