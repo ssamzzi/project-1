@@ -264,19 +264,47 @@ function safeParseAiResult(raw: string): AiCauseItem[] {
     .slice(0, 5);
 }
 
-function parsePlainTextAiResult(raw: string): AiCauseItem[] {
+function parsePartialJsonAiResult(raw: string): AiCauseItem[] {
+  const compact = raw.replace(/\s+/g, ' ').trim();
+  if (!compact.includes('"causes"') && !compact.includes("'causes'")) return [];
+  const entries: AiCauseItem[] = [];
+  const chunks = compact.split(/\{(?=\s*"priority"\s*:)/g).slice(1);
+  for (const chunk of chunks) {
+    const text = `{${chunk}`;
+    const priorityMatch = text.match(/"priority"\s*:\s*"(high|medium|low)"/i);
+    const causeMatch = text.match(/"cause"\s*:\s*"([^"]+)/i);
+    const checkMatch = text.match(/"check"\s*:\s*"([^"]+)/i);
+    const actionMatch = text.match(/"action"\s*:\s*"([^"]+)/i);
+    const cause = (causeMatch?.[1] || '').trim();
+    if (!cause) continue;
+    entries.push({
+      priority: (priorityMatch?.[1]?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium',
+      cause,
+      check: (checkMatch?.[1] || '').trim(),
+      action: (actionMatch?.[1] || '').trim(),
+    });
+  }
+  return entries.slice(0, 5);
+}
+
+function parsePlainTextAiResult(raw: string, locale: 'en' | 'ko'): AiCauseItem[] {
   const lines = raw
     .split('\n')
     .map((line) => line.trim())
     .map((line) => line.replace(/^[-*]\s+/, '').replace(/^\d+[.)]\s+/, ''))
-    .filter((line) => line.length > 8);
+    .map((line) => line.replace(/[{}[\]"]/g, '').trim())
+    .filter((line) => line.length > 8 && !/^\s*(priority|cause|check|action|causes)\s*[:=]/i.test(line));
   if (!lines.length) return [];
   const top = lines.slice(0, 3);
+  const checkText =
+    locale === 'ko' ? 'control sample과 setup 기록으로 해당 원인을 확인하세요.' : 'Confirm this issue with control samples and setup logs.';
+  const actionText =
+    locale === 'ko' ? '변수를 하나만 바꿔서 control과 함께 재실행하세요.' : 'Apply one variable change and re-run with control.';
   return top.map((line) => ({
     priority: 'medium',
     cause: line.slice(0, 180),
-    check: 'Confirm this issue with control samples and setup logs.',
-    action: 'Apply one variable change and re-run with control.',
+    check: checkText,
+    action: actionText,
   }));
 }
 
@@ -487,7 +515,7 @@ export function ToolFailureAnalysisPanel({
               `${locale === 'ko' ? '반드시 JSON만 출력:' : 'Return JSON only:'} {"causes":[{"priority":"high|medium|low","cause":"...","check":"...","action":"..."}]}\n` +
               JSON.stringify(userPayload),
             parameters: {
-              max_new_tokens: 420,
+              max_new_tokens: 700,
               temperature: 0.2,
               return_full_text: false,
             },
@@ -519,7 +547,10 @@ export function ToolFailureAnalysisPanel({
       const text = extractJsonText(rawText);
       let aiCauses = safeParseAiResult(text);
       if (!aiCauses.length) {
-        aiCauses = parsePlainTextAiResult(rawText);
+        aiCauses = parsePartialJsonAiResult(rawText);
+      }
+      if (!aiCauses.length) {
+        aiCauses = parsePlainTextAiResult(rawText, locale);
       }
       if (!aiCauses.length) {
         throw new Error(
