@@ -413,26 +413,29 @@ export function ToolFailureAnalysisPanel({
         responseLocale: locale,
       };
 
-      const response = await fetch(`https://api-inference.huggingface.co/models/${encodeURIComponent(HF_MODEL)}`, {
+      const response = await fetch('/api/ai-analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${trimmedKey}`,
         },
         body: JSON.stringify({
-          inputs:
-            `${systemPrompt}\n` +
-            `${locale === 'ko' ? '다음 데이터를 바탕으로 실패 원인분석을 해주세요.' : 'Analyze likely failure causes from this data.'}\n` +
-            `${locale === 'ko' ? '반드시 JSON만 출력:' : 'Return JSON only:'} {"causes":[{"priority":"high|medium|low","cause":"...","check":"...","action":"..."}]}\n` +
-            JSON.stringify(userPayload),
-          parameters: {
-            max_new_tokens: 420,
-            temperature: 0.2,
-            return_full_text: false,
-          },
-          options: {
-            wait_for_model: true,
-            use_cache: false,
+          token: trimmedKey,
+          model: HF_MODEL,
+          payload: {
+            inputs:
+              `${systemPrompt}\n` +
+              `${locale === 'ko' ? '다음 데이터를 바탕으로 실패 원인분석을 해주세요.' : 'Analyze likely failure causes from this data.'}\n` +
+              `${locale === 'ko' ? '반드시 JSON만 출력:' : 'Return JSON only:'} {"causes":[{"priority":"high|medium|low","cause":"...","check":"...","action":"..."}]}\n` +
+              JSON.stringify(userPayload),
+            parameters: {
+              max_new_tokens: 420,
+              temperature: 0.2,
+              return_full_text: false,
+            },
+            options: {
+              wait_for_model: true,
+              use_cache: false,
+            },
           },
         }),
       });
