@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { FormEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ValidationMessage } from '../lib/types';
 
 type SupportedCalculatorId = 'pcr-master-mix' | 'ligation' | 'cell-seeding';
@@ -15,6 +16,16 @@ interface CauseItem {
   actionEn: string;
   actionKo: string;
 }
+
+interface AiCauseItem {
+  priority: 'high' | 'medium' | 'low';
+  cause: string;
+  check: string;
+  action: string;
+}
+
+const OPENAI_KEY_STORAGE_KEY = 'biolt-openai-key';
+const OPENAI_MODEL = 'gpt-4.1-mini';
 
 function isSupported(id: string): id is SupportedCalculatorId {
   return id === 'pcr-master-mix' || id === 'ligation' || id === 'cell-seeding';
@@ -227,6 +238,20 @@ function getPriorityLabel(score: number, locale: 'en' | 'ko') {
   return locale === 'ko' ? '낮음' : 'Low';
 }
 
+function scoreFromPriority(priority: string) {
+  if (priority === 'high') return 90;
+  if (priority === 'medium') return 78;
+  return 60;
+}
+
+function safeParseAiResult(raw: string): AiCauseItem[] {
+  const parsed = JSON.parse(raw) as { causes?: AiCauseItem[] };
+  if (!parsed.causes || !Array.isArray(parsed.causes)) return [];
+  return parsed.causes
+    .filter((c) => c && typeof c.cause === 'string' && typeof c.check === 'string' && typeof c.action === 'string')
+    .slice(0, 5);
+}
+
 export function ToolFailureAnalysisPanel({
   calculatorId,
   locale,
@@ -243,6 +268,19 @@ export function ToolFailureAnalysisPanel({
   const [observed, setObserved] = useState('');
   const [attemptedFix, setAttemptedFix] = useState('');
   const [results, setResults] = useState<CauseItem[]>([]);
+  const [lastAnalyzedAt, setLastAnalyzedAt] = useState<number | null>(null);
+  const [apiKey, setApiKey] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(OPENAI_KEY_STORAGE_KEY) || '';
+      setApiKey(stored);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const labels =
     locale === 'ko'
@@ -255,6 +293,10 @@ export function ToolFailureAnalysisPanel({
           priority: '우선순위',
           check: '확인할 항목',
           action: '즉시 수정안',
+          lastRun: '마지막 분석',
+          apiKeyLabel: 'OpenAI API Key',
+          apiKeyHint: '브라우저 localStorage에만 저장됩니다.',
+          aiError: 'AI 호출 실패, 규칙기반 분석 결과로 대체했습니다.',
         }
       : {
           title: 'AI Failure Analysis',
@@ -265,48 +307,149 @@ export function ToolFailureAnalysisPanel({
           priority: 'Priority',
           check: 'Check',
           action: 'Immediate action',
+          lastRun: 'Last analysis',
+          apiKeyLabel: 'OpenAI API Key',
+          apiKeyHint: 'Stored only in browser localStorage.',
+          aiError: 'AI call failed. Showing rule-based fallback.',
         };
 
   const validationHints = useMemo(() => validations.map((v) => `${v.code} ${v.message}`).join(' | '), [validations]);
 
-  const runAnalysis = () => {
+  const runAnalysis = async (event: FormEvent) => {
+    event.preventDefault();
     const combined = `${observed}\n${attemptedFix}\n${validationHints}`.trim();
-    let causes: CauseItem[] = [];
-    if (calculatorId === 'pcr-master-mix') {
-      causes = getPcrCauses(context.values, context.computed, combined);
-    } else if (calculatorId === 'ligation') {
-      causes = getLigationCauses(context.values, combined);
-    } else if (calculatorId === 'cell-seeding') {
-      causes = getCellSeedingCauses(context.values, combined);
+    setIsAnalyzing(true);
+    setAnalysisError('');
+    try {
+      const trimmedKey = apiKey.trim();
+      if (!trimmedKey) {
+        throw new Error('NO_API_KEY');
+      }
+      try {
+        window.localStorage.setItem(OPENAI_KEY_STORAGE_KEY, trimmedKey);
+      } catch {
+        // ignore
+      }
+      const systemPrompt =
+        locale === 'ko'
+          ? '당신은 분자생물학/세포생물학 실험 실패 원인을 분석하는 도우미입니다. 과장 없이 간결하게, 재현 가능한 점검 항목을 제시하세요.'
+          : 'You analyze molecular/cell biology experiment failures. Be concise and actionable, and provide reproducible checks.';
+      const userPayload = {
+        calculatorId,
+        observedFailure: observed,
+        attemptedFix,
+        validationHints,
+        calculatorValues: context.values,
+        computedSignals: context.computed,
+        responseLocale: locale,
+      };
+
+      const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${trimmedKey}`,
+        },
+        body: JSON.stringify({
+          model: OPENAI_MODEL,
+          input: [
+            { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text:
+                    `${locale === 'ko' ? '다음 데이터를 바탕으로 실패 원인분석을 해주세요.' : 'Analyze likely failure causes from this data.'}\n` +
+                    `${locale === 'ko' ? '반드시 JSON만 출력:' : 'Return JSON only:'} {"causes":[{"priority":"high|medium|low","cause":"...","check":"...","action":"..."}]}\n` +
+                    JSON.stringify(userPayload),
+                },
+              ],
+            },
+          ],
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`OPENAI_${response.status}`);
+      }
+      const payload = (await response.json()) as { output_text?: string };
+      const text = payload.output_text || '';
+      const aiCauses = safeParseAiResult(text);
+      if (!aiCauses.length) {
+        throw new Error('AI_PARSE');
+      }
+      const normalized = aiCauses.map((item, index) => ({
+        id: `ai-${index}-${item.priority}`,
+        score: scoreFromPriority(item.priority),
+        titleEn: item.cause,
+        titleKo: item.cause,
+        checkEn: item.check,
+        checkKo: item.check,
+        actionEn: item.action,
+        actionKo: item.action,
+      }));
+      setResults(normalized);
+    } catch {
+      let causes: CauseItem[] = [];
+      if (calculatorId === 'pcr-master-mix') {
+        causes = getPcrCauses(context.values, context.computed, combined);
+      } else if (calculatorId === 'ligation') {
+        causes = getLigationCauses(context.values, combined);
+      } else if (calculatorId === 'cell-seeding') {
+        causes = getCellSeedingCauses(context.values, combined);
+      }
+      causes.sort((a, b) => b.score - a.score);
+      setResults(causes.slice(0, 5));
+      setAnalysisError(labels.aiError);
+    } finally {
+      setIsAnalyzing(false);
     }
-    causes.sort((a, b) => b.score - a.score);
-    setResults(causes.slice(0, 5));
+    setLastAnalyzedAt(Date.now());
   };
 
   return (
     <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
       <h3 className="text-sm font-medium">{labels.title}</h3>
-      <label className="block text-xs text-slate-700">
-        {labels.observed}
-        <textarea
-          value={observed}
-          onChange={(event) => setObserved(event.target.value)}
-          className="mt-1 min-h-[72px] w-full rounded border border-slate-300 px-2 py-1"
-          placeholder={locale === 'ko' ? '예: 밴드가 없고 negative control에도 약한 신호가 나옴' : 'e.g. no band and weak signal in negative control'}
-        />
-      </label>
-      <label className="block text-xs text-slate-700">
-        {labels.attempted}
-        <textarea
-          value={attemptedFix}
-          onChange={(event) => setAttemptedFix(event.target.value)}
-          className="mt-1 min-h-[56px] w-full rounded border border-slate-300 px-2 py-1"
-          placeholder={locale === 'ko' ? '예: annealing temperature +2C, primer 농도 감소' : 'e.g. +2C annealing temp, lower primer concentration'}
-        />
-      </label>
-      <button type="button" onClick={runAnalysis} className="rounded bg-slate-900 px-2 py-1.5 text-xs text-white">
-        {labels.run}
-      </button>
+      <form className="space-y-2" onSubmit={runAnalysis}>
+        <label className="block text-xs text-slate-700">
+          {labels.apiKeyLabel}
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(event) => setApiKey(event.target.value)}
+            className="mt-1 h-10 w-full rounded border border-slate-300 px-2"
+            placeholder="sk-..."
+          />
+          <span className="mt-1 block text-[11px] text-slate-500">{labels.apiKeyHint}</span>
+        </label>
+        <label className="block text-xs text-slate-700">
+          {labels.observed}
+          <textarea
+            value={observed}
+            onChange={(event) => setObserved(event.target.value)}
+            className="mt-1 min-h-[72px] w-full rounded border border-slate-300 px-2 py-1"
+            placeholder={locale === 'ko' ? '예: 밴드가 없고 negative control에도 약한 신호가 나옴' : 'e.g. no band and weak signal in negative control'}
+          />
+        </label>
+        <label className="block text-xs text-slate-700">
+          {labels.attempted}
+          <textarea
+            value={attemptedFix}
+            onChange={(event) => setAttemptedFix(event.target.value)}
+            className="mt-1 min-h-[56px] w-full rounded border border-slate-300 px-2 py-1"
+            placeholder={locale === 'ko' ? '예: annealing temperature +2C, primer 농도 감소' : 'e.g. +2C annealing temp, lower primer concentration'}
+          />
+        </label>
+        <button type="submit" className="rounded bg-slate-900 px-2 py-1.5 text-xs text-white" disabled={isAnalyzing}>
+          {isAnalyzing ? (locale === 'ko' ? '분석 중...' : 'Analyzing...') : labels.run}
+        </button>
+      </form>
+      {analysisError ? <p className="text-xs text-amber-600">{analysisError}</p> : null}
+      {lastAnalyzedAt ? (
+        <p className="text-[11px] text-slate-500">
+          {labels.lastRun}: {new Date(lastAnalyzedAt).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}
+        </p>
+      ) : null}
       {results.length === 0 ? <p className="text-xs text-slate-500">{labels.empty}</p> : null}
       <div className="space-y-2">
         {results.map((item) => (
