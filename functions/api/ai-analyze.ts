@@ -10,6 +10,10 @@ interface AiAnalyzeRequest {
   };
 }
 
+interface RouterModelItem {
+  id?: string;
+}
+
 function json(data: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(data), {
     ...init,
@@ -58,38 +62,45 @@ export const onRequestPost: PagesFunction = async (context) => {
     return { response, text };
   };
 
-  const pickFallbackModel = async (): Promise<string | null> => {
+  const listModels = async (): Promise<string[]> => {
     try {
       const modelsRes = await fetch(modelListEndpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (!modelsRes.ok) return null;
-      const modelsJson = (await modelsRes.json()) as Array<{ id?: string }> | unknown;
-      const ids = Array.isArray(modelsJson) ? modelsJson.map((m) => (typeof m?.id === 'string' ? m.id : '')).filter(Boolean) : [];
-      if (ids.length === 0) return null;
-      const preferred = ['openai/gpt-oss-20b', 'Qwen/Qwen2.5-7B-Instruct', 'meta-llama/Llama-3.1-8B-Instruct', 'gpt2'];
-      for (const candidate of preferred) {
-        const match = ids.find((id) => id.startsWith(candidate));
-        if (match) return match;
-      }
-      return ids[0] || null;
+      if (!modelsRes.ok) return [];
+      const modelsJson = (await modelsRes.json()) as RouterModelItem[] | unknown;
+      if (!Array.isArray(modelsJson)) return [];
+      return modelsJson.map((m) => (typeof m?.id === 'string' ? m.id : '')).filter(Boolean);
     } catch {
-      return null;
+      return [];
     }
   };
 
-  try {
-    let { response, text } = await callChatCompletions(model);
-    if ((response.status === 404 || response.status === 400) && /not found|model|unknown/i.test(text)) {
-      const fallbackModel = await pickFallbackModel();
-      if (fallbackModel && fallbackModel !== model) {
-        const retry = await callChatCompletions(fallbackModel);
-        response = retry.response;
-        text = retry.text;
-      }
+  const pickModel = (ids: string[], requested: string): string | null => {
+    if (!ids.length) return null;
+    if (requested) {
+      const exact = ids.find((id) => id === requested);
+      if (exact) return exact;
+      const prefix = ids.find((id) => id.startsWith(requested));
+      if (prefix) return prefix;
     }
+    const preferred = ['openai/gpt-oss-20b', 'Qwen/Qwen2.5-7B-Instruct', 'meta-llama/Llama-3.1-8B-Instruct'];
+    for (const candidate of preferred) {
+      const match = ids.find((id) => id.startsWith(candidate));
+      if (match) return match;
+    }
+    return ids[0] || null;
+  };
+
+  try {
+    const modelIds = await listModels();
+    const chosenModel = pickModel(modelIds, model);
+    if (!chosenModel) {
+      return json({ error: 'No callable models available for this token/router account.' }, { status: 400 });
+    }
+    let { response, text } = await callChatCompletions(chosenModel);
 
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.toLowerCase().includes('application/json') && !response.ok) {
