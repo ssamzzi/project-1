@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useAdmin } from '../../lib/context/AdminContext';
 import { useLocale } from '../../lib/context/LocaleContext';
-import { AI_TOKEN_STORAGE_KEY } from '../../lib/ai/config';
+import { AI_DEBUG_STORAGE_KEY, AI_MODEL_STORAGE_KEY, AI_TOKEN_STORAGE_KEY, HF_MODEL } from '../../lib/ai/config';
 
 type CommentTab = 'advice' | 'questions';
 type LegacyTab = 'protocol' | 'mistakes' | 'ranges' | 'troubleshooting' | 'comments';
@@ -100,6 +100,12 @@ export default function AdminPage() {
   const { locale } = useLocale();
   const [rows, setRows] = useState<AdminRow[]>(() => parseRows());
   const [apiKey, setApiKey] = useState<string>(() => (typeof window === 'undefined' ? '' : window.localStorage.getItem(AI_TOKEN_STORAGE_KEY) || ''));
+  const [model, setModel] = useState<string>(() => (typeof window === 'undefined' ? HF_MODEL : window.localStorage.getItem(AI_MODEL_STORAGE_KEY) || HF_MODEL));
+  const [debugEnabled, setDebugEnabled] = useState<boolean>(
+    () => (typeof window === 'undefined' ? false : window.localStorage.getItem(AI_DEBUG_STORAGE_KEY) === 'true')
+  );
+  const [isTestingAi, setIsTestingAi] = useState(false);
+  const [aiTestResult, setAiTestResult] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | CommentTab>('all');
@@ -123,7 +129,10 @@ export default function AdminPage() {
             updated: '수정',
             apiTitle: 'AI 설정',
             apiLabel: 'Hugging Face Token',
+            modelLabel: '고정 Model ID',
+            debugLabel: '관리자 디버그 로그 표시',
             apiSave: '저장',
+            aiTest: 'AI 연결 테스트',
             apiSaved: '저장됨',
           }
         : {
@@ -142,7 +151,10 @@ export default function AdminPage() {
             updated: 'Updated',
             apiTitle: 'AI Settings',
             apiLabel: 'Hugging Face Token',
+            modelLabel: 'Pinned Model ID',
+            debugLabel: 'Show debug logs for admin',
             apiSave: 'Save',
+            aiTest: 'Test AI connection',
             apiSaved: 'Saved',
           },
     [locale]
@@ -196,22 +208,74 @@ export default function AdminPage() {
               className="h-10 min-w-[280px] rounded border border-slate-300 px-2"
               placeholder="hf_..."
             />
-            <button
-              className="rounded bg-slate-900 px-2 py-1.5 text-xs text-white"
-              onClick={() => {
-                try {
-                  window.localStorage.setItem(AI_TOKEN_STORAGE_KEY, apiKey.trim());
-                  window.dispatchEvent(new Event('biolt-ai-key-change'));
-                } catch {
-                  // ignore
-                }
-              }}
-            >
-              {labels.apiSave}
-            </button>
           </div>
         </label>
+        <label className="mt-2 block text-xs text-slate-600">
+          {labels.modelLabel}
+          <input
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+            className="mt-1 h-10 min-w-[280px] rounded border border-slate-300 px-2"
+            placeholder={HF_MODEL}
+          />
+        </label>
+        <label className="mt-2 inline-flex items-center gap-2 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            checked={debugEnabled}
+            onChange={(event) => setDebugEnabled(event.target.checked)}
+          />
+          {labels.debugLabel}
+        </label>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            className="rounded border border-slate-300 px-2 py-1.5 text-xs"
+            disabled={isTestingAi}
+            onClick={async () => {
+              setIsTestingAi(true);
+              setAiTestResult('');
+              try {
+                const response = await fetch('/api/ai-analyze', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    token: apiKey.trim(),
+                    model: model.trim() || HF_MODEL,
+                    payload: {
+                      inputs: 'Return JSON only: {"causes":[{"priority":"low","cause":"ok","check":"ok","action":"ok"}]}',
+                      parameters: { max_new_tokens: 80, temperature: 0.1 },
+                    },
+                  }),
+                });
+                const text = await response.text();
+                setAiTestResult(`${response.status} ${text.slice(0, 180)}`);
+              } catch (error) {
+                setAiTestResult(error instanceof Error ? error.message : 'Failed');
+              } finally {
+                setIsTestingAi(false);
+              }
+            }}
+          >
+            {isTestingAi ? (locale === 'ko' ? '테스트 중...' : 'Testing...') : labels.aiTest}
+          </button>
+        </div>
+        {aiTestResult ? <p className="mt-1 text-[11px] text-slate-500">{aiTestResult}</p> : null}
         <p className="mt-1 text-[11px] text-slate-500">{labels.apiSaved}: {apiKey.trim() ? 'OK' : '-'}</p>
+        <button
+          className="mt-2 rounded bg-slate-900 px-2 py-1.5 text-xs text-white"
+          onClick={() => {
+            try {
+              window.localStorage.setItem(AI_TOKEN_STORAGE_KEY, apiKey.trim());
+              window.localStorage.setItem(AI_MODEL_STORAGE_KEY, (model.trim() || HF_MODEL).trim());
+              window.localStorage.setItem(AI_DEBUG_STORAGE_KEY, debugEnabled ? 'true' : 'false');
+              window.dispatchEvent(new Event('biolt-ai-key-change'));
+            } catch {
+              // ignore
+            }
+          }}
+        >
+          {labels.apiSave}
+        </button>
       </section>
 
       <div className="space-y-2">

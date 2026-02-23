@@ -3,7 +3,8 @@
 import { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ValidationMessage } from '../lib/types';
-import { AI_TOKEN_STORAGE_KEY, HF_MODEL } from '../lib/ai/config';
+import { useAdmin } from '../lib/context/AdminContext';
+import { AI_DEBUG_STORAGE_KEY, AI_MODEL_STORAGE_KEY, AI_TOKEN_STORAGE_KEY, HF_MODEL } from '../lib/ai/config';
 
 interface CauseItem {
   id: string;
@@ -14,6 +15,9 @@ interface CauseItem {
   checkKo: string;
   actionEn: string;
   actionKo: string;
+  confidence: number;
+  evidenceEn: string;
+  evidenceKo: string;
 }
 
 interface AiCauseItem {
@@ -63,6 +67,9 @@ function getPcrCauses(values: Record<string, unknown>, computed: Record<string, 
       checkKo: '각 component 부피 합이 reaction volume을 넘지 않는지 확인하세요.',
       actionEn: 'Reduce primer/probe volume or increase reaction volume.',
       actionKo: 'primer/probe 부피를 줄이거나 reaction volume을 늘리세요.',
+      confidence: 92,
+      evidenceEn: 'Calculated total component volume exceeded configured reaction volume.',
+      evidenceKo: '계산된 component 총량이 설정된 reaction volume을 초과했습니다.',
     });
   }
   if (primerFinal > 0.8) {
@@ -75,6 +82,9 @@ function getPcrCauses(values: Record<string, unknown>, computed: Record<string, 
       checkKo: '반응당 최종 primer 농도를 확인하세요.',
       actionEn: 'Lower primer concentration and raise annealing temperature.',
       actionKo: 'primer 농도를 낮추고 annealing temperature를 높이세요.',
+      confidence: 82,
+      evidenceEn: 'Final primer concentration is above practical range.',
+      evidenceKo: '최종 primer 농도가 실무 권장 범위를 초과했습니다.',
     });
   }
   if (!includeTemplate) {
@@ -87,6 +97,9 @@ function getPcrCauses(values: Record<string, unknown>, computed: Record<string, 
       checkKo: 'setup에서 template volume이 빠졌는지 확인하세요.',
       actionEn: 'Include template and re-run with a positive control.',
       actionKo: 'template을 포함하고 positive control과 함께 다시 실행하세요.',
+      confidence: 88,
+      evidenceEn: 'Template inclusion flag is disabled in current setup.',
+      evidenceKo: '현재 설정에서 template 포함 옵션이 꺼져 있습니다.',
     });
   }
   if (overageValue <= 0) {
@@ -99,6 +112,9 @@ function getPcrCauses(values: Record<string, unknown>, computed: Record<string, 
       checkKo: 'overage를 0으로 설정했는지 확인하세요.',
       actionEn: 'Use 10-20% overage to stabilize reaction consistency.',
       actionKo: '10-20% overage를 적용해 반응 일관성을 높이세요.',
+      confidence: 70,
+      evidenceEn: 'No overage margin detected for pipetting variability.',
+      evidenceKo: 'pipetting 변동 대비 overage 보정이 없습니다.',
     });
   }
   if (reactionVolume > 0 && reactionVolume < 10) {
@@ -111,6 +127,9 @@ function getPcrCauses(values: Record<string, unknown>, computed: Record<string, 
       checkKo: '핵심 component가 1 µL 미만인지 확인하세요.',
       actionEn: 'Increase reaction volume or use more concentrated stocks.',
       actionKo: 'reaction volume을 늘리거나 stock 농도를 조정하세요.',
+      confidence: 66,
+      evidenceEn: 'Critical pipetting volumes likely below stable handling range.',
+      evidenceKo: '핵심 분주량이 안정적인 취급 범위보다 작을 가능성이 큽니다.',
     });
   }
 
@@ -124,6 +143,9 @@ function getPcrCauses(values: Record<string, unknown>, computed: Record<string, 
       checkKo: 'annealing temperature와 template integrity를 확인하세요.',
       actionEn: 'Run gradient PCR and include positive control template.',
       actionKo: 'gradient PCR를 실행하고 positive control template을 포함하세요.',
+      confidence: 80,
+      evidenceEn: 'Observed notes indicate no amplification pattern.',
+      evidenceKo: '관찰 기록에 증폭 실패 패턴이 포함되어 있습니다.',
     });
   }
   return [...causes.values()];
@@ -145,6 +167,9 @@ function getLigationCauses(values: Record<string, unknown>, observed: string): C
       checkKo: '표준 ligation에서 ratio가 3:1~5:1인지 확인하세요.',
       actionEn: 'Set ratio to 3:1 or 5:1 and compare colony yield.',
       actionKo: 'ratio를 3:1 또는 5:1로 설정해 colony yield를 비교하세요.',
+      confidence: 84,
+      evidenceEn: 'Input molar ratio is outside common ligation window.',
+      evidenceKo: '입력된 molar ratio가 일반적인 ligation 범위를 벗어났습니다.',
     });
   }
   if (vectorLength <= 0 || insertLength <= 0) {
@@ -157,6 +182,9 @@ function getLigationCauses(values: Record<string, unknown>, observed: string): C
       checkKo: 'vector/insert length 값과 단위(bp)를 확인하세요.',
       actionEn: 'Use exact construct sizes from sequence files.',
       actionKo: 'sequence 파일의 정확한 길이로 재입력하세요.',
+      confidence: 90,
+      evidenceEn: 'Vector or insert length input is missing/invalid.',
+      evidenceKo: 'vector 또는 insert length 입력값이 누락되었거나 유효하지 않습니다.',
     });
   }
   if (includesAny(observed, ['no colony', '콜로니 없음', 'few colony', '콜로니 적'])) {
@@ -169,6 +197,9 @@ function getLigationCauses(values: Record<string, unknown>, observed: string): C
       checkKo: 'ligase/buffer 상태와 competent cell 효율을 확인하세요.',
       actionEn: 'Increase insert ratio and include vector-only control.',
       actionKo: 'insert ratio를 높이고 vector-only control을 함께 사용하세요.',
+      confidence: 82,
+      evidenceEn: 'Observed result mentions colony failure pattern.',
+      evidenceKo: '관찰 결과에 colony 실패 패턴이 포함되어 있습니다.',
     });
   }
   return [...causes.values()];
@@ -191,6 +222,9 @@ function getCellSeedingCauses(values: Record<string, unknown>, observed: string)
       checkKo: 'seeding 전 cell count와 dilution factor를 확인하세요.',
       actionEn: 'Recount with hemocytometer and rebuild seeding mix.',
       actionKo: 'hemocytometer로 재계수 후 seeding mix를 다시 구성하세요.',
+      confidence: 91,
+      evidenceEn: 'Starting cell concentration is zero or invalid.',
+      evidenceKo: '시작 cell concentration 값이 0이거나 유효하지 않습니다.',
     });
   }
   if (mode === 'cells/cm²' && (targetDensity < 1e3 || targetDensity > 5e5)) {
@@ -203,6 +237,9 @@ function getCellSeedingCauses(values: Record<string, unknown>, observed: string)
       checkKo: '해당 cell line 권장 density 범위를 확인하세요.',
       actionEn: 'Adjust density and re-plate with matched growth phase cells.',
       actionKo: 'density를 조정하고 growth phase가 맞는 세포로 재시딩하세요.',
+      confidence: 78,
+      evidenceEn: 'Target density appears outside practical range for cells/cm² mode.',
+      evidenceKo: 'cells/cm² 모드에서 target density가 실무 범위를 벗어납니다.',
     });
   }
   if (overagePercent < 5) {
@@ -215,6 +252,9 @@ function getCellSeedingCauses(values: Record<string, unknown>, observed: string)
       checkKo: '모든 well 분주 전에 현탁액이 부족했는지 확인하세요.',
       actionEn: 'Set overage to at least 10%.',
       actionKo: 'overage를 최소 10%로 설정하세요.',
+      confidence: 68,
+      evidenceEn: 'Low overage increases risk of final suspension shortage.',
+      evidenceKo: 'overage가 낮아 최종 현탁액 부족 위험이 큽니다.',
     });
   }
   if (includesAny(observed, ['clump', '뭉침', 'uneven', '불균일', 'edge'])) {
@@ -227,6 +267,9 @@ function getCellSeedingCauses(values: Record<string, unknown>, observed: string)
       checkKo: '분주 직전 현탁액을 충분히 혼합했는지 확인하세요.',
       actionEn: 'Mix gently before every dispense and settle plate with cross motion.',
       actionKo: '매 분주 전에 부드럽게 혼합하고 plate를 십자 방향으로 정리하세요.',
+      confidence: 80,
+      evidenceEn: 'Observed notes indicate clumping/uneven distribution.',
+      evidenceKo: '관찰 기록에 뭉침/불균일 분포가 포함되어 있습니다.',
     });
   }
   return [...causes.values()];
@@ -245,6 +288,9 @@ function getGenericCauses(calculatorId: string, validations: ValidationMessage[]
       checkKo: validations.map((v) => `${v.code}: ${v.message}`).slice(0, 2).join(' | '),
       actionEn: 'Resolve warnings first, then re-run with one-variable change.',
       actionKo: '경고를 먼저 해소한 뒤 변수 하나만 바꿔 재실행하세요.',
+      confidence: 78,
+      evidenceEn: 'Validation layer reported input constraints/warnings.',
+      evidenceKo: 'Validation 단계에서 입력 제약/경고가 감지되었습니다.',
     });
   }
   if (includesAny(normalizedObserved, ['no band', '밴드 없음', 'no signal', '신호 없음', 'no colony', '콜로니 없음'])) {
@@ -257,6 +303,9 @@ function getGenericCauses(calculatorId: string, validations: ValidationMessage[]
       checkKo: 'positive control과 핵심 reagent의 상태/유효기간을 확인하세요.',
       actionEn: 'Re-run with positive/negative controls and fresh key reagents.',
       actionKo: 'positive/negative control과 새 핵심 reagent로 재실행하세요.',
+      confidence: 74,
+      evidenceEn: 'Observed notes indicate missing expected signal output.',
+      evidenceKo: '관찰 기록에서 예상 신호 미검출 패턴이 확인됩니다.',
     });
   }
   if (includesAny(normalizedObserved, ['smear', 'smeared', '끌림', '번짐', 'noisy', '노이즈'])) {
@@ -269,6 +318,9 @@ function getGenericCauses(calculatorId: string, validations: ValidationMessage[]
       checkKo: 'sample quality, loading 양, 장비/런 조건을 확인하세요.',
       actionEn: 'Reduce load, standardize runtime conditions, and repeat with controls.',
       actionKo: '로딩량을 줄이고 런 조건을 표준화해 control과 함께 반복하세요.',
+      confidence: 70,
+      evidenceEn: 'Observed notes indicate smear/noise quality issue.',
+      evidenceKo: '관찰 기록에서 smear/noise 품질 문제가 확인됩니다.',
     });
   }
   if (causes.size === 0) {
@@ -281,6 +333,9 @@ function getGenericCauses(calculatorId: string, validations: ValidationMessage[]
       checkKo: '현재 setup을 SOP 체크리스트 및 control setup과 비교하세요.',
       actionEn: 'Change one variable at a time and capture run conditions in log.',
       actionKo: '변수를 한 번에 하나만 변경하고 실행 조건을 로그로 남기세요.',
+      confidence: 65,
+      evidenceEn: 'No strong pattern found; generic setup mismatch is plausible.',
+      evidenceKo: '강한 패턴이 없어 일반 setup 불일치 가능성이 있습니다.',
     });
   }
   return [...causes.values()];
@@ -296,6 +351,10 @@ function scoreFromPriority(priority: string) {
   if (priority === 'high') return 90;
   if (priority === 'medium') return 78;
   return 60;
+}
+
+function confidenceFromScore(score: number) {
+  return Math.max(50, Math.min(95, Math.round(score)));
 }
 
 function safeParseAiResult(raw: string): AiCauseItem[] {
@@ -457,18 +516,24 @@ export function ToolFailureAnalysisPanel({
   context: { values: Record<string, unknown>; computed: Record<string, unknown> };
   validations: ValidationMessage[];
 }) {
+  const { isAdmin } = useAdmin();
   const [observed, setObserved] = useState('');
   const [attemptedFix, setAttemptedFix] = useState('');
   const [results, setResults] = useState<CauseItem[]>([]);
   const [lastAnalyzedAt, setLastAnalyzedAt] = useState<number | null>(null);
   const [apiKey, setApiKey] = useState('');
+  const [model, setModel] = useState(HF_MODEL);
+  const [debugMode, setDebugMode] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
+  const [analysisDebug, setAnalysisDebug] = useState('');
 
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(AI_TOKEN_STORAGE_KEY) || '';
       setApiKey(stored);
+      setModel(window.localStorage.getItem(AI_MODEL_STORAGE_KEY) || HF_MODEL);
+      setDebugMode(window.localStorage.getItem(AI_DEBUG_STORAGE_KEY) === 'true');
     } catch {
       // ignore
     }
@@ -479,6 +544,8 @@ export function ToolFailureAnalysisPanel({
       try {
         const stored = window.localStorage.getItem(AI_TOKEN_STORAGE_KEY) || '';
         setApiKey(stored);
+        setModel(window.localStorage.getItem(AI_MODEL_STORAGE_KEY) || HF_MODEL);
+        setDebugMode(window.localStorage.getItem(AI_DEBUG_STORAGE_KEY) === 'true');
       } catch {
         // ignore
       }
@@ -502,6 +569,9 @@ export function ToolFailureAnalysisPanel({
           priority: '우선순위',
           check: '확인할 항목',
           action: '즉시 수정안',
+          confidence: '신뢰도',
+          evidence: '근거',
+          checklist: '재실행 체크리스트',
           lastRun: '마지막 분석',
           apiKeyMissing: '관리자 창(/admin)에서 Hugging Face Token을 먼저 저장해 주세요.',
           aiError: 'AI 호출 실패, 규칙기반 분석 결과로 대체했습니다.',
@@ -515,6 +585,9 @@ export function ToolFailureAnalysisPanel({
           priority: 'Priority',
           check: 'Check',
           action: 'Immediate action',
+          confidence: 'Confidence',
+          evidence: 'Evidence',
+          checklist: 'Rerun checklist',
           lastRun: 'Last analysis',
           apiKeyMissing: 'Save Hugging Face token in /admin first.',
           aiError: 'AI call failed. Showing rule-based fallback.',
@@ -526,8 +599,10 @@ export function ToolFailureAnalysisPanel({
     event.preventDefault();
     const combined = `${observed}\n${attemptedFix}\n${validationHints}`.trim();
     const trimmedKey = apiKey.trim();
+    const trimmedModel = model.trim() || HF_MODEL;
     setIsAnalyzing(true);
     setAnalysisError('');
+    setAnalysisDebug('');
     try {
       if (!trimmedKey) {
         throw new Error('NO_API_KEY');
@@ -553,7 +628,7 @@ export function ToolFailureAnalysisPanel({
         },
         body: JSON.stringify({
           token: trimmedKey,
-          model: HF_MODEL,
+          model: trimmedModel,
           payload: {
             inputs:
               `${systemPrompt}\n` +
@@ -599,11 +674,7 @@ export function ToolFailureAnalysisPanel({
         aiCauses = parsePlainTextAiResult(rawText, locale);
       }
       if (!aiCauses.length) {
-        throw new Error(
-          locale === 'ko'
-            ? `AI_PARSE model=${usedModel} status=${upstreamStatus} preview=${upstreamPreview.slice(0, 140)}`
-            : `AI_PARSE model=${usedModel} status=${upstreamStatus} preview=${upstreamPreview.slice(0, 140)}`
-        );
+        throw new Error('AI_PARSE');
       }
       const normalized = aiCauses.map((item, index) => ({
         id: `ai-${index}-${item.priority}`,
@@ -614,8 +685,14 @@ export function ToolFailureAnalysisPanel({
         checkKo: item.check,
         actionEn: item.action,
         actionKo: item.action,
+        confidence: confidenceFromScore(scoreFromPriority(item.priority)),
+        evidenceEn: `Observed: ${observed || 'n/a'} | Validation: ${validationHints || 'n/a'}`,
+        evidenceKo: `관찰: ${observed || 'n/a'} | 검증: ${validationHints || 'n/a'}`,
       }));
       setResults(normalized);
+      if (debugMode && isAdmin) {
+        setAnalysisDebug(`model=${usedModel} status=${upstreamStatus} preview=${upstreamPreview.slice(0, 220)}`);
+      }
     } catch (error) {
       let causes: CauseItem[] = [];
       if (calculatorId === 'pcr-master-mix') causes = getPcrCauses(context.values, context.computed, combined);
@@ -629,11 +706,15 @@ export function ToolFailureAnalysisPanel({
       } else if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
         setAnalysisError(toNetworkErrorMessage(locale));
       } else if (error instanceof Error && error.message.startsWith('AI_PARSE')) {
-        setAnalysisError(error.message);
+        setAnalysisError(labels.aiError);
       } else if (error instanceof Error && error.message) {
         setAnalysisError(error.message);
       } else {
         setAnalysisError(labels.aiError);
+      }
+      if (debugMode && isAdmin) {
+        const fallbackMessage = error instanceof Error ? error.message : 'Unknown error';
+        setAnalysisDebug(`fallback=true model=${trimmedModel} error=${fallbackMessage}`);
       }
     } finally {
       setIsAnalyzing(false);
@@ -668,6 +749,7 @@ export function ToolFailureAnalysisPanel({
         </button>
       </form>
       {analysisError ? <p className="text-xs text-amber-600">{analysisError}</p> : null}
+      {analysisDebug && debugMode && isAdmin ? <p className="text-[11px] text-slate-500">{analysisDebug}</p> : null}
       {lastAnalyzedAt ? (
         <p className="text-[11px] text-slate-500">
           {labels.lastRun}: {new Date(lastAnalyzedAt).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}
@@ -682,10 +764,20 @@ export function ToolFailureAnalysisPanel({
               {labels.priority}: {getPriorityLabel(item.score, locale)}
             </p>
             <p className="mt-1 text-slate-600">
+              {labels.confidence}: {item.confidence}%
+            </p>
+            <p className="mt-1 text-slate-600">
+              {labels.evidence}: {locale === 'ko' ? item.evidenceKo : item.evidenceEn}
+            </p>
+            <p className="mt-1 text-slate-600">
               {labels.check}: {locale === 'ko' ? item.checkKo : item.checkEn}
             </p>
             <p className="mt-1 text-slate-600">
               {labels.action}: {locale === 'ko' ? item.actionKo : item.actionEn}
+            </p>
+            <p className="mt-1 text-slate-600">
+              {labels.checklist}: 1) {locale === 'ko' ? item.checkKo : item.checkEn} 2) {locale === 'ko' ? item.actionKo : item.actionEn} 3){' '}
+              {locale === 'ko' ? 'control과 함께 재실행' : 'Re-run with controls'}
             </p>
           </article>
         ))}

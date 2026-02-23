@@ -91,25 +91,24 @@ export const onRequestPost: PagesFunction = async (context) => {
 
   const pickModel = (ids: string[], requested: string): string | null => {
     if (!ids.length) return null;
-    if (requested) {
-      const exact = ids.find((id) => id === requested);
-      if (exact) return exact;
-      const prefix = ids.find((id) => id.startsWith(requested));
-      if (prefix) return prefix;
-    }
-    const preferred = ['openai/gpt-oss-20b', 'Qwen/Qwen2.5-7B-Instruct', 'meta-llama/Llama-3.1-8B-Instruct'];
-    for (const candidate of preferred) {
-      const match = ids.find((id) => id.startsWith(candidate));
-      if (match) return match;
-    }
-    return ids[0] || null;
+    const exact = ids.find((id) => id === requested);
+    if (exact) return exact;
+    const prefix = ids.find((id) => id.startsWith(requested));
+    if (prefix) return prefix;
+    return null;
   };
 
   try {
     const modelIds = await listModels();
     const chosenModel = pickModel(modelIds, model);
     if (!chosenModel) {
-      return json({ error: 'No callable models available for this token/router account.' }, { status: 400 });
+      return json(
+        {
+          error: `Requested model is not callable: ${model}`,
+          availableModelsSample: modelIds.slice(0, 12),
+        },
+        { status: 400 }
+      );
     }
     let { response, text } = await callChatCompletions(chosenModel);
 
