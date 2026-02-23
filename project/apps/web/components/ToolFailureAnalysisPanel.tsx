@@ -251,7 +251,13 @@ function scoreFromPriority(priority: string) {
 }
 
 function safeParseAiResult(raw: string): AiCauseItem[] {
-  const parsed = JSON.parse(raw) as { causes?: AiCauseItem[] };
+  let parsed: { causes?: AiCauseItem[] } | null = null;
+  try {
+    parsed = JSON.parse(raw) as { causes?: AiCauseItem[] };
+  } catch {
+    return [];
+  }
+  if (!parsed) return [];
   if (!parsed.causes || !Array.isArray(parsed.causes)) return [];
   return parsed.causes
     .filter((c) => c && typeof c.cause === 'string' && typeof c.check === 'string' && typeof c.action === 'string')
