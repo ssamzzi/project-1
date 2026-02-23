@@ -9,6 +9,7 @@ import { ShareLinkButton } from '../ShareLinkButton';
 import { CalculationGuide } from '../CalculationGuide';
 import { ToolVideosPanel } from '../ToolVideosPanel';
 import { ToolPaperSearchPanel } from '../ToolPaperSearchPanel';
+import { ToolFailureAnalysisPanel } from '../ToolFailureAnalysisPanel';
 import type { ValidationMessage, CalculatorTip } from '../../lib/types';
 
 export function CalculatorPageLayout({
@@ -93,6 +94,7 @@ export function CalculatorPageLayout({
         <CalculationGuide id={calculatorId} locale={locale} />
       </div>
       <div className="space-y-4 lg:col-span-2">
+        <ToolFailureAnalysisPanel calculatorId={calculatorId} locale={locale} context={context} validations={validations} />
         <ToolVideosPanel calculatorId={calculatorId} locale={locale} />
         <ToolPaperSearchPanel calculatorId={calculatorId} locale={locale} toolTitle={title} />
         <TipsPanel tips={tips} calculatorId={calculatorId} context={context} />
