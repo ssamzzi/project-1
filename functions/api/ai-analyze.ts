@@ -27,6 +27,10 @@ function json(data: unknown, init?: ResponseInit) {
   });
 }
 
+function toSafeHeader(value: string, max = 220) {
+  return encodeURIComponent(value.slice(0, max));
+}
+
 export const onRequestPost: PagesFunction = async (context) => {
   let body: AiAnalyzeRequest;
   try {
@@ -115,6 +119,7 @@ export const onRequestPost: PagesFunction = async (context) => {
         {
           error: text || 'Non-JSON response from Hugging Face router',
           upstreamStatus: response.status,
+          model: chosenModel,
         },
         { status: response.status }
       );
@@ -123,6 +128,9 @@ export const onRequestPost: PagesFunction = async (context) => {
       status: response.status,
       headers: {
         'content-type': contentType || 'application/json; charset=utf-8',
+        'x-biolt-ai-model': chosenModel,
+        'x-biolt-upstream-status': String(response.status),
+        'x-biolt-ai-preview': toSafeHeader(text),
       },
     });
   } catch {

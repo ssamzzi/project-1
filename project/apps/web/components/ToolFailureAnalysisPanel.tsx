@@ -361,6 +361,15 @@ function toNetworkErrorMessage(locale: 'en' | 'ko') {
     : 'Network request failed (Failed to fetch): likely blocked by browser extension, firewall, or CORS policy. Retry in another browser or incognito mode.';
 }
 
+function decodeHeaderPreview(value: string | null) {
+  if (!value) return '';
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function ToolFailureAnalysisPanel({
   calculatorId,
   locale,
@@ -491,6 +500,9 @@ export function ToolFailureAnalysisPanel({
       });
       const rawResponse = await response.text();
       const payload = parseJsonSafe(rawResponse);
+      const usedModel = response.headers.get('x-biolt-ai-model') || HF_MODEL;
+      const upstreamStatus = response.headers.get('x-biolt-upstream-status') || String(response.status);
+      const upstreamPreview = decodeHeaderPreview(response.headers.get('x-biolt-ai-preview'));
       if (!response.ok) {
         const hfError = extractHfError(payload);
         const detail = hfError
@@ -510,7 +522,11 @@ export function ToolFailureAnalysisPanel({
         aiCauses = parsePlainTextAiResult(rawText);
       }
       if (!aiCauses.length) {
-        throw new Error('AI_PARSE');
+        throw new Error(
+          locale === 'ko'
+            ? `AI_PARSE model=${usedModel} status=${upstreamStatus} preview=${upstreamPreview.slice(0, 140)}`
+            : `AI_PARSE model=${usedModel} status=${upstreamStatus} preview=${upstreamPreview.slice(0, 140)}`
+        );
       }
       const normalized = aiCauses.map((item, index) => ({
         id: `ai-${index}-${item.priority}`,
@@ -538,8 +554,8 @@ export function ToolFailureAnalysisPanel({
         setAnalysisError(labels.apiKeyMissing);
       } else if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
         setAnalysisError(toNetworkErrorMessage(locale));
-      } else if (error instanceof Error && error.message === 'AI_PARSE') {
-        setAnalysisError(labels.aiError);
+      } else if (error instanceof Error && error.message.startsWith('AI_PARSE')) {
+        setAnalysisError(error.message);
       } else if (error instanceof Error && error.message) {
         setAnalysisError(error.message);
       } else {
