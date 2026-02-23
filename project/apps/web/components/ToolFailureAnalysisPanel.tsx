@@ -26,9 +26,10 @@ interface AiCauseItem {
 }
 interface HuggingFaceInferencePayload {
   generated_text?: string;
+  choices?: Array<{ message?: { content?: string } }>;
 }
 interface HuggingFaceErrorPayload {
-  error?: string;
+  error?: string | { message?: string };
   estimated_time?: number;
 }
 
@@ -274,6 +275,11 @@ function extractHfText(payload: unknown): string {
     return first?.generated_text || '';
   }
   const one = payload as HuggingFaceInferencePayload | HuggingFaceErrorPayload;
+  if ('choices' in one && Array.isArray(one.choices)) {
+    const firstChoice = one.choices[0];
+    const content = firstChoice?.message?.content;
+    if (typeof content === 'string') return content;
+  }
   if ('generated_text' in one && typeof one.generated_text === 'string') return one.generated_text;
   return '';
 }
@@ -281,9 +287,15 @@ function extractHfText(payload: unknown): string {
 function extractHfError(payload: unknown): { message: string; estimatedTimeSec?: number } | null {
   if (!payload || typeof payload !== 'object') return null;
   const maybe = payload as HuggingFaceErrorPayload;
-  if (typeof maybe.error !== 'string' || !maybe.error.trim()) return null;
+  let message = '';
+  if (typeof maybe.error === 'string') {
+    message = maybe.error;
+  } else if (maybe.error && typeof maybe.error === 'object' && typeof maybe.error.message === 'string') {
+    message = maybe.error.message;
+  }
+  if (!message.trim()) return null;
   const time = typeof maybe.estimated_time === 'number' ? maybe.estimated_time : undefined;
-  return { message: maybe.error.trim(), estimatedTimeSec: time };
+  return { message: message.trim(), estimatedTimeSec: time };
 }
 
 function parseJsonSafe(raw: string): unknown | null {
