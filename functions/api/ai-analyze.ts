@@ -13,6 +13,9 @@ interface AiAnalyzeRequest {
 interface RouterModelItem {
   id?: string;
 }
+interface RouterModelsResponse {
+  data?: RouterModelItem[];
+}
 
 function json(data: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(data), {
@@ -70,9 +73,13 @@ export const onRequestPost: PagesFunction = async (context) => {
         },
       });
       if (!modelsRes.ok) return [];
-      const modelsJson = (await modelsRes.json()) as RouterModelItem[] | unknown;
-      if (!Array.isArray(modelsJson)) return [];
-      return modelsJson.map((m) => (typeof m?.id === 'string' ? m.id : '')).filter(Boolean);
+      const modelsJson = (await modelsRes.json()) as RouterModelItem[] | RouterModelsResponse | unknown;
+      const asArray = Array.isArray(modelsJson)
+        ? modelsJson
+        : modelsJson && typeof modelsJson === 'object' && Array.isArray((modelsJson as RouterModelsResponse).data)
+          ? (modelsJson as RouterModelsResponse).data || []
+          : [];
+      return asArray.map((m) => (typeof m?.id === 'string' ? m.id : '')).filter(Boolean);
     } catch {
       return [];
     }
