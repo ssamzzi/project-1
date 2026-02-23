@@ -5,8 +5,6 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ValidationMessage } from '../lib/types';
 import { AI_TOKEN_STORAGE_KEY, HF_MODEL } from '../lib/ai/config';
 
-type SupportedCalculatorId = 'pcr-master-mix' | 'ligation' | 'cell-seeding';
-
 interface CauseItem {
   id: string;
   score: number;
@@ -31,10 +29,6 @@ interface HuggingFaceInferencePayload {
 interface HuggingFaceErrorPayload {
   error?: string | { message?: string };
   estimated_time?: number;
-}
-
-function isSupported(id: string): id is SupportedCalculatorId {
-  return id === 'pcr-master-mix' || id === 'ligation' || id === 'cell-seeding';
 }
 
 function includesAny(text: string, words: string[]) {
@@ -238,6 +232,60 @@ function getCellSeedingCauses(values: Record<string, unknown>, observed: string)
   return [...causes.values()];
 }
 
+function getGenericCauses(calculatorId: string, validations: ValidationMessage[], observed: string): CauseItem[] {
+  const causes = new Map<string, CauseItem>();
+  const normalizedObserved = observed.toLowerCase();
+  if (validations.length > 0) {
+    addOrUpdate(causes, {
+      id: 'generic-validation',
+      score: 80,
+      titleEn: 'Input/constraint warnings were detected',
+      titleKo: '입력값/제약조건 경고가 감지됨',
+      checkEn: validations.map((v) => `${v.code}: ${v.message}`).slice(0, 2).join(' | '),
+      checkKo: validations.map((v) => `${v.code}: ${v.message}`).slice(0, 2).join(' | '),
+      actionEn: 'Resolve warnings first, then re-run with one-variable change.',
+      actionKo: '경고를 먼저 해소한 뒤 변수 하나만 바꿔 재실행하세요.',
+    });
+  }
+  if (includesAny(normalizedObserved, ['no band', '밴드 없음', 'no signal', '신호 없음', 'no colony', '콜로니 없음'])) {
+    addOrUpdate(causes, {
+      id: 'generic-no-result',
+      score: 78,
+      titleEn: 'Expected experimental signal was not detected',
+      titleKo: '예상 실험 신호가 검출되지 않음',
+      checkEn: 'Check positive control and critical reagent integrity/expiry.',
+      checkKo: 'positive control과 핵심 reagent의 상태/유효기간을 확인하세요.',
+      actionEn: 'Re-run with positive/negative controls and fresh key reagents.',
+      actionKo: 'positive/negative control과 새 핵심 reagent로 재실행하세요.',
+    });
+  }
+  if (includesAny(normalizedObserved, ['smear', 'smeared', '끌림', '번짐', 'noisy', '노이즈'])) {
+    addOrUpdate(causes, {
+      id: 'generic-quality',
+      score: 72,
+      titleEn: 'Signal quality or loading condition issue',
+      titleKo: '신호 품질 또는 로딩 조건 문제',
+      checkEn: 'Verify sample quality, loading amount, and instrument/runtime condition.',
+      checkKo: 'sample quality, loading 양, 장비/런 조건을 확인하세요.',
+      actionEn: 'Reduce load, standardize runtime conditions, and repeat with controls.',
+      actionKo: '로딩량을 줄이고 런 조건을 표준화해 control과 함께 반복하세요.',
+    });
+  }
+  if (causes.size === 0) {
+    addOrUpdate(causes, {
+      id: `generic-${calculatorId}`,
+      score: 65,
+      titleEn: 'General setup mismatch likely',
+      titleKo: '일반적인 setup 불일치 가능성',
+      checkEn: 'Compare current setup against SOP checklist and control setup.',
+      checkKo: '현재 setup을 SOP 체크리스트 및 control setup과 비교하세요.',
+      actionEn: 'Change one variable at a time and capture run conditions in log.',
+      actionKo: '변수를 한 번에 하나만 변경하고 실행 조건을 로그로 남기세요.',
+    });
+  }
+  return [...causes.values()];
+}
+
 function getPriorityLabel(score: number, locale: 'en' | 'ko') {
   if (score >= 88) return locale === 'ko' ? '높음' : 'High';
   if (score >= 72) return locale === 'ko' ? '중간' : 'Medium';
@@ -409,8 +457,6 @@ export function ToolFailureAnalysisPanel({
   context: { values: Record<string, unknown>; computed: Record<string, unknown> };
   validations: ValidationMessage[];
 }) {
-  if (!isSupported(calculatorId)) return null;
-
   const [observed, setObserved] = useState('');
   const [attemptedFix, setAttemptedFix] = useState('');
   const [results, setResults] = useState<CauseItem[]>([]);
@@ -572,13 +618,10 @@ export function ToolFailureAnalysisPanel({
       setResults(normalized);
     } catch (error) {
       let causes: CauseItem[] = [];
-      if (calculatorId === 'pcr-master-mix') {
-        causes = getPcrCauses(context.values, context.computed, combined);
-      } else if (calculatorId === 'ligation') {
-        causes = getLigationCauses(context.values, combined);
-      } else if (calculatorId === 'cell-seeding') {
-        causes = getCellSeedingCauses(context.values, combined);
-      }
+      if (calculatorId === 'pcr-master-mix') causes = getPcrCauses(context.values, context.computed, combined);
+      else if (calculatorId === 'ligation') causes = getLigationCauses(context.values, combined);
+      else if (calculatorId === 'cell-seeding') causes = getCellSeedingCauses(context.values, combined);
+      else causes = getGenericCauses(calculatorId, validations, combined);
       causes.sort((a, b) => b.score - a.score);
       setResults(causes.slice(0, 5));
       if (!trimmedKey) {
