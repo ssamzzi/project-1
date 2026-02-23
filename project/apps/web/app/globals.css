@@ -70,11 +70,18 @@ textarea {
   background-color: #1e293b !important;
 }
 
+[data-theme='dark'] .bg-slate-50,
+[data-theme='dark'] .bg-slate-100,
+[data-theme='dark'] .bg-slate-200 {
+  background-color: #1f2937 !important;
+}
+
 [data-theme='dark'] .text-slate-900,
 [data-theme='dark'] .text-slate-800,
 [data-theme='dark'] .text-slate-700,
 [data-theme='dark'] .text-slate-600,
-[data-theme='dark'] .text-slate-500 {
+[data-theme='dark'] .text-slate-500,
+[data-theme='dark'] .text-slate-400 {
   color: var(--text-soft) !important;
 }
 

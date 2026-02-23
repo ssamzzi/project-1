@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import { useAdmin } from '../../lib/context/AdminContext';
 import { useLocale } from '../../lib/context/LocaleContext';
 
-type TabWithComments = 'protocol' | 'mistakes' | 'ranges' | 'troubleshooting' | 'comments';
+type CommentTab = 'advice' | 'questions';
+type LegacyTab = 'protocol' | 'mistakes' | 'ranges' | 'troubleshooting' | 'comments';
 
 interface FeedbackItem {
   id: string;
@@ -19,11 +20,11 @@ interface FeedbackItem {
 
 interface AdminRow extends FeedbackItem {
   calculatorId: string;
-  tab: TabWithComments;
+  tab: CommentTab;
 }
 
 const FEEDBACK_KEY_PREFIX = 'biolt-tips-feedback-v1';
-const TABS: TabWithComments[] = ['protocol', 'mistakes', 'ranges', 'troubleshooting', 'comments'];
+const COMMENT_TABS: CommentTab[] = ['advice', 'questions'];
 
 function toDate(ts: number, locale: 'en' | 'ko') {
   return new Intl.DateTimeFormat(locale === 'ko' ? 'ko-KR' : 'en-US', {
@@ -42,11 +43,19 @@ function parseRows(): AdminRow[] {
     const raw = window.localStorage.getItem(key);
     if (!raw) continue;
     try {
-      const parsed = JSON.parse(raw) as Partial<Record<TabWithComments, FeedbackItem[]>>;
-      TABS.forEach((tab) => {
-        const list = Array.isArray(parsed[tab]) ? parsed[tab] : [];
-        list.forEach((item) => rows.push({ ...item, calculatorId, tab }));
-      });
+      const parsed = JSON.parse(raw) as Partial<Record<CommentTab | LegacyTab, FeedbackItem[]>>;
+      const advice = Array.isArray(parsed.advice)
+        ? parsed.advice
+        : [
+            ...(Array.isArray(parsed.comments) ? parsed.comments : []),
+            ...(Array.isArray(parsed.protocol) ? parsed.protocol : []),
+            ...(Array.isArray(parsed.mistakes) ? parsed.mistakes : []),
+            ...(Array.isArray(parsed.ranges) ? parsed.ranges : []),
+            ...(Array.isArray(parsed.troubleshooting) ? parsed.troubleshooting : []),
+          ];
+      const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
+      advice.forEach((item) => rows.push({ ...item, calculatorId, tab: 'advice' }));
+      questions.forEach((item) => rows.push({ ...item, calculatorId, tab: 'questions' }));
     } catch {
       // ignore malformed local item
     }
@@ -59,13 +68,27 @@ function updateStorageRow(target: AdminRow, updater: (item: FeedbackItem) => Fee
   const raw = window.localStorage.getItem(key);
   if (!raw) return;
   try {
-    const parsed = JSON.parse(raw) as Partial<Record<TabWithComments, FeedbackItem[]>>;
-    const current: FeedbackItem[] = Array.isArray(parsed[target.tab]) ? (parsed[target.tab] as FeedbackItem[]) : [];
+    const parsed = JSON.parse(raw) as Partial<Record<CommentTab | LegacyTab, FeedbackItem[]>>;
+    const migratedAdvice = Array.isArray(parsed.advice)
+      ? parsed.advice
+      : [
+          ...(Array.isArray(parsed.comments) ? parsed.comments : []),
+          ...(Array.isArray(parsed.protocol) ? parsed.protocol : []),
+          ...(Array.isArray(parsed.mistakes) ? parsed.mistakes : []),
+          ...(Array.isArray(parsed.ranges) ? parsed.ranges : []),
+          ...(Array.isArray(parsed.troubleshooting) ? parsed.troubleshooting : []),
+        ];
+    const migratedQuestions = Array.isArray(parsed.questions) ? parsed.questions : [];
+    const normalized: Record<CommentTab, FeedbackItem[]> = {
+      advice: migratedAdvice,
+      questions: migratedQuestions,
+    };
+    const current: FeedbackItem[] = normalized[target.tab];
     const next = current
       .map((item) => (item.id === target.id ? updater(item) : item))
       .filter((item): item is FeedbackItem => item !== null);
-    parsed[target.tab] = next;
-    window.localStorage.setItem(key, JSON.stringify(parsed));
+    normalized[target.tab] = next;
+    window.localStorage.setItem(key, JSON.stringify(normalized));
   } catch {
     // ignore
   }
@@ -77,7 +100,7 @@ export default function AdminPage() {
   const [rows, setRows] = useState<AdminRow[]>(() => parseRows());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
-  const [filterTab, setFilterTab] = useState<'all' | TabWithComments>('all');
+  const [filterTab, setFilterTab] = useState<'all' | CommentTab>('all');
 
   const labels = useMemo(
     () =>
@@ -140,12 +163,12 @@ export default function AdminPage() {
         <select
           className="rounded border border-slate-300 px-2 py-1"
           value={filterTab}
-          onChange={(event) => setFilterTab(event.target.value as 'all' | TabWithComments)}
+          onChange={(event) => setFilterTab(event.target.value as 'all' | CommentTab)}
         >
           <option value="all">{labels.all}</option>
-          {TABS.map((tab) => (
+          {COMMENT_TABS.map((tab) => (
             <option key={tab} value={tab}>
-              {tab}
+              {tab === 'advice' ? (locale === 'ko' ? '실험 조언' : 'Experimental Advice') : locale === 'ko' ? '문의사항' : 'Questions'}
             </option>
           ))}
         </select>

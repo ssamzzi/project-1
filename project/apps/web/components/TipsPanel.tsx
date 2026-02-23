@@ -7,7 +7,7 @@ import { applyTips, type TipContext } from '../lib/tips';
 import type { CalculatorTip, TipTab } from '../lib/types';
 
 const TABS: TipTab[] = ['protocol', 'mistakes', 'ranges', 'troubleshooting'];
-type TabWithComments = TipTab | 'comments';
+type CommentTab = 'advice' | 'questions';
 
 type SortMode = 'likes' | 'latest';
 type VoteType = 'like' | 'dislike';
@@ -29,19 +29,16 @@ interface FeedbackDraft {
   text: string;
 }
 
-type FeedbackState = Record<TabWithComments, FeedbackItem[]>;
+type FeedbackState = Record<CommentTab, FeedbackItem[]>;
 type VoteState = Record<string, VoteType>;
 
 const FEEDBACK_KEY_PREFIX = 'biolt-tips-feedback-v1';
 const VOTES_KEY_PREFIX = 'biolt-tips-votes-v1';
-const TABS_WITH_COMMENTS: TabWithComments[] = [...TABS, 'comments'];
+const COMMENT_TABS: CommentTab[] = ['advice', 'questions'];
 
 const EMPTY_FEEDBACK: FeedbackState = {
-  protocol: [],
-  mistakes: [],
-  ranges: [],
-  troubleshooting: [],
-  comments: [],
+  advice: [],
+  questions: [],
 };
 
 function feedbackKey(calculatorId: string) {
@@ -63,13 +60,18 @@ function loadFeedback(calculatorId: string): FeedbackState {
   try {
     const raw = window.localStorage.getItem(feedbackKey(calculatorId));
     if (!raw) return EMPTY_FEEDBACK;
-  const parsed = JSON.parse(raw) as Partial<FeedbackState>;
+    const parsed = JSON.parse(raw) as Partial<Record<TipTab | 'comments' | CommentTab, FeedbackItem[]>>;
+    const legacyAdvice = [
+      ...(Array.isArray(parsed.comments) ? parsed.comments : []),
+      ...(Array.isArray(parsed.protocol) ? parsed.protocol : []),
+      ...(Array.isArray(parsed.mistakes) ? parsed.mistakes : []),
+      ...(Array.isArray(parsed.ranges) ? parsed.ranges : []),
+      ...(Array.isArray(parsed.troubleshooting) ? parsed.troubleshooting : []),
+    ];
+    const advice = Array.isArray(parsed.advice) ? parsed.advice : legacyAdvice;
     return {
-      protocol: Array.isArray(parsed.protocol) ? parsed.protocol : [],
-      mistakes: Array.isArray(parsed.mistakes) ? parsed.mistakes : [],
-      ranges: Array.isArray(parsed.ranges) ? parsed.ranges : [],
-      troubleshooting: Array.isArray(parsed.troubleshooting) ? parsed.troubleshooting : [],
-      comments: Array.isArray(parsed.comments) ? parsed.comments : [],
+      advice,
+      questions: Array.isArray(parsed.questions) ? parsed.questions : [],
     };
   } catch {
     return EMPTY_FEEDBACK;
@@ -113,7 +115,7 @@ export function TipsPanel({
   const { locale, t } = useLocale();
   const { isAdmin } = useAdmin();
   const [activeTipTab, setActiveTipTab] = useState<TipTab>('protocol');
-  const [activeCommentTab, setActiveCommentTab] = useState<TabWithComments>('comments');
+  const [activeCommentTab, setActiveCommentTab] = useState<CommentTab>('advice');
   const [sortMode, setSortMode] = useState<SortMode>('latest');
   const [feedback, setFeedback] = useState<FeedbackState>(EMPTY_FEEDBACK);
   const [votes, setVotes] = useState<VoteState>({});
@@ -166,7 +168,8 @@ export function TipsPanel({
       mistakes: t('global.tip.mistakes') || 'Common mistakes',
       ranges: t('global.tip.ranges') || 'Recommended ranges',
       troubleshooting: t('global.tip.troubleshooting') || 'Troubleshooting',
-      comments: t('tips.commentSection') || 'Comments',
+      advice: t('tips.commentAdvice') || 'Experimental Advice',
+      questions: t('tips.commentQuestions') || 'Questions',
     };
   }, [t]);
 
@@ -180,7 +183,7 @@ export function TipsPanel({
   }, [activeCommentTab, feedback, sortMode]);
 
   const adminTimeline = useMemo(() => {
-    return TABS_WITH_COMMENTS.flatMap((tab) =>
+    return COMMENT_TABS.flatMap((tab) =>
       feedback[tab].map((item) => ({
         ...item,
         tab,
@@ -387,11 +390,11 @@ export function TipsPanel({
           </label>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          {TABS_WITH_COMMENTS.map((tab) => (
+          {COMMENT_TABS.map((tab) => (
             <button
               key={`comment-${tab}`}
               type="button"
-              onClick={() => setActiveCommentTab(tab)}
+              onClick={() => setActiveCommentTab(tab as CommentTab)}
               className={`rounded-md px-2 py-1.5 text-xs ${
                 activeCommentTab === tab ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'
               }`}
