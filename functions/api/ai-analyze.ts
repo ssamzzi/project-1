@@ -38,10 +38,20 @@ export const onRequestPost: PagesFunction = async (context) => {
       body: JSON.stringify(body.payload ?? {}),
     });
     const text = await response.text();
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.toLowerCase().includes('application/json')) {
+      return json(
+        {
+          error: text || 'Non-JSON response from Hugging Face router',
+          upstreamStatus: response.status,
+        },
+        { status: response.status }
+      );
+    }
     return new Response(text, {
       status: response.status,
       headers: {
-        'content-type': response.headers.get('content-type') || 'application/json; charset=utf-8',
+        'content-type': contentType || 'application/json; charset=utf-8',
       },
     });
   } catch {

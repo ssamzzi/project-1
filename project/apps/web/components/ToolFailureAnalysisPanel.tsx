@@ -286,6 +286,14 @@ function extractHfError(payload: unknown): { message: string; estimatedTimeSec?:
   return { message: maybe.error.trim(), estimatedTimeSec: time };
 }
 
+function parseJsonSafe(raw: string): unknown | null {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
 function toErrorMessage(status: number, detail: string, locale: 'en' | 'ko') {
   if (status === 401 || status === 403) {
     return locale === 'ko'
@@ -439,15 +447,19 @@ export function ToolFailureAnalysisPanel({
           },
         }),
       });
-      const payload = await response.json();
+      const rawResponse = await response.text();
+      const payload = parseJsonSafe(rawResponse);
       if (!response.ok) {
         const hfError = extractHfError(payload);
         const detail = hfError
           ? hfError.estimatedTimeSec
             ? `${hfError.message} (estimated ${Math.ceil(hfError.estimatedTimeSec)}s)`
             : hfError.message
-          : 'Unknown response';
+          : rawResponse.slice(0, 220) || 'Unknown response';
         throw new Error(toErrorMessage(response.status, detail, locale));
+      }
+      if (!payload) {
+        throw new Error(locale === 'ko' ? 'AI 응답 파싱 실패: JSON 형식이 아닙니다.' : 'AI response parse failed: not valid JSON.');
       }
       const rawText = extractHfText(payload);
       const text = extractJsonText(rawText);
