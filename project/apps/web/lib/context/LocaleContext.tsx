@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Locale } from '../types';
 import { translations, type TranslationKey, type TranslationMap } from '../i18n';
 
@@ -12,14 +12,35 @@ interface LocaleContextValue {
 }
 
 const LocaleContext = createContext<LocaleContextValue | undefined>(undefined);
+const LOCALE_STORAGE_KEY = 'biolt-locale';
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocale] = useState<Locale>('en');
 
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+      if (stored === 'en' || stored === 'ko') {
+        setLocale(stored);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const setLocaleWithPersist = (nextLocale: Locale) => {
+    setLocale(nextLocale);
+    try {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
+    } catch {
+      // ignore
+    }
+  };
+
   const value = useMemo(
     () => ({
       locale,
-      setLocale,
+      setLocale: setLocaleWithPersist,
       translation: translations[locale],
       t: (key: TranslationKey, fallback?: string) => {
         const v = (translations[locale] as Record<string, string>)[key];
