@@ -76,9 +76,14 @@ export function SiteHeader() {
             </li>
             <li>
               {isAdmin ? (
-                <button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-xs" onClick={logout}>
-                  {t('admin.logout')}
-                </button>
+                <div className="flex items-center gap-1">
+                  <Link href="/admin" className="rounded-md border border-slate-300 px-2 py-1 text-xs">
+                    {locale === 'ko' ? '관리자 창' : 'Admin Panel'}
+                  </Link>
+                  <button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-xs" onClick={logout}>
+                    {t('admin.logout')}
+                  </button>
+                </div>
               ) : (
                 <form onSubmit={handleAdminLogin} className="flex items-center gap-1">
                   <input

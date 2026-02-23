@@ -101,15 +101,6 @@ function toLocaleDate(ts: number, locale: string) {
   }
 }
 
-function getTabLabel(tab: TipTab) {
-  return {
-    protocol: 'protocol',
-    mistakes: 'mistakes',
-    ranges: 'ranges',
-    troubleshooting: 'troubleshooting',
-  }[tab];
-}
-
 export function TipsPanel({
   calculatorId,
   tips,
@@ -121,7 +112,8 @@ export function TipsPanel({
 }) {
   const { locale, t } = useLocale();
   const { isAdmin } = useAdmin();
-  const [activeTab, setActiveTab] = useState<TabWithComments>('protocol');
+  const [activeTipTab, setActiveTipTab] = useState<TipTab>('protocol');
+  const [activeCommentTab, setActiveCommentTab] = useState<TabWithComments>('comments');
   const [sortMode, setSortMode] = useState<SortMode>('latest');
   const [feedback, setFeedback] = useState<FeedbackState>(EMPTY_FEEDBACK);
   const [votes, setVotes] = useState<VoteState>({});
@@ -160,17 +152,13 @@ export function TipsPanel({
     }
   }, [calculatorId, votes]);
 
-  const activeIsComments = activeTab === 'comments';
   const tabTips = useMemo(() => {
-    if (activeIsComments) {
-      return [];
-    }
     return applyTips(
       tips.filter((tip) => tip.calculatorId === calculatorId),
-      activeTab,
+      activeTipTab,
       context
     );
-  }, [activeIsComments, tips, activeTab, context.values, context.computed]);
+  }, [tips, activeTipTab, context.values, context.computed, calculatorId]);
 
   const tabLabels = useMemo(() => {
     return {
@@ -183,17 +171,26 @@ export function TipsPanel({
   }, [t]);
 
   const tabEntries = useMemo(() => {
-    return [...feedback[activeTab]].sort((a, b) => {
+    return [...feedback[activeCommentTab]].sort((a, b) => {
       if (sortMode === 'likes') {
         return b.likes - a.likes || b.createdAt - a.createdAt;
       }
       return b.createdAt - a.createdAt;
     });
-  }, [activeTab, feedback, sortMode]);
+  }, [activeCommentTab, feedback, sortMode]);
+
+  const adminTimeline = useMemo(() => {
+    return TABS_WITH_COMMENTS.flatMap((tab) =>
+      feedback[tab].map((item) => ({
+        ...item,
+        tab,
+      }))
+    ).sort((a, b) => b.createdAt - a.createdAt);
+  }, [feedback]);
 
   const setVote = (id: string, type: VoteType) => {
     const previous = votes[id];
-    let next = feedback[activeTab].map((item) => {
+    let next = feedback[activeCommentTab].map((item) => {
       if (item.id !== id) {
         return item;
       }
@@ -220,7 +217,7 @@ export function TipsPanel({
       };
     });
 
-    setFeedback((prev) => ({ ...prev, [activeTab]: next }));
+    setFeedback((prev) => ({ ...prev, [activeCommentTab]: next }));
     setVotes((prev) => {
       const nextVotes = { ...prev };
       if (previous === type) {
@@ -265,7 +262,7 @@ export function TipsPanel({
       createdAt: Date.now(),
     };
 
-    setFeedback((prev) => ({ ...prev, [activeTab]: [item, ...prev[activeTab]] }));
+    setFeedback((prev) => ({ ...prev, [activeCommentTab]: [item, ...prev[activeCommentTab]] }));
     setDraft({ nickname: '', password: '', text: '' });
     setSubmitError('');
   };
@@ -284,7 +281,7 @@ export function TipsPanel({
 
     setFeedback((prev) => ({
       ...prev,
-      [activeTab]: prev[activeTab].map((item) => (item.id === id ? { ...item, text, updatedAt: Date.now() } : item)),
+      [activeCommentTab]: prev[activeCommentTab].map((item) => (item.id === id ? { ...item, text, updatedAt: Date.now() } : item)),
     }));
     setEditingId(null);
     setEditingText('');
@@ -304,7 +301,7 @@ export function TipsPanel({
 
     setFeedback((prev) => ({
       ...prev,
-      [activeTab]: prev[activeTab].filter((item) => item.id !== id),
+      [activeCommentTab]: prev[activeCommentTab].filter((item) => item.id !== id),
     }));
     setVotes((prev) => {
       const next = { ...prev };
@@ -330,14 +327,14 @@ export function TipsPanel({
   return (
     <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-3">
       <h2 className="text-sm font-semibold">Tips</h2>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {TABS_WITH_COMMENTS.map((tab) => (
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {TABS.map((tab) => (
           <button
             key={tab}
             type="button"
-            onClick={() => setActiveTab(tab)}
+            onClick={() => setActiveTipTab(tab)}
             className={`rounded-md px-2 py-1.5 text-xs ${
-              activeTab === tab ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'
+              activeTipTab === tab ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'
             }`}
           >
             {tabLabels[tab]}
@@ -346,8 +343,6 @@ export function TipsPanel({
       </div>
 
       <div className="space-y-2 text-sm text-slate-700">
-        {!activeIsComments ? (
-          <>
         {tabTips.map((tip) => (
           <article
             key={tip.id}
@@ -374,29 +369,39 @@ export function TipsPanel({
             ) : null}
           </article>
         ))}
-            {tabTips.length === 0 ? <p>{locale === 'ko' ? '이 탭에 등록된 팁이 없습니다.' : 'No tips for this tab yet.'}</p> : null}
-          </>
-        ) : null}
+        {tabTips.length === 0 ? <p>{locale === 'ko' ? '이 탭에 등록된 팁이 없습니다.' : 'No tips for this tab yet.'}</p> : null}
       </div>
+      <section className="space-y-3 rounded border border-slate-300 bg-slate-50 p-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-medium">{t('tips.commentSection') || 'Comments'}</h3>
+          <label className="text-xs text-slate-600">
+            {t('tips.sortLabel') || 'Sort notes'}:
+            <select
+              className="ml-2 rounded border border-slate-300 bg-white px-2 py-1"
+              value={sortMode}
+              onChange={(event) => setSortMode(event.target.value === 'likes' ? 'likes' : 'latest')}
+            >
+              <option value="latest">{t('tips.sortLatest') || 'Latest'}</option>
+              <option value="likes">{t('tips.sortLikes') || 'Most liked'}</option>
+            </select>
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {TABS_WITH_COMMENTS.map((tab) => (
+            <button
+              key={`comment-${tab}`}
+              type="button"
+              onClick={() => setActiveCommentTab(tab)}
+              className={`rounded-md px-2 py-1.5 text-xs ${
+                activeCommentTab === tab ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'
+              }`}
+            >
+              {tabLabels[tab]}
+            </button>
+          ))}
+        </div>
 
-      {activeIsComments ? (
-        <section className="rounded border border-slate-200 bg-slate-50 p-2 text-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-medium">{t('tips.commentSection') || 'Comments'}</h3>
-            <label className="text-xs text-slate-600">
-              {t('tips.sortLabel') || 'Sort notes'}:
-              <select
-                className="ml-2 rounded border border-slate-300 bg-white px-2 py-1"
-                value={sortMode}
-                onChange={(event) => setSortMode(event.target.value === 'likes' ? 'likes' : 'latest')}
-              >
-                <option value="latest">{t('tips.sortLatest') || 'Latest'}</option>
-                <option value="likes">{t('tips.sortLikes') || 'Most liked'}</option>
-              </select>
-            </label>
-          </div>
-
-          <form className="mt-2 space-y-2" onSubmit={handleAdd}>
+          <form className="space-y-2" onSubmit={handleAdd}>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="text-xs text-slate-600">
                 {t('tips.nickname') || 'Nickname'}
@@ -432,7 +437,7 @@ export function TipsPanel({
             <textarea
               value={draft.text}
               onChange={(event) => setDraft((prev) => ({ ...prev, text: event.target.value }))}
-              placeholder={`${t('tips.comments') || 'Comment'}: ${tabLabels[activeTab]}`}
+              placeholder={`${t('tips.comments') || 'Comment'}: ${tabLabels[activeCommentTab]}`}
               className="min-h-[80px] w-full rounded border border-slate-300 px-2 py-1"
             />
             {submitErrorText ? <p className="text-xs text-rose-600">{submitErrorText}</p> : null}
@@ -445,7 +450,7 @@ export function TipsPanel({
             </button>
           </form>
 
-          <div className="mt-3 space-y-2">
+          <div className="space-y-2">
             {tabEntries.length === 0 ? <p className="text-slate-500">{locale === 'ko' ? '아직 의견이 없습니다.' : 'No notes yet.'}</p> : null}
             {tabEntries.map((item) => (
               <article key={item.id} className="rounded border border-slate-200 bg-white p-2 text-xs">
@@ -550,8 +555,24 @@ export function TipsPanel({
           <p className="mt-2 text-[11px] text-slate-500">
             {t('tips.authorOnly') || 'Editing and deleting a comment needs the writer password. Admin can delete any comment.'}
           </p>
+
+          {isAdmin ? (
+            <section className="rounded border border-slate-200 bg-white p-2">
+              <p className="text-xs font-semibold text-slate-700">{locale === 'ko' ? '관리자 로그 (전체 의견)' : 'Admin Timeline (All Comments)'}</p>
+              <div className="mt-2 max-h-56 space-y-1 overflow-auto text-[11px] text-slate-600">
+                {adminTimeline.length === 0 ? (
+                  <p>{locale === 'ko' ? '기록이 없습니다.' : 'No log entries yet.'}</p>
+                ) : (
+                  adminTimeline.map((item) => (
+                    <p key={`admin-${item.id}`}>
+                      [{tabLabels[item.tab]}] {toLocaleDate(item.createdAt, locale)} - {item.nickname}
+                    </p>
+                  ))
+                )}
+              </div>
+            </section>
+          ) : null}
         </section>
-      ) : null}
     </section>
   );
 }
