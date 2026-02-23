@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useAdmin } from '../../lib/context/AdminContext';
 import { useLocale } from '../../lib/context/LocaleContext';
-import { OPENAI_KEY_STORAGE_KEY } from '../../lib/ai/config';
+import { AI_TOKEN_STORAGE_KEY } from '../../lib/ai/config';
 
 type CommentTab = 'advice' | 'questions';
 type LegacyTab = 'protocol' | 'mistakes' | 'ranges' | 'troubleshooting' | 'comments';
@@ -99,7 +99,7 @@ export default function AdminPage() {
   const { isAdmin } = useAdmin();
   const { locale } = useLocale();
   const [rows, setRows] = useState<AdminRow[]>(() => parseRows());
-  const [apiKey, setApiKey] = useState<string>(() => (typeof window === 'undefined' ? '' : window.localStorage.getItem(OPENAI_KEY_STORAGE_KEY) || ''));
+  const [apiKey, setApiKey] = useState<string>(() => (typeof window === 'undefined' ? '' : window.localStorage.getItem(AI_TOKEN_STORAGE_KEY) || ''));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | CommentTab>('all');
@@ -122,7 +122,7 @@ export default function AdminPage() {
             created: '작성',
             updated: '수정',
             apiTitle: 'AI 설정',
-            apiLabel: 'OpenAI API Key',
+            apiLabel: 'Hugging Face Token',
             apiSave: '저장',
             apiSaved: '저장됨',
           }
@@ -141,7 +141,7 @@ export default function AdminPage() {
             created: 'Created',
             updated: 'Updated',
             apiTitle: 'AI Settings',
-            apiLabel: 'OpenAI API Key',
+            apiLabel: 'Hugging Face Token',
             apiSave: 'Save',
             apiSaved: 'Saved',
           },
@@ -194,13 +194,13 @@ export default function AdminPage() {
               value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
               className="h-10 min-w-[280px] rounded border border-slate-300 px-2"
-              placeholder="sk-..."
+              placeholder="hf_..."
             />
             <button
               className="rounded bg-slate-900 px-2 py-1.5 text-xs text-white"
               onClick={() => {
                 try {
-                  window.localStorage.setItem(OPENAI_KEY_STORAGE_KEY, apiKey.trim());
+                  window.localStorage.setItem(AI_TOKEN_STORAGE_KEY, apiKey.trim());
                   window.dispatchEvent(new Event('biolt-ai-key-change'));
                 } catch {
                   // ignore

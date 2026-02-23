@@ -3,7 +3,7 @@
 import { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ValidationMessage } from '../lib/types';
-import { OPENAI_KEY_STORAGE_KEY, OPENAI_MODEL } from '../lib/ai/config';
+import { AI_TOKEN_STORAGE_KEY, HF_MODEL } from '../lib/ai/config';
 
 type SupportedCalculatorId = 'pcr-master-mix' | 'ligation' | 'cell-seeding';
 
@@ -24,12 +24,11 @@ interface AiCauseItem {
   check: string;
   action: string;
 }
-interface OpenAIChatCompletionsPayload {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
+interface HuggingFaceInferencePayload {
+  generated_text?: string;
+}
+interface HuggingFaceErrorPayload {
+  error?: string;
 }
 
 function isSupported(id: string): id is SupportedCalculatorId {
@@ -268,6 +267,16 @@ function extractJsonText(raw: string): string {
   return trimmed;
 }
 
+function extractHfText(payload: unknown): string {
+  if (Array.isArray(payload)) {
+    const first = payload[0] as HuggingFaceInferencePayload | undefined;
+    return first?.generated_text || '';
+  }
+  const one = payload as HuggingFaceInferencePayload | HuggingFaceErrorPayload;
+  if ('generated_text' in one && typeof one.generated_text === 'string') return one.generated_text;
+  return '';
+}
+
 export function ToolFailureAnalysisPanel({
   calculatorId,
   locale,
@@ -291,7 +300,7 @@ export function ToolFailureAnalysisPanel({
 
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(OPENAI_KEY_STORAGE_KEY) || '';
+      const stored = window.localStorage.getItem(AI_TOKEN_STORAGE_KEY) || '';
       setApiKey(stored);
     } catch {
       // ignore
@@ -301,7 +310,7 @@ export function ToolFailureAnalysisPanel({
   useEffect(() => {
     const syncKey = () => {
       try {
-        const stored = window.localStorage.getItem(OPENAI_KEY_STORAGE_KEY) || '';
+        const stored = window.localStorage.getItem(AI_TOKEN_STORAGE_KEY) || '';
         setApiKey(stored);
       } catch {
         // ignore
@@ -327,7 +336,7 @@ export function ToolFailureAnalysisPanel({
           check: '확인할 항목',
           action: '즉시 수정안',
           lastRun: '마지막 분석',
-          apiKeyMissing: '관리자 창(/admin)에서 OpenAI API Key를 먼저 저장해 주세요.',
+          apiKeyMissing: '관리자 창(/admin)에서 Hugging Face Token을 먼저 저장해 주세요.',
           aiError: 'AI 호출 실패, 규칙기반 분석 결과로 대체했습니다.',
         }
       : {
@@ -340,7 +349,7 @@ export function ToolFailureAnalysisPanel({
           check: 'Check',
           action: 'Immediate action',
           lastRun: 'Last analysis',
-          apiKeyMissing: 'Save OpenAI API Key in /admin first.',
+          apiKeyMissing: 'Save Hugging Face token in /admin first.',
           aiError: 'AI call failed. Showing rule-based fallback.',
         };
 
@@ -356,11 +365,6 @@ export function ToolFailureAnalysisPanel({
       if (!trimmedKey) {
         throw new Error('NO_API_KEY');
       }
-      try {
-        window.localStorage.setItem(OPENAI_KEY_STORAGE_KEY, trimmedKey);
-      } catch {
-        // ignore
-      }
       const systemPrompt =
         locale === 'ko'
           ? '당신은 분자생물학/세포생물학 실험 실패 원인을 분석하는 도우미입니다. 과장 없이 간결하게, 재현 가능한 점검 항목을 제시하세요.'
@@ -375,32 +379,30 @@ export function ToolFailureAnalysisPanel({
         responseLocale: locale,
       };
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`https://api-inference.huggingface.co/models/${encodeURIComponent(HF_MODEL)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${trimmedKey}`,
         },
         body: JSON.stringify({
-          model: OPENAI_MODEL,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: systemPrompt },
-            {
-              role: 'user',
-              content:
-                `${locale === 'ko' ? '다음 데이터를 바탕으로 실패 원인분석을 해주세요.' : 'Analyze likely failure causes from this data.'}\n` +
-                `${locale === 'ko' ? '반드시 JSON만 출력:' : 'Return JSON only:'} {"causes":[{"priority":"high|medium|low","cause":"...","check":"...","action":"..."}]}\n` +
-                JSON.stringify(userPayload),
-            },
-          ],
+          inputs:
+            `${systemPrompt}\n` +
+            `${locale === 'ko' ? '다음 데이터를 바탕으로 실패 원인분석을 해주세요.' : 'Analyze likely failure causes from this data.'}\n` +
+            `${locale === 'ko' ? '반드시 JSON만 출력:' : 'Return JSON only:'} {"causes":[{"priority":"high|medium|low","cause":"...","check":"...","action":"..."}]}\n` +
+            JSON.stringify(userPayload),
+          parameters: {
+            max_new_tokens: 420,
+            temperature: 0.2,
+            return_full_text: false,
+          },
         }),
       });
       if (!response.ok) {
-        throw new Error(`OPENAI_${response.status}`);
+        throw new Error(`HF_${response.status}`);
       }
-      const payload = (await response.json()) as OpenAIChatCompletionsPayload;
-      const rawText = payload.choices?.[0]?.message?.content || '';
+      const payload = await response.json();
+      const rawText = extractHfText(payload);
       const text = extractJsonText(rawText);
       const aiCauses = safeParseAiResult(text);
       if (!aiCauses.length) {
