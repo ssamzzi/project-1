@@ -6,14 +6,13 @@ import { encodeCalculatorState } from '../lib/share/url';
 interface RecentCalculationItem {
   id: string;
   calculatorId: string;
-  title: string;
-  summary: string;
   url: string;
   createdAt: number;
 }
 
 const RECENT_CALCULATIONS_KEY = 'biolt-recent-calculations-v1';
 const MAX_RECENT_ITEMS = 60;
+const PAGE_SIZE = 5;
 
 function loadItems(): RecentCalculationItem[] {
   if (typeof window === 'undefined') return [];
@@ -27,8 +26,6 @@ function loadItems(): RecentCalculationItem[] {
         item &&
         typeof item.id === 'string' &&
         typeof item.calculatorId === 'string' &&
-        typeof item.title === 'string' &&
-        typeof item.summary === 'string' &&
         typeof item.url === 'string' &&
         typeof item.createdAt === 'number'
     );
@@ -59,18 +56,15 @@ function formatDate(ts: number, locale: 'en' | 'ko') {
 
 export function RecentCalculationsPanel({
   calculatorId,
-  title,
-  summary,
   shareState,
   locale,
 }: {
   calculatorId: string;
-  title: string;
-  summary: string;
   shareState: Record<string, unknown>;
   locale: 'en' | 'ko';
 }) {
   const [items, setItems] = useState<RecentCalculationItem[]>([]);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     setItems(loadItems());
@@ -88,12 +82,18 @@ export function RecentCalculationsPanel({
           title: '최근 계산',
           save: '현재 계산 저장',
           load: '불러오기',
+          prev: '이전',
+          next: '다음',
+          page: '페이지',
           empty: '저장된 계산 기록이 없습니다.',
         }
       : {
           title: 'Recent Calculations',
           save: 'Save current calculation',
           load: 'Load',
+          prev: 'Prev',
+          next: 'Next',
+          page: 'Page',
           empty: 'No saved calculations yet.',
         };
 
@@ -101,18 +101,18 @@ export function RecentCalculationsPanel({
     () =>
       items
         .filter((item) => item.calculatorId === calculatorId)
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, 15),
+        .sort((a, b) => b.createdAt - a.createdAt),
     [items, calculatorId]
   );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const handleSaveCurrent = () => {
     const url = encodeCalculatorState(shareState);
     const nextItem: RecentCalculationItem = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       calculatorId,
-      title,
-      summary,
       url,
       createdAt: Date.now(),
     };
@@ -121,6 +121,7 @@ export function RecentCalculationsPanel({
     const next = [nextItem, ...deduped].slice(0, MAX_RECENT_ITEMS);
     saveItems(next);
     setItems(next);
+    setPage(1);
   };
 
   return (
@@ -133,10 +134,8 @@ export function RecentCalculationsPanel({
       </div>
       {filtered.length === 0 ? <p className="text-xs text-slate-500">{labels.empty}</p> : null}
       <ul className="space-y-2">
-        {filtered.map((item) => (
+        {paged.map((item) => (
           <li key={item.id} className="rounded border border-slate-200 p-2 text-xs">
-            <p className="font-medium text-slate-800">{item.title}</p>
-            <p className="mt-1 text-slate-600">{item.summary}</p>
             <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
               <span>{formatDate(item.createdAt, locale)}</span>
               <button
@@ -152,7 +151,29 @@ export function RecentCalculationsPanel({
           </li>
         ))}
       </ul>
+      {filtered.length > PAGE_SIZE ? (
+        <div className="flex items-center justify-end gap-2 text-xs text-slate-600">
+          <button
+            type="button"
+            className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40"
+            disabled={currentPage <= 1}
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+          >
+            {labels.prev}
+          </button>
+          <span>
+            {labels.page} {currentPage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40"
+            disabled={currentPage >= totalPages}
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+          >
+            {labels.next}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
-

@@ -97,8 +97,6 @@ export function CalculatorPageLayout({
       <div className="space-y-4 lg:col-span-2">
         <RecentCalculationsPanel
           calculatorId={calculatorId}
-          title={title}
-          summary={summary}
           shareState={shareState}
           locale={locale}
         />
