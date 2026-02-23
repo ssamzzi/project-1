@@ -24,13 +24,11 @@ interface AiCauseItem {
   check: string;
   action: string;
 }
-interface OpenAIResponsesPayload {
-  output_text?: string;
-  output?: Array<{
-    content?: Array<{
-      type?: string;
-      text?: string;
-    }>;
+interface OpenAIChatCompletionsPayload {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
   }>;
 }
 
@@ -259,17 +257,15 @@ function safeParseAiResult(raw: string): AiCauseItem[] {
     .slice(0, 5);
 }
 
-function extractOutputText(payload: OpenAIResponsesPayload): string {
-  if (payload.output_text && payload.output_text.trim()) return payload.output_text;
-  const parts: string[] = [];
-  for (const item of payload.output || []) {
-    for (const content of item.content || []) {
-      if (typeof content.text === 'string' && content.text.trim()) {
-        parts.push(content.text);
-      }
-    }
-  }
-  return parts.join('\n').trim();
+function extractJsonText(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;
+  const codeBlock = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlock?.[1]) return codeBlock[1].trim();
+  const first = trimmed.indexOf('{');
+  const last = trimmed.lastIndexOf('}');
+  if (first >= 0 && last > first) return trimmed.slice(first, last + 1);
+  return trimmed;
 }
 
 export function ToolFailureAnalysisPanel({
@@ -331,8 +327,7 @@ export function ToolFailureAnalysisPanel({
           check: '확인할 항목',
           action: '즉시 수정안',
           lastRun: '마지막 분석',
-          apiKeyLabel: 'OpenAI API Key',
-          apiKeyHint: '브라우저 localStorage에만 저장됩니다.',
+          apiKeyMissing: '관리자 창(/admin)에서 OpenAI API Key를 먼저 저장해 주세요.',
           aiError: 'AI 호출 실패, 규칙기반 분석 결과로 대체했습니다.',
         }
       : {
@@ -345,8 +340,7 @@ export function ToolFailureAnalysisPanel({
           check: 'Check',
           action: 'Immediate action',
           lastRun: 'Last analysis',
-          apiKeyLabel: 'OpenAI API Key',
-          apiKeyHint: 'Stored only in browser localStorage.',
+          apiKeyMissing: 'Save OpenAI API Key in /admin first.',
           aiError: 'AI call failed. Showing rule-based fallback.',
         };
 
@@ -355,10 +349,10 @@ export function ToolFailureAnalysisPanel({
   const runAnalysis = async (event: FormEvent) => {
     event.preventDefault();
     const combined = `${observed}\n${attemptedFix}\n${validationHints}`.trim();
+    const trimmedKey = apiKey.trim();
     setIsAnalyzing(true);
     setAnalysisError('');
     try {
-      const trimmedKey = apiKey.trim();
       if (!trimmedKey) {
         throw new Error('NO_API_KEY');
       }
@@ -381,7 +375,7 @@ export function ToolFailureAnalysisPanel({
         responseLocale: locale,
       };
 
-      const response = await fetch('https://api.openai.com/v1/responses', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -389,19 +383,15 @@ export function ToolFailureAnalysisPanel({
         },
         body: JSON.stringify({
           model: OPENAI_MODEL,
-          input: [
-            { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
             {
               role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text:
-                    `${locale === 'ko' ? '다음 데이터를 바탕으로 실패 원인분석을 해주세요.' : 'Analyze likely failure causes from this data.'}\n` +
-                    `${locale === 'ko' ? '반드시 JSON만 출력:' : 'Return JSON only:'} {"causes":[{"priority":"high|medium|low","cause":"...","check":"...","action":"..."}]}\n` +
-                    JSON.stringify(userPayload),
-                },
-              ],
+              content:
+                `${locale === 'ko' ? '다음 데이터를 바탕으로 실패 원인분석을 해주세요.' : 'Analyze likely failure causes from this data.'}\n` +
+                `${locale === 'ko' ? '반드시 JSON만 출력:' : 'Return JSON only:'} {"causes":[{"priority":"high|medium|low","cause":"...","check":"...","action":"..."}]}\n` +
+                JSON.stringify(userPayload),
             },
           ],
         }),
@@ -409,8 +399,9 @@ export function ToolFailureAnalysisPanel({
       if (!response.ok) {
         throw new Error(`OPENAI_${response.status}`);
       }
-      const payload = (await response.json()) as OpenAIResponsesPayload;
-      const text = extractOutputText(payload);
+      const payload = (await response.json()) as OpenAIChatCompletionsPayload;
+      const rawText = payload.choices?.[0]?.message?.content || '';
+      const text = extractJsonText(rawText);
       const aiCauses = safeParseAiResult(text);
       if (!aiCauses.length) {
         throw new Error('AI_PARSE');
@@ -437,7 +428,7 @@ export function ToolFailureAnalysisPanel({
       }
       causes.sort((a, b) => b.score - a.score);
       setResults(causes.slice(0, 5));
-      setAnalysisError(labels.aiError);
+      setAnalysisError(trimmedKey ? labels.aiError : labels.apiKeyMissing);
     } finally {
       setIsAnalyzing(false);
     }
@@ -448,17 +439,6 @@ export function ToolFailureAnalysisPanel({
     <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
       <h3 className="text-sm font-medium">{labels.title}</h3>
       <form className="space-y-2" onSubmit={runAnalysis}>
-        <label className="block text-xs text-slate-700">
-          {labels.apiKeyLabel}
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-            className="mt-1 h-10 w-full rounded border border-slate-300 px-2"
-            placeholder="sk-..."
-          />
-          <span className="mt-1 block text-[11px] text-slate-500">{labels.apiKeyHint}</span>
-        </label>
         <label className="block text-xs text-slate-700">
           {labels.observed}
           <textarea
