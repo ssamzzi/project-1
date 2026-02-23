@@ -264,6 +264,22 @@ function safeParseAiResult(raw: string): AiCauseItem[] {
     .slice(0, 5);
 }
 
+function parsePlainTextAiResult(raw: string): AiCauseItem[] {
+  const lines = raw
+    .split('\n')
+    .map((line) => line.trim())
+    .map((line) => line.replace(/^[-*]\s+/, '').replace(/^\d+[.)]\s+/, ''))
+    .filter((line) => line.length > 8);
+  if (!lines.length) return [];
+  const top = lines.slice(0, 3);
+  return top.map((line) => ({
+    priority: 'medium',
+    cause: line.slice(0, 180),
+    check: 'Confirm this issue with control samples and setup logs.',
+    action: 'Apply one variable change and re-run with control.',
+  }));
+}
+
 function extractJsonText(raw: string): string {
   const trimmed = raw.trim();
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;
@@ -481,7 +497,10 @@ export function ToolFailureAnalysisPanel({
       }
       const rawText = extractHfText(payload);
       const text = extractJsonText(rawText);
-      const aiCauses = safeParseAiResult(text);
+      let aiCauses = safeParseAiResult(text);
+      if (!aiCauses.length) {
+        aiCauses = parsePlainTextAiResult(rawText);
+      }
       if (!aiCauses.length) {
         throw new Error('AI_PARSE');
       }
@@ -511,6 +530,8 @@ export function ToolFailureAnalysisPanel({
         setAnalysisError(labels.apiKeyMissing);
       } else if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
         setAnalysisError(toNetworkErrorMessage(locale));
+      } else if (error instanceof Error && error.message === 'AI_PARSE') {
+        setAnalysisError(labels.aiError);
       } else if (error instanceof Error && error.message) {
         setAnalysisError(error.message);
       } else {
