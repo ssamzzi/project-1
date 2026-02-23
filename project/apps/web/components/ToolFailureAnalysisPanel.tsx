@@ -305,6 +305,12 @@ function toErrorMessage(status: number, detail: string, locale: 'en' | 'ko') {
   return locale === 'ko' ? `AI 호출 실패(${status}): ${detail}` : `AI call failed (${status}): ${detail}`;
 }
 
+function toNetworkErrorMessage(locale: 'en' | 'ko') {
+  return locale === 'ko'
+    ? '네트워크 호출 실패(Failed to fetch): 브라우저 확장프로그램(광고/추적 차단), 회사/학교 방화벽, 또는 CORS 차단 가능성이 큽니다. 다른 브라우저/시크릿 모드로 다시 시도하세요.'
+    : 'Network request failed (Failed to fetch): likely blocked by browser extension, firewall, or CORS policy. Retry in another browser or incognito mode.';
+}
+
 export function ToolFailureAnalysisPanel({
   calculatorId,
   locale,
@@ -470,6 +476,8 @@ export function ToolFailureAnalysisPanel({
       setResults(causes.slice(0, 5));
       if (!trimmedKey) {
         setAnalysisError(labels.apiKeyMissing);
+      } else if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
+        setAnalysisError(toNetworkErrorMessage(locale));
       } else if (error instanceof Error && error.message) {
         setAnalysisError(error.message);
       } else {
