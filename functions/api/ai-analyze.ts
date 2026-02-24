@@ -39,9 +39,15 @@ export const onRequestPost: PagesFunction = async (context) => {
     return json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const token = typeof body.token === 'string' ? body.token.trim() : '';
+  const envToken =
+    typeof context.env === 'object' && context.env
+      ? String((context.env as Record<string, unknown>).HF_API_TOKEN || '').trim()
+      : '';
+  const token = (typeof body.token === 'string' ? body.token.trim() : '') || envToken;
   const model = typeof body.model === 'string' ? body.model.trim() : '';
-  if (!token) return json({ error: 'Missing Hugging Face token' }, { status: 400 });
+  if (!token) {
+    return json({ error: 'Missing Hugging Face token. Set HF_API_TOKEN in Cloudflare Pages environment.' }, { status: 400 });
+  }
   if (!model) return json({ error: 'Missing model id' }, { status: 400 });
 
   const endpoint = 'https://router.huggingface.co/v1/chat/completions';

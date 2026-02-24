@@ -573,7 +573,7 @@ export function ToolFailureAnalysisPanel({
           evidence: '근거',
           checklist: '재실행 체크리스트',
           lastRun: '마지막 분석',
-          apiKeyMissing: '관리자 창(/admin)에서 Hugging Face Token을 먼저 저장해 주세요.',
+          apiKeyMissing: '토큰이 없습니다. 관리자 토큰 또는 서버 환경변수(HF_API_TOKEN)를 설정해 주세요.',
           aiError: 'AI 호출 실패, 규칙기반 분석 결과로 대체했습니다.',
         }
       : {
@@ -589,7 +589,7 @@ export function ToolFailureAnalysisPanel({
           evidence: 'Evidence',
           checklist: 'Rerun checklist',
           lastRun: 'Last analysis',
-          apiKeyMissing: 'Save Hugging Face token in /admin first.',
+          apiKeyMissing: 'No token found. Set admin token or server env HF_API_TOKEN.',
           aiError: 'AI call failed. Showing rule-based fallback.',
         };
 
@@ -604,9 +604,6 @@ export function ToolFailureAnalysisPanel({
     setAnalysisError('');
     setAnalysisDebug('');
     try {
-      if (!trimmedKey) {
-        throw new Error('NO_API_KEY');
-      }
       const systemPrompt =
         locale === 'ko'
           ? '당신은 분자생물학/세포생물학 실험 실패 원인을 분석하는 도우미입니다. 과장 없이 간결하게, 재현 가능한 점검 항목을 제시하세요.'
@@ -701,10 +698,10 @@ export function ToolFailureAnalysisPanel({
       else causes = getGenericCauses(calculatorId, validations, combined);
       causes.sort((a, b) => b.score - a.score);
       setResults(causes.slice(0, 5));
-      if (!trimmedKey) {
-        setAnalysisError(labels.apiKeyMissing);
-      } else if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
+      if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
         setAnalysisError(toNetworkErrorMessage(locale));
+      } else if (error instanceof Error && /Missing Hugging Face token/i.test(error.message)) {
+        setAnalysisError(labels.apiKeyMissing);
       } else if (error instanceof Error && error.message.startsWith('AI_PARSE')) {
         setAnalysisError(labels.aiError);
       } else if (error instanceof Error && error.message) {
