@@ -3,6 +3,9 @@
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { HF_MODEL } from "../lib/ai/config";
+import { useLocale } from "../lib/context/LocaleContext";
+import { TipsPanel } from "./TipsPanel";
+import type { CalculatorTip } from "../lib/types";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false }) as any;
 
@@ -176,6 +179,7 @@ async function loadImageToCanvas(file: File) {
 }
 
 export function LabOpsAIClient() {
+  const { locale } = useLocale();
   const [tab, setTab] = useState<LabTab>("omniparse");
 
   // OmniParse
@@ -462,25 +466,120 @@ export function LabOpsAIClient() {
     { id: "inventory", label: "Inventory" },
   ];
 
+  const moduleExplain = {
+    omniparse:
+      locale === "ko"
+        ? "Plate Reader의 비정형 CSV/Excel을 자동 파싱해 Tidy Data(Well/Time/Value)로 변환하고, Baseline 보정과 Growth fitting까지 한 번에 처리합니다."
+        : "Automatically parses irregular plate reader CSV/Excel files into tidy data (Well/Time/Value), then runs baseline correction and growth fitting.",
+    vision:
+      locale === "ko"
+        ? "Western blot lane intensity 정량 및 colony counting을 이미지에서 바로 수행하고, control lane 기준 Relative Density를 계산합니다."
+        : "Quantifies western blot lane intensity and colony counts directly from images, including control-normalized relative density.",
+    protocolguard:
+      locale === "ko"
+        ? "농도 계산, Primer Tm 예측, 프로토콜 위험 분석을 하나의 패널에서 수행해 실험 설계 실수를 줄입니다."
+        : "Combines molarity calculation, primer Tm estimation, and protocol risk analysis to reduce setup errors.",
+  };
+
+  const labopsTips = useMemo<CalculatorTip[]>(() => {
+    if (locale === "ko") {
+      return [
+        { id: "lop-ko-omni-1", calculatorId: "labops-omniparse", tab: "protocol", severity: "info", title: "파일 업로드 순서", body: "Raw plate 파일 업로드 후, Well/Group metadata를 추가하면 조건별 해석이 더 정확해집니다." },
+        { id: "lop-ko-omni-2", calculatorId: "labops-omniparse", tab: "mistakes", severity: "warn", title: "헤더 행 불일치", body: "'Well', 'Time', 'OD/RFU' 헤더가 없거나 깨져 있으면 파싱 결과가 비어 있을 수 있습니다." },
+        { id: "lop-ko-omni-3", calculatorId: "labops-omniparse", tab: "ranges", severity: "info", title: "권장 데이터 포인트", body: "Growth fitting은 Well당 최소 4개 이상의 time point에서 안정적으로 동작합니다." },
+        { id: "lop-ko-omni-4", calculatorId: "labops-omniparse", tab: "troubleshooting", severity: "warn", title: "결과가 비어 있을 때", body: "CSV 구분자(콤마/탭)와 Excel 시트 구조를 확인하고, Well 표기(A1~H12)가 맞는지 검증하세요." },
+        { id: "lop-ko-vis-1", calculatorId: "labops-vision", tab: "protocol", severity: "info", title: "이미지 입력 조건", body: "Lane/colony 경계가 선명한 원본 이미지(PNG/JPG)를 사용하면 정량 정확도가 높아집니다." },
+        { id: "lop-ko-vis-2", calculatorId: "labops-vision", tab: "mistakes", severity: "warn", title: "Control lane 지정 오류", body: "Control lane 번호가 잘못되면 Relative Density 기준이 무너져 해석이 왜곡됩니다." },
+        { id: "lop-ko-vis-3", calculatorId: "labops-vision", tab: "ranges", severity: "info", title: "Lane 수 권장", body: "Western 분석은 lane 수를 실제 밴드 열 수와 동일하게 맞추는 것이 중요합니다." },
+        { id: "lop-ko-vis-4", calculatorId: "labops-vision", tab: "troubleshooting", severity: "warn", title: "Colony 과소/과대 카운트", body: "Threshold 값을 조정하고, 그림자/배경 노이즈가 적은 이미지를 사용하세요." },
+        { id: "lop-ko-pro-1", calculatorId: "labops-protocolguard", tab: "protocol", severity: "info", title: "검증 흐름", body: "먼저 Molarity를 맞춘 뒤 Primer Tm과 Risk Check를 순서대로 점검하면 실수 방지에 유리합니다." },
+        { id: "lop-ko-pro-2", calculatorId: "labops-protocolguard", tab: "mistakes", severity: "critical", title: "단위 혼동", body: "M, mM, uM 단위를 혼동하면 stock volume이 10~1000배까지 틀어질 수 있습니다." },
+        { id: "lop-ko-pro-3", calculatorId: "labops-protocolguard", tab: "ranges", severity: "info", title: "Primer 길이 권장", body: "Primer Tm 추정은 일반적으로 18~30 nt 구간에서 해석 안정성이 높습니다." },
+        { id: "lop-ko-pro-4", calculatorId: "labops-protocolguard", tab: "troubleshooting", severity: "warn", title: "AI 응답 불안정", body: "네트워크 지연 시 규칙 기반 경고를 먼저 확인하고, 입력 문장을 더 구체적으로 작성해 다시 분석하세요." },
+      ];
+    }
+    return [
+      { id: "lop-en-omni-1", calculatorId: "labops-omniparse", tab: "protocol", severity: "info", title: "Upload sequence", body: "Upload the raw plate file first, then merge Well/Group metadata for clearer condition-level interpretation." },
+      { id: "lop-en-omni-2", calculatorId: "labops-omniparse", tab: "mistakes", severity: "warn", title: "Header mismatch", body: "If 'Well', 'Time', or 'OD/RFU' headers are missing or broken, parsing may return empty results." },
+      { id: "lop-en-omni-3", calculatorId: "labops-omniparse", tab: "ranges", severity: "info", title: "Recommended points", body: "Growth fitting is more stable when each well has at least four time points." },
+      { id: "lop-en-omni-4", calculatorId: "labops-omniparse", tab: "troubleshooting", severity: "warn", title: "When results are empty", body: "Check CSV delimiter (comma/tab), sheet layout, and Well labels (A1-H12)." },
+      { id: "lop-en-vis-1", calculatorId: "labops-vision", tab: "protocol", severity: "info", title: "Input quality", body: "Use clear PNG/JPG images with visible lane/colony boundaries for better quantification." },
+      { id: "lop-en-vis-2", calculatorId: "labops-vision", tab: "mistakes", severity: "warn", title: "Wrong control lane", body: "If the control lane index is wrong, relative density normalization becomes unreliable." },
+      { id: "lop-en-vis-3", calculatorId: "labops-vision", tab: "ranges", severity: "info", title: "Lane count setting", body: "Match lane count to the actual number of lane columns in the blot image." },
+      { id: "lop-en-vis-4", calculatorId: "labops-vision", tab: "troubleshooting", severity: "warn", title: "Colony under/over counting", body: "Tune the threshold and use images with reduced shadow/background noise." },
+      { id: "lop-en-pro-1", calculatorId: "labops-protocolguard", tab: "protocol", severity: "info", title: "Validation flow", body: "Set molarity first, then validate primer Tm, then run risk check for final sanity checks." },
+      { id: "lop-en-pro-2", calculatorId: "labops-protocolguard", tab: "mistakes", severity: "critical", title: "Unit confusion", body: "Mixing M, mM, and uM can shift stock volume by 10 to 1000-fold." },
+      { id: "lop-en-pro-3", calculatorId: "labops-protocolguard", tab: "ranges", severity: "info", title: "Primer length range", body: "Tm estimation is typically more interpretable in the 18-30 nt primer range." },
+      { id: "lop-en-pro-4", calculatorId: "labops-protocolguard", tab: "troubleshooting", severity: "warn", title: "Unstable AI response", body: "If network/API latency occurs, rely on rule-based warnings first and retry with more specific input." },
+    ];
+  }, [locale]);
+
+  const tabTheme: Record<LabTab, { chip: string; buttonActive: string; panel: string; badge: string }> = {
+    omniparse: {
+      chip: "bg-cyan-100 text-cyan-800",
+      buttonActive: "bg-cyan-700 text-white",
+      panel: "border-cyan-200 bg-cyan-50/60",
+      badge: "AI CORE",
+    },
+    vision: {
+      chip: "bg-amber-100 text-amber-800",
+      buttonActive: "bg-amber-600 text-white",
+      panel: "border-amber-200 bg-amber-50/60",
+      badge: "AI CORE",
+    },
+    protocolguard: {
+      chip: "bg-emerald-100 text-emerald-800",
+      buttonActive: "bg-emerald-700 text-white",
+      panel: "border-emerald-200 bg-emerald-50/60",
+      badge: "AI CORE",
+    },
+    inventory: {
+      chip: "bg-slate-100 text-slate-700",
+      buttonActive: "bg-slate-900 text-white",
+      panel: "border-slate-200 bg-white",
+      badge: "UTILITY",
+    },
+  };
+
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="text-3xl font-semibold">LabOps AI</h1>
-      <p className="mt-2 text-sm text-slate-600">Merged advanced module on top of BioLT tools. Existing calculators remain intact.</p>
+      <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 text-white">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Advanced Suite</p>
+        <h1 className="mt-2 text-3xl font-semibold">LabOps AI</h1>
+        <p className="mt-2 text-sm text-slate-200">
+          {locale === "ko"
+            ? "AI 중심 모듈(OmniParse, VisionLab, ProtocolGuard)과 실무 유틸리티를 기존 BioLT 툴과 분리된 인터페이스로 제공합니다."
+            : "Provides AI core modules (OmniParse, VisionLab, ProtocolGuard) and lab utilities in an interface clearly separated from standard BioLT tools."}
+        </p>
+      </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
         <aside className="rounded-xl border border-slate-200 bg-white p-3 lg:col-span-1">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Modules</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{locale === "ko" ? "LabOps 모듈" : "LabOps Modules"}</p>
           <div className="space-y-2">
             {tabs.map((t) => (
-              <button key={t.id} className={`w-full rounded-md px-3 py-2 text-left text-sm ${tab === t.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-800"}`} onClick={() => setTab(t.id)}>
-                {t.label}
+              <button
+                key={t.id}
+                className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
+                  tab === t.id ? `${tabTheme[t.id].buttonActive} border-transparent` : "border-slate-200 bg-white text-slate-800"
+                }`}
+                onClick={() => setTab(t.id)}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span>{t.label}</span>
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${tabTheme[t.id].chip}`}>{tabTheme[t.id].badge}</span>
+                </div>
               </button>
             ))}
           </div>
         </aside>
-        <main className="space-y-3 lg:col-span-4">
+        <main className={`space-y-3 rounded-xl border p-4 lg:col-span-4 ${tabTheme[tab].panel}`}>
           {tab === "omniparse" ? (
             <div className="space-y-3">
-              <h2 className="text-xl font-semibold">OmniParse AI</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">OmniParse AI</h2>
+                <span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${tabTheme.omniparse.chip}`}>AI CORE</span>
+              </div>
+              <p className="rounded-md border border-cyan-200 bg-white p-3 text-sm text-slate-700">{moduleExplain.omniparse}</p>
               <p className="text-sm text-slate-600">Regex-based flexible CSV/Excel parsing, baseline subtraction, growth fitting, metadata merge.</p>
               <div className="rounded border border-slate-200 bg-white p-3">
                 <label className="text-sm font-medium">Upload raw plate file</label>
@@ -541,12 +640,24 @@ export function LabOpsAIClient() {
                   </div>
                 </>
               ) : null}
+              <TipsPanel
+                calculatorId="labops-omniparse"
+                tips={labopsTips}
+                context={{
+                  values: { rowCount: omniRows.length },
+                  computed: { fitCount: fitRows.length },
+                }}
+              />
             </div>
           ) : null}
 
           {tab === "vision" ? (
             <div className="space-y-3">
-              <h2 className="text-xl font-semibold">VisionLab Agent</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">VisionLab Agent</h2>
+                <span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${tabTheme.vision.chip}`}>AI CORE</span>
+              </div>
+              <p className="rounded-md border border-amber-200 bg-white p-3 text-sm text-slate-700">{moduleExplain.vision}</p>
               <div className="rounded border border-slate-200 bg-white p-3">
                 <div className="mb-2 flex gap-2 text-sm">
                   <button className={`rounded px-2 py-1 ${visionMode === "western" ? "bg-slate-900 text-white" : "bg-slate-100"}`} onClick={() => setVisionMode("western")}>
@@ -616,12 +727,24 @@ export function LabOpsAIClient() {
                   </div>
                 </div>
               ) : null}
+              <TipsPanel
+                calculatorId="labops-vision"
+                tips={labopsTips}
+                context={{
+                  values: { mode: visionMode, laneCount, colonyThreshold },
+                  computed: { resultCount: visionRows.length },
+                }}
+              />
             </div>
           ) : null}
 
           {tab === "protocolguard" ? (
             <div className="space-y-3">
-              <h2 className="text-xl font-semibold">ProtocolGuard AI</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">ProtocolGuard AI</h2>
+                <span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${tabTheme.protocolguard.chip}`}>AI CORE</span>
+              </div>
+              <p className="rounded-md border border-emerald-200 bg-white p-3 text-sm text-slate-700">{moduleExplain.protocolguard}</p>
               <div className="flex flex-wrap gap-2 text-sm">
                 <button className={`rounded px-2 py-1 ${protocolMode === "molarity" ? "bg-slate-900 text-white" : "bg-slate-100"}`} onClick={() => setProtocolMode("molarity")}>
                   Molarity
@@ -711,12 +834,23 @@ export function LabOpsAIClient() {
                   ) : null}
                 </div>
               ) : null}
+              <TipsPanel
+                calculatorId="labops-protocolguard"
+                tips={labopsTips}
+                context={{
+                  values: { protocolMode, c1, c2, v2, na, mg },
+                  computed: { stock_uL: molarityResult?.stock_uL, tm: primerTm },
+                }}
+              />
             </div>
           ) : null}
 
           {tab === "inventory" ? (
             <div className="space-y-3">
-              <h2 className="text-xl font-semibold">Inventory Utilities</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">Inventory Utilities</h2>
+                <span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${tabTheme.inventory.chip}`}>UTILITY</span>
+              </div>
               <div className="rounded border border-slate-200 bg-white p-3">
                 <h3 className="text-sm font-semibold">Barcode Inventory Scanner</h3>
                 <input type="file" accept="image/*" className="mt-2 block text-sm" onChange={(e) => e.target.files?.[0] && void tryDecodeBarcode(e.target.files[0])} />
@@ -820,4 +954,3 @@ export function LabOpsAIClient() {
     </section>
   );
 }
-
