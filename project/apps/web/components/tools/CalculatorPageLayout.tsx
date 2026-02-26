@@ -124,30 +124,35 @@ export function CalculatorPageLayout({
             ) : null}
           </section>
           <ResultTable columns={columns} rows={rows} />
-          <div className="mt-4 space-y-2 text-sm text-slate-700">
-            <p>{labels.formula}</p>
-            <ul className="list-disc pl-5">
-              {formulas.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-            <p className="mt-2">{labels.assumptions}</p>
-            <ul className="list-disc pl-5">
-              {assumptions.map((a) => (
-                <li key={a}>{a}</li>
-              ))}
-            </ul>
-            <p className="mt-2">{labels.warning}</p>
-            <div className="flex flex-wrap gap-2 pt-2">
-              <button
-                className="rounded-lg bg-slate-200 px-3 py-2 text-sm"
-                onClick={() => navigator.clipboard.writeText(summary)}
-              >
-                {labels.copySummary}
-              </button>
-              <ShareLinkButton state={shareState} />
-            </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              className="rounded-lg bg-slate-200 px-3 py-2 text-sm"
+              onClick={() => navigator.clipboard.writeText(summary)}
+            >
+              {labels.copySummary}
+            </button>
+            <ShareLinkButton state={shareState} />
           </div>
+          <details className="mt-3 rounded border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700">
+            <summary className="cursor-pointer font-medium">
+              {locale === 'ko' ? '공식/가정 상세 보기' : 'Show formula/assumptions details'}
+            </summary>
+            <div className="mt-2 space-y-2">
+              <p>{labels.formula}</p>
+              <ul className="list-disc pl-5">
+                {formulas.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+              <p className="mt-2">{labels.assumptions}</p>
+              <ul className="list-disc pl-5">
+                {assumptions.map((a) => (
+                  <li key={a}>{a}</li>
+                ))}
+              </ul>
+              <p className="mt-2">{labels.warning}</p>
+            </div>
+          </details>
         </SectionCard>
       </div>
       <div className="space-y-4 lg:col-span-2">

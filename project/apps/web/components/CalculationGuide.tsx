@@ -241,35 +241,40 @@ export function CalculationGuide({ id, locale }: { id: string; locale: Locale })
   return (
     <section className="rounded-lg border border-sky-200 bg-sky-50/60 p-3 text-sm">
       <p className="text-slate-600">{labels.title}</p>
-      <div className="mt-2 space-y-2 text-slate-800">
-        <p>
-          <span className="font-semibold">{labels.intent}: </span>
-          {locale === 'ko' ? guide.intentKo : guide.intentEn}
-        </p>
-        <p className="font-semibold">{labels.reagents}</p>
-        <ul className="list-disc pl-5">
-          {(locale === 'ko' ? guide.reagentsKo : guide.reagentsEn).map((line) => (
-            <li key={`${id}-reagent-${line}`}>{line}</li>
-          ))}
-        </ul>
-        <p className="font-semibold">{labels.workflow}</p>
-        <ul className="list-disc pl-5">
-          {(locale === 'ko' ? guide.workflowKo : guide.workflowEn).map((line) => (
-            <li key={`${id}-workflow-${line}`}>{line}</li>
-          ))}
-        </ul>
-        <p className="font-semibold">{labels.ranges}</p>
-        <ul className="list-disc pl-5">
-          {(locale === 'ko' ? guide.rangesKo : guide.rangesEn).map((line) => (
-            <li key={`${id}-range-${line}`}>{line}</li>
-          ))}
-        </ul>
-        <p className="font-semibold">{labels.cautions}</p>
-        <ul className="list-disc pl-5">
-          {(locale === 'ko' ? guide.cautionsKo : guide.cautionsEn).map((line) => (
-            <li key={`${id}-caution-${line}`}>{line}</li>
-          ))}
-        </ul>
+      <p className="mt-1 text-slate-800">
+        <span className="font-semibold">{labels.intent}: </span>
+        {locale === 'ko' ? guide.intentKo : guide.intentEn}
+      </p>
+      <details className="mt-2 rounded border border-slate-200 bg-white p-2">
+        <summary className="cursor-pointer font-semibold">{locale === 'ko' ? '가이드 상세 보기' : 'Show guide details'}</summary>
+        <div className="mt-2 space-y-2 text-slate-800">
+          <p className="font-semibold">{labels.reagents}</p>
+          <ul className="list-disc pl-5">
+            {(locale === 'ko' ? guide.reagentsKo : guide.reagentsEn).map((line) => (
+              <li key={`${id}-reagent-${line}`}>{line}</li>
+            ))}
+          </ul>
+          <p className="font-semibold">{labels.workflow}</p>
+          <ul className="list-disc pl-5">
+            {(locale === 'ko' ? guide.workflowKo : guide.workflowEn).map((line) => (
+              <li key={`${id}-workflow-${line}`}>{line}</li>
+            ))}
+          </ul>
+          <p className="font-semibold">{labels.ranges}</p>
+          <ul className="list-disc pl-5">
+            {(locale === 'ko' ? guide.rangesKo : guide.rangesEn).map((line) => (
+              <li key={`${id}-range-${line}`}>{line}</li>
+            ))}
+          </ul>
+          <p className="font-semibold">{labels.cautions}</p>
+          <ul className="list-disc pl-5">
+            {(locale === 'ko' ? guide.cautionsKo : guide.cautionsEn).map((line) => (
+              <li key={`${id}-caution-${line}`}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      </details>
+      <div className="mt-2">
         <details className="rounded border border-slate-200 bg-white p-2">
           <summary className="cursor-pointer font-semibold">{labels.glossary}</summary>
           <ul className="mt-2 list-disc pl-5 text-xs text-slate-700">
