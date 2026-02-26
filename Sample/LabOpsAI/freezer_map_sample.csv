@@ -1,0 +1,5 @@
+Row,C1,C2,C3,C4,C5,C6
+1,Plasmid-A1,Plasmid-A2,Enzyme-Box1,,,Control-DNA
+2,RNA-Set1,RNA-Set2,,,Primer-Mix,
+3,CellPellet-01,CellPellet-02,CellPellet-03,Buffer-TE,,
+4,ProteinStd,Marker,IP-Sample-A,IP-Sample-B,IP-Sample-C,

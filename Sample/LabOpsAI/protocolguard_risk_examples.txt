@@ -1,0 +1,8 @@
+[Example 1]
+I added SDS, then HCl, and heated the mixture before enzyme digestion.
+
+[Example 2]
+I incubated at 95C first, then added restriction enzyme and ligase.
+
+[Example 3]
+I used 10 mM stock as if it were 10 uM for final setup.
