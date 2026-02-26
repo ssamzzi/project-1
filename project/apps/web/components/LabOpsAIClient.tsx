@@ -167,13 +167,28 @@ function grayscale(img: ImageData): Uint8ClampedArray {
 }
 
 async function loadImageToCanvas(file: File) {
-  const bitmap = await createImageBitmap(file);
   const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas unavailable");
-  ctx.drawImage(bitmap, 0, 0);
+  try {
+    const bitmap = await createImageBitmap(file);
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    ctx.drawImage(bitmap, 0, 0);
+  } catch {
+    // Fallback path for browsers/files where createImageBitmap fails (commonly SVG).
+    const url = URL.createObjectURL(file);
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Image decode failed"));
+      el.src = url;
+    });
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+  }
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   return { canvas, ctx, imgData };
 }
@@ -195,6 +210,7 @@ export function LabOpsAIClient() {
   const [visionPreview, setVisionPreview] = useState("");
   const [visionOverlay, setVisionOverlay] = useState("");
   const [visionRows, setVisionRows] = useState<Array<Record<string, unknown>>>([]);
+  const [visionStatus, setVisionStatus] = useState("");
 
   // Protocol
   const [protocolMode, setProtocolMode] = useState<ProtocolMode>("molarity");
@@ -230,7 +246,7 @@ export function LabOpsAIClient() {
       x: rows.map((r) => r.Time),
       y: rows.map((r) => r.Value),
       type: "scatter",
-      mode: "lines",
+      mode: "lines+markers",
       name: well,
     }));
   }, [omniRows]);
@@ -277,7 +293,17 @@ export function LabOpsAIClient() {
       let tidy = matrixToTidy(rows2d);
       if (!tidy.length) notes.push("No tidy rows found.");
       else {
-        tidy = baselineSubtract(tidy);
+        const pointCountByWell = tidy.reduce<Record<string, number>>((acc, row) => {
+          acc[row.Well] = (acc[row.Well] || 0) + 1;
+          return acc;
+        }, {});
+        const hasTimeSeries = Object.values(pointCountByWell).some((n) => n > 1);
+        if (hasTimeSeries) {
+          tidy = baselineSubtract(tidy);
+          notes.push("Baseline subtraction applied.");
+        } else {
+          notes.push("Single-point plate matrix detected. Baseline subtraction skipped.");
+        }
         notes.push(`Parsed ${tidy.length} rows.`);
       }
       setOmniRows(tidy);
@@ -291,7 +317,10 @@ export function LabOpsAIClient() {
   };
 
   const mergeMetadata = async (file: File) => {
-    if (!omniRows.length) return;
+    if (!omniRows.length) {
+      setOmniNotes((p) => [...p, locale === "ko" ? "먼저 plate 원본 파일을 업로드하세요." : "Upload a raw plate file first, then merge metadata."]);
+      return;
+    }
     try {
       let rows2d: string[][];
       if (/\.(xlsx|xls)$/i.test(file.name)) {
@@ -324,86 +353,95 @@ export function LabOpsAIClient() {
   };
 
   const runVision = async (file: File) => {
-    const { canvas, ctx, imgData } = await loadImageToCanvas(file);
-    setVisionPreview(canvas.toDataURL("image/png"));
-    const g = grayscale(imgData);
-    const w = imgData.width;
-    const h = imgData.height;
+    try {
+      setVisionStatus("");
+      const { canvas, ctx, imgData } = await loadImageToCanvas(file);
+      setVisionPreview(canvas.toDataURL("image/png"));
+      const g = grayscale(imgData);
+      const w = imgData.width;
+      const h = imgData.height;
 
-    if (visionMode === "western") {
-      const col = new Array(w).fill(0).map((_, x) => {
-        let s = 0;
-        for (let y = 0; y < h; y += 1) s += 255 - g[y * w + x];
-        return s;
-      });
-      const laneW = Math.max(4, Math.floor(w / laneCount));
-      const rows: Array<Record<string, unknown>> = [];
-      for (let i = 0; i < laneCount; i += 1) {
-        const x1 = i * laneW;
-        const x2 = i === laneCount - 1 ? w : (i + 1) * laneW;
-        const intensity = col.slice(x1, x2).reduce((a, b) => a + b, 0);
-        rows.push({ Lane: i + 1, IntegratedIntensity: intensity });
-        ctx.strokeStyle = i + 1 === controlLane ? "#22c55e" : "#f59e0b";
-        ctx.strokeRect(x1, 0, x2 - x1, h);
-        ctx.fillStyle = i + 1 === controlLane ? "#22c55e" : "#f59e0b";
-        ctx.fillText(`L${i + 1}`, x1 + 4, 16);
-      }
-      const ctrl = Number(rows[controlLane - 1]?.IntegratedIntensity || NaN);
-      const withRel = rows.map((r) => ({
-        ...r,
-        RelativeDensity: Number.isFinite(ctrl) && ctrl > 0 ? Number(r.IntegratedIntensity) / ctrl : NaN,
-      }));
-      setVisionRows(withRel);
-    } else {
-      const bin = new Uint8Array(w * h);
-      for (let i = 0; i < g.length; i += 1) bin[i] = g[i] > colonyThreshold ? 1 : 0;
-      const seen = new Uint8Array(w * h);
-      const dirs = [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-      ];
-      const rows: Array<Record<string, unknown>> = [];
-      let id = 0;
-      for (let y = 0; y < h; y += 1) {
-        for (let x = 0; x < w; x += 1) {
-          const p = y * w + x;
-          if (!bin[p] || seen[p]) continue;
-          const q: Array<[number, number]> = [[x, y]];
-          seen[p] = 1;
-          let area = 0;
-          let sx = 0;
-          let sy = 0;
-          while (q.length) {
-            const [cx, cy] = q.pop() as [number, number];
-            area += 1;
-            sx += cx;
-            sy += cy;
-            dirs.forEach(([dx, dy]) => {
-              const nx = cx + dx;
-              const ny = cy + dy;
-              if (nx < 0 || ny < 0 || nx >= w || ny >= h) return;
-              const np = ny * w + nx;
-              if (bin[np] && !seen[np]) {
-                seen[np] = 1;
-                q.push([nx, ny]);
-              }
-            });
-          }
-          if (area < 18) continue;
-          id += 1;
-          const cx = Math.round(sx / area);
-          const cy = Math.round(sy / area);
-          ctx.fillStyle = "#22c55e";
-          ctx.fillRect(cx - 1, cy - 1, 3, 3);
-          ctx.fillText(String(id), cx + 2, cy + 2);
-          rows.push({ ColonyID: id, AreaPx: area, CentroidX: cx, CentroidY: cy });
+      if (visionMode === "western") {
+        const col = new Array(w).fill(0).map((_, x) => {
+          let s = 0;
+          for (let y = 0; y < h; y += 1) s += 255 - g[y * w + x];
+          return s;
+        });
+        const laneW = Math.max(4, Math.floor(w / laneCount));
+        const rows: Array<Record<string, unknown>> = [];
+        for (let i = 0; i < laneCount; i += 1) {
+          const x1 = i * laneW;
+          const x2 = i === laneCount - 1 ? w : (i + 1) * laneW;
+          const intensity = col.slice(x1, x2).reduce((a, b) => a + b, 0);
+          rows.push({ Lane: i + 1, IntegratedIntensity: intensity });
+          ctx.strokeStyle = i + 1 === controlLane ? "#22c55e" : "#f59e0b";
+          ctx.strokeRect(x1, 0, x2 - x1, h);
+          ctx.fillStyle = i + 1 === controlLane ? "#22c55e" : "#f59e0b";
+          ctx.fillText(`L${i + 1}`, x1 + 4, 16);
         }
+        const ctrl = Number(rows[controlLane - 1]?.IntegratedIntensity || NaN);
+        const withRel = rows.map((r) => ({
+          ...r,
+          RelativeDensity: Number.isFinite(ctrl) && ctrl > 0 ? Number(r.IntegratedIntensity) / ctrl : NaN,
+        }));
+        setVisionRows(withRel);
+        setVisionStatus(locale === "ko" ? `Western 분석 완료: ${withRel.length} lanes` : `Western analysis complete: ${withRel.length} lanes`);
+      } else {
+        const bin = new Uint8Array(w * h);
+        for (let i = 0; i < g.length; i += 1) bin[i] = g[i] > colonyThreshold ? 1 : 0;
+        const seen = new Uint8Array(w * h);
+        const dirs = [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ];
+        const rows: Array<Record<string, unknown>> = [];
+        let id = 0;
+        for (let y = 0; y < h; y += 1) {
+          for (let x = 0; x < w; x += 1) {
+            const p = y * w + x;
+            if (!bin[p] || seen[p]) continue;
+            const q: Array<[number, number]> = [[x, y]];
+            seen[p] = 1;
+            let area = 0;
+            let sx = 0;
+            let sy = 0;
+            while (q.length) {
+              const [cx, cy] = q.pop() as [number, number];
+              area += 1;
+              sx += cx;
+              sy += cy;
+              dirs.forEach(([dx, dy]) => {
+                const nx = cx + dx;
+                const ny = cy + dy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) return;
+                const np = ny * w + nx;
+                if (bin[np] && !seen[np]) {
+                  seen[np] = 1;
+                  q.push([nx, ny]);
+                }
+              });
+            }
+            if (area < 18) continue;
+            id += 1;
+            const cx = Math.round(sx / area);
+            const cy = Math.round(sy / area);
+            ctx.fillStyle = "#22c55e";
+            ctx.fillRect(cx - 1, cy - 1, 3, 3);
+            ctx.fillText(String(id), cx + 2, cy + 2);
+            rows.push({ ColonyID: id, AreaPx: area, CentroidX: cx, CentroidY: cy });
+          }
+        }
+        setVisionRows(rows);
+        setVisionStatus(locale === "ko" ? `Colony 분석 완료: ${rows.length} objects` : `Colony analysis complete: ${rows.length} objects`);
       }
-      setVisionRows(rows);
+      setVisionOverlay(canvas.toDataURL("image/png"));
+    } catch (e) {
+      setVisionRows([]);
+      setVisionOverlay("");
+      setVisionStatus(`${locale === "ko" ? "이미지 분석 실패" : "Image analysis failed"}: ${String(e)}`);
     }
-    setVisionOverlay(canvas.toDataURL("image/png"));
   };
 
   const runRiskAi = async () => {
@@ -416,11 +454,22 @@ export function LabOpsAIClient() {
           model: HF_MODEL,
           payload: {
             inputs: `Analyze this protocol risk and return bullet list (issue -> consequence -> safer action): ${riskText}`,
-            parameters: { max_new_tokens: 320, temperature: 0.2 },
+            parameters: { max_new_tokens: 700, temperature: 0.2 },
           },
         }),
       });
-      setRiskAi((await response.text()).slice(0, 1800));
+      const text = await response.text();
+      let parsedText = text;
+      try {
+        const parsed = JSON.parse(text);
+        const content = parsed?.choices?.[0]?.message?.content;
+        if (typeof content === "string" && content.trim()) {
+          parsedText = content;
+        }
+      } catch {
+        // keep raw text fallback
+      }
+      setRiskAi(parsedText.slice(0, 5000));
     } catch (e) {
       setRiskAi(`AI call failed: ${String(e)}`);
     }
@@ -601,6 +650,13 @@ export function LabOpsAIClient() {
                   </div>
                   <div className="rounded border border-slate-200 bg-white p-3">
                     <p className="mb-2 text-sm font-medium">Growth Fit</p>
+                    {fitRows.length === 0 ? (
+                      <p className="mb-2 text-xs text-amber-700">
+                        {locale === "ko"
+                          ? "Growth fit 결과가 없습니다. 각 Well당 4개 이상의 time point가 필요합니다."
+                          : "No growth fit result. At least 4 time points per well are required."}
+                      </p>
+                    ) : null}
                     <div className="max-h-56 overflow-auto text-xs">
                       <table className="w-full border-collapse">
                         <thead>
@@ -616,6 +672,31 @@ export function LabOpsAIClient() {
                               <td className="border p-1">{r.Well}</td>
                               <td className="border p-1">{r.growthRate.toFixed(5)}</td>
                               <td className="border p-1">{r.r2.toFixed(4)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="rounded border border-slate-200 bg-white p-3">
+                    <p className="mb-2 text-sm font-medium">{locale === "ko" ? "파싱 미리보기" : "Parsed Preview"}</p>
+                    <div className="max-h-56 overflow-auto text-xs">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100">
+                            <th className="border p-1">Well</th>
+                            <th className="border p-1">Time</th>
+                            <th className="border p-1">Value</th>
+                            <th className="border p-1">Group</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {omniRows.slice(0, 80).map((r, idx) => (
+                            <tr key={`${r.Well}-${r.Time}-${idx}`}>
+                              <td className="border p-1">{r.Well}</td>
+                              <td className="border p-1">{r.Time}</td>
+                              <td className="border p-1">{r.Value.toFixed(6)}</td>
+                              <td className="border p-1">{r.Group || "-"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -685,7 +766,8 @@ export function LabOpsAIClient() {
                     <span>{colonyThreshold}</span>
                   </label>
                 )}
-                <input type="file" accept="image/*" className="block w-full text-sm" onChange={(e) => e.target.files?.[0] && void runVision(e.target.files[0])} />
+                <input type="file" accept="image/*,.svg,.svgz" className="block w-full text-sm" onChange={(e) => e.target.files?.[0] && void runVision(e.target.files[0])} />
+                {visionStatus ? <p className="mt-2 text-xs text-slate-600">{visionStatus}</p> : null}
               </div>
               <div className="grid gap-3 lg:grid-cols-2">
                 {visionPreview ? <img src={visionPreview} alt="preview" className="w-full rounded border border-slate-200 bg-white p-2" /> : null}
