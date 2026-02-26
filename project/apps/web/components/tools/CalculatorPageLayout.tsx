@@ -62,8 +62,9 @@ export function CalculatorPageLayout({
     <div className="mx-auto grid max-w-6xl gap-4 px-4 py-4 lg:grid-cols-5">
       <div className="space-y-4 lg:col-span-3">
         <SectionCard title={title}>
+          <CalculationGuide id={calculatorId} locale={locale} />
           <div className="grid gap-4">{inputs}</div>
-          <ValidationBanner messages={validations} />
+          <ValidationBanner messages={validations} locale={locale} />
         </SectionCard>
         <SectionCard title={labels.results}>
           <ResultTable columns={columns} rows={rows} />
@@ -92,7 +93,6 @@ export function CalculatorPageLayout({
             </div>
           </div>
         </SectionCard>
-        <CalculationGuide id={calculatorId} locale={locale} />
       </div>
       <div className="space-y-4 lg:col-span-2">
         <RecentCalculationsPanel

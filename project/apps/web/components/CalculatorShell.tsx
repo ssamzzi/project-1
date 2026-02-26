@@ -45,9 +45,10 @@ export function CalculatorShell({
     <div className="mx-auto grid max-w-6xl gap-4 px-4 py-4 lg:grid-cols-5">
       <div className="space-y-4 lg:col-span-3">
         <SectionCard title={title}>
+          <CalculationGuide locale={locale} id={calculatorId} />
           <div className="grid gap-4">{inputs}</div>
           <div className="mt-4">
-            <ValidationBanner messages={validations} />
+            <ValidationBanner messages={validations} locale={locale} />
           </div>
         </SectionCard>
         <SectionCard title="Results">
@@ -74,7 +75,6 @@ export function CalculatorShell({
             </div>
           </div>
         </SectionCard>
-        <CalculationGuide locale={locale} id={calculatorId} />
       </div>
       <div className="space-y-4 lg:col-span-2">
         <TipsPanel calculatorId={calculatorId} tips={tips} context={tipContext} />
