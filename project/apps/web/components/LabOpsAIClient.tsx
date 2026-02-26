@@ -11,6 +11,7 @@ const Plot = dynamic(() => import("react-plotly.js"), { ssr: false }) as any;
 
 type LabTab = "omniparse" | "vision" | "protocolguard" | "inventory";
 type VisionMode = "western" | "colony";
+type VisionEngine = "classical" | "ai";
 type ProtocolMode = "molarity" | "primer" | "risk";
 
 type TidyRow = { Well: string; Time: number; Value: number; Group?: string };
@@ -206,6 +207,7 @@ export function LabOpsAIClient() {
 
   // Vision
   const [visionMode, setVisionMode] = useState<VisionMode>("western");
+  const [visionEngine, setVisionEngine] = useState<VisionEngine>("classical");
   const [laneCount, setLaneCount] = useState(8);
   const [controlLane, setControlLane] = useState(1);
   const [colonyThreshold, setColonyThreshold] = useState(140);
@@ -213,6 +215,7 @@ export function LabOpsAIClient() {
   const [visionOverlay, setVisionOverlay] = useState("");
   const [visionRows, setVisionRows] = useState<Array<Record<string, unknown>>>([]);
   const [visionStatus, setVisionStatus] = useState("");
+  const [visionAiSummary, setVisionAiSummary] = useState("");
 
   // Protocol
   const [protocolMode, setProtocolMode] = useState<ProtocolMode>("molarity");
@@ -354,7 +357,7 @@ export function LabOpsAIClient() {
     }
   };
 
-  const runVision = async (file: File) => {
+  const runVisionClassical = async (file: File) => {
     try {
       setVisionStatus("");
       const { canvas, ctx, imgData } = await loadImageToCanvas(file);
@@ -390,7 +393,8 @@ export function LabOpsAIClient() {
         setVisionStatus(locale === "ko" ? `Western 분석 완료: ${withRel.length} lanes` : `Western analysis complete: ${withRel.length} lanes`);
       } else {
         const bin = new Uint8Array(w * h);
-        for (let i = 0; i < g.length; i += 1) bin[i] = g[i] > colonyThreshold ? 1 : 0;
+        // Colonies are typically darker than background on plate images.
+        for (let i = 0; i < g.length; i += 1) bin[i] = g[i] < colonyThreshold ? 1 : 0;
         const seen = new Uint8Array(w * h);
         const dirs = [
           [1, 0],
@@ -444,6 +448,90 @@ export function LabOpsAIClient() {
       setVisionOverlay("");
       setVisionStatus(`${locale === "ko" ? "이미지 분석 실패" : "Image analysis failed"}: ${String(e)}`);
     }
+  };
+
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("File read failed"));
+      reader.readAsDataURL(file);
+    });
+
+  const runVisionAi = async (file: File) => {
+    try {
+      setVisionStatus(locale === "ko" ? "AI 분석 요청 중..." : "Requesting AI analysis...");
+      setVisionAiSummary("");
+      const dataUrl = await fileToDataUrl(file);
+      setVisionPreview(dataUrl);
+      setVisionOverlay("");
+      const body = {
+        analysisType: visionMode,
+        imageDataUrl: dataUrl,
+      };
+      const response = await fetch("/api/ai-vision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const text = await response.text();
+      let payload: any = {};
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = { raw: text };
+      }
+      if (!response.ok) {
+        throw new Error(payload?.error || `HTTP ${response.status}`);
+      }
+      const parsed = payload?.parsed || {};
+      const summary = typeof parsed.summary === "string" ? parsed.summary : typeof payload?.raw === "string" ? payload.raw : "";
+      setVisionAiSummary(summary);
+
+      if (visionMode === "colony") {
+        const count = Number(parsed.colony_count);
+        setVisionRows([
+          {
+            ColonyCount_Estimated: Number.isFinite(count) ? count : null,
+            Confidence: parsed.confidence ?? "-",
+            Method: "HF Vision",
+          },
+        ]);
+      } else {
+        const laneInt = Array.isArray(parsed.lane_relative_intensities) ? parsed.lane_relative_intensities : [];
+        if (laneInt.length) {
+          setVisionRows(
+            laneInt.map((v: unknown, i: number) => ({
+              Lane: i + 1,
+              RelativeDensity_AI: typeof v === "number" ? v : Number(v),
+              Method: "HF Vision",
+            }))
+          );
+        } else {
+          const laneCountEstimated = Number(parsed.lane_count);
+          setVisionRows([
+            {
+              LaneCount_Estimated: Number.isFinite(laneCountEstimated) ? laneCountEstimated : null,
+              Confidence: parsed.confidence ?? "-",
+              Method: "HF Vision",
+            },
+          ]);
+        }
+      }
+      setVisionStatus(locale === "ko" ? "AI 분석 완료" : "AI analysis complete");
+    } catch (e) {
+      setVisionRows([]);
+      setVisionAiSummary("");
+      setVisionStatus(`${locale === "ko" ? "AI 분석 실패" : "AI analysis failed"}: ${String(e)}`);
+    }
+  };
+
+  const runVision = async (file: File) => {
+    if (visionEngine === "ai") {
+      await runVisionAi(file);
+      return;
+    }
+    await runVisionClassical(file);
   };
 
   const runRiskAi = async () => {
@@ -750,26 +838,41 @@ export function LabOpsAIClient() {
                     Colony Counting
                   </button>
                 </div>
+                <div className="mb-3 flex gap-2 text-xs">
+                  <button className={`rounded px-2 py-1 ${visionEngine === "classical" ? "bg-slate-900 text-white" : "bg-slate-100"}`} onClick={() => setVisionEngine("classical")}>
+                    Classical
+                  </button>
+                  <button className={`rounded px-2 py-1 ${visionEngine === "ai" ? "bg-cyan-700 text-white" : "bg-slate-100"}`} onClick={() => setVisionEngine("ai")}>
+                    AI (Deep)
+                  </button>
+                </div>
                 {visionMode === "western" ? (
                   <div className="mb-3 grid gap-2 sm:grid-cols-2">
                     <label className="text-xs">
                       Lane count
-                      <input type="number" min={2} max={24} value={laneCount} onChange={(e) => setLaneCount(Math.max(2, Number(e.target.value) || 8))} className="mt-1 w-full rounded border px-2 py-1" />
+                      <input disabled={visionEngine === "ai"} type="number" min={2} max={24} value={laneCount} onChange={(e) => setLaneCount(Math.max(2, Number(e.target.value) || 8))} className="mt-1 w-full rounded border px-2 py-1 disabled:opacity-50" />
                     </label>
                     <label className="text-xs">
                       Control lane
-                      <input type="number" min={1} max={laneCount} value={controlLane} onChange={(e) => setControlLane(Math.max(1, Number(e.target.value) || 1))} className="mt-1 w-full rounded border px-2 py-1" />
+                      <input disabled={visionEngine === "ai"} type="number" min={1} max={laneCount} value={controlLane} onChange={(e) => setControlLane(Math.max(1, Number(e.target.value) || 1))} className="mt-1 w-full rounded border px-2 py-1 disabled:opacity-50" />
                     </label>
                   </div>
                 ) : (
                   <label className="mb-3 block text-xs">
                     Threshold
-                    <input type="range" min={0} max={255} value={colonyThreshold} onChange={(e) => setColonyThreshold(Number(e.target.value))} className="mt-1 w-full" />
+                    <input disabled={visionEngine === "ai"} type="range" min={0} max={255} value={colonyThreshold} onChange={(e) => setColonyThreshold(Number(e.target.value))} className="mt-1 w-full disabled:opacity-50" />
                     <span>{colonyThreshold}</span>
                   </label>
                 )}
                 <input type="file" accept="image/*,.svg,.svgz" className="block w-full text-sm" onChange={(e) => e.target.files?.[0] && void runVision(e.target.files[0])} />
                 {visionStatus ? <p className="mt-2 text-xs text-slate-600">{visionStatus}</p> : null}
+                {visionEngine === "ai" ? (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {locale === "ko"
+                      ? "AI(Deep) 모드는 Hugging Face Vision 모델 추론을 사용합니다. 실제 사진 품질/조명에 따라 정확도가 달라질 수 있습니다."
+                      : "AI (Deep) mode uses Hugging Face Vision inference. Accuracy depends on real photo quality and lighting."}
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-3 lg:grid-cols-2">
                 {visionPreview ? <img src={visionPreview} alt="preview" className="w-full rounded border border-slate-200 bg-white p-2" /> : null}
@@ -801,6 +904,12 @@ export function LabOpsAIClient() {
                       </tbody>
                     </table>
                   </div>
+                  {visionAiSummary ? (
+                    <div className="rounded border border-cyan-200 bg-cyan-50 p-2 text-xs">
+                      <p className="font-semibold">AI Summary</p>
+                      <pre className="whitespace-pre-wrap">{visionAiSummary}</pre>
+                    </div>
+                  ) : null}
                   <div className="flex gap-2">
                     <button className="rounded bg-slate-900 px-3 py-2 text-xs text-white" onClick={() => downloadCsv("vision_results.csv", visionRows)}>
                       Download CSV
