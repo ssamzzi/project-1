@@ -90,7 +90,9 @@ function matrixToTidy(raw: string[][]): TidyRow[] {
     if (out.length) return out;
   }
 
-  const looksTimeFirst = data.slice(0, 12).filter((r) => Number.isFinite(Number(r[0]))).length >= 6;
+  const probe = data.slice(0, 12);
+  const numericTimeRows = probe.filter((r) => Number.isFinite(Number(r[0]))).length;
+  const looksTimeFirst = numericTimeRows >= Math.max(3, Math.ceil(probe.length * 0.6));
   if (looksTimeFirst) {
     const wells = header.slice(1).map((x) => String(x || "").toUpperCase());
     data.forEach((r) => {
