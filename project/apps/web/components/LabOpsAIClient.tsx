@@ -450,19 +450,29 @@ export function LabOpsAIClient() {
     }
   };
 
-  const fileToDataUrl = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("File read failed"));
-      reader.readAsDataURL(file);
-    });
+  const toPngDataUrlForAi = async (file: File) => {
+    // Always rasterize before sending to HF vision endpoint.
+    // This avoids unsupported source formats (e.g., raw SVG data URL).
+    const { canvas } = await loadImageToCanvas(file);
+    const maxSide = 1280;
+    if (canvas.width <= maxSide && canvas.height <= maxSide) {
+      return canvas.toDataURL("image/png");
+    }
+    const ratio = Math.min(maxSide / canvas.width, maxSide / canvas.height);
+    const out = document.createElement("canvas");
+    out.width = Math.max(1, Math.round(canvas.width * ratio));
+    out.height = Math.max(1, Math.round(canvas.height * ratio));
+    const octx = out.getContext("2d");
+    if (!octx) return canvas.toDataURL("image/png");
+    octx.drawImage(canvas, 0, 0, out.width, out.height);
+    return out.toDataURL("image/png");
+  };
 
   const runVisionAi = async (file: File) => {
     try {
       setVisionStatus(locale === "ko" ? "AI 분석 요청 중..." : "Requesting AI analysis...");
       setVisionAiSummary("");
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await toPngDataUrlForAi(file);
       setVisionPreview(dataUrl);
       setVisionOverlay("");
       const body = {
