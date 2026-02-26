@@ -21,7 +21,7 @@ export default function HomePage() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
       <div className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-700">Bio Lab</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Bio Lab</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">{t('home.title')}</h1>
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-700 sm:text-lg">{t('home.subtitle')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-700">
@@ -41,13 +41,13 @@ export default function HomePage() {
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
             href="/tools"
-            className="rounded-md bg-sky-600 px-6 py-3 text-base font-semibold text-white"
+            className="rounded-md bg-sky-600 px-6 py-3 text-base font-semibold text-white shadow-sm"
           >
             {t('home.cta.tools')}
           </Link>
           <Link
             href="/search"
-            className="rounded-md border border-slate-300 bg-white px-6 py-3 text-base font-semibold text-slate-900"
+            className="rounded-md border border-slate-300 bg-white px-6 py-3 text-base font-semibold text-slate-900 shadow-sm"
           >
             {t('nav.search')}
           </Link>
@@ -66,7 +66,7 @@ export default function HomePage() {
             placeholder={t('search.placeholder')}
             className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm md:max-w-lg"
           />
-          <button type="submit" className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+          <button type="submit" className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm">
             {t('nav.search')}
           </button>
         </form>

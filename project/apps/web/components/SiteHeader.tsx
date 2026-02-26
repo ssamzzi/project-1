@@ -44,9 +44,9 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="font-semibold text-slate-900">
+        <Link href="/" className="font-semibold tracking-tight text-slate-900">
           BioLT
         </Link>
         <nav>
@@ -63,14 +63,14 @@ export function SiteHeader() {
             <li>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-2 py-1"
+                className="rounded-md border border-slate-300 bg-white px-2 py-1"
                 onClick={() => setLocale(nextLocale)}
               >
                 {t('nav.language')}: {locale.toUpperCase()} / {nextLocale.toUpperCase()}
               </button>
             </li>
             <li>
-              <button type="button" className="rounded-md border border-slate-300 px-2 py-1" onClick={toggleTheme}>
+              <button type="button" className="rounded-md border border-slate-300 bg-white px-2 py-1" onClick={toggleTheme}>
                 {t('nav.theme')}: {theme === 'dark' ? t('nav.theme.dark') : t('nav.theme.light')}
               </button>
             </li>

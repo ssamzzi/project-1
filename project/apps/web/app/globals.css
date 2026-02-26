@@ -3,25 +3,31 @@
 @tailwind utilities;
 
 :root {
-  --bg-start: #eef4ff;
-  --bg-end: #f9fbff;
-  --text-main: #0f172a;
+  --bg-start: #f3f7ff;
+  --bg-end: #fffdf8;
+  --bg-accent: rgba(14, 165, 233, 0.08);
+  --text-main: #0b1a2b;
   --text-soft: #334155;
-  --surface: rgba(255, 255, 255, 0.95);
+  --surface: rgba(255, 255, 255, 0.92);
   --surface-strong: #ffffff;
-  --surface-border: #cbd5e1;
-  --link: #3730a3;
+  --surface-border: #d6dfec;
+  --surface-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --link: #0b67b5;
+  --focus-ring: rgba(14, 165, 233, 0.32);
 }
 
 [data-theme='dark'] {
-  --bg-start: #0b1220;
-  --bg-end: #121c2f;
+  --bg-start: #081019;
+  --bg-end: #0f1728;
+  --bg-accent: rgba(56, 189, 248, 0.08);
   --text-main: #e2e8f0;
   --text-soft: #cbd5e1;
-  --surface: rgba(15, 23, 42, 0.92);
+  --surface: rgba(15, 23, 42, 0.86);
   --surface-strong: #111827;
   --surface-border: #334155;
-  --link: #a5b4fc;
+  --surface-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  --link: #7dd3fc;
+  --focus-ring: rgba(56, 189, 248, 0.32);
 }
 
 html,
@@ -29,7 +35,10 @@ body {
   padding: 0;
   margin: 0;
   min-height: 100%;
-  background: linear-gradient(130deg, var(--bg-start), var(--bg-end));
+  background:
+    radial-gradient(circle at 15% 10%, var(--bg-accent), transparent 28%),
+    radial-gradient(circle at 85% 8%, rgba(59, 130, 246, 0.07), transparent 22%),
+    linear-gradient(130deg, var(--bg-start), var(--bg-end));
   color: var(--text-main);
   transition: background 0.25s ease, color 0.25s ease;
 }
@@ -58,6 +67,14 @@ textarea {
   color: var(--text-main);
   background-color: var(--surface-strong);
   border-color: var(--surface-border);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 [data-theme='dark'] .bg-white,
@@ -97,6 +114,11 @@ textarea {
 
 [data-theme='dark'] .text-indigo-700 {
   color: var(--link) !important;
+}
+
+.rounded-xl,
+.rounded-lg {
+  box-shadow: var(--surface-shadow);
 }
 
 /* Keep long text/URLs/formulas from overflowing card and table boundaries. */
