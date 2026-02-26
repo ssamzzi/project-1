@@ -217,8 +217,24 @@ const GUIDE: Record<string, GuideBlock> = {
 export function CalculationGuide({ id, locale }: { id: string; locale: Locale }) {
   const labels =
     locale === 'ko'
-      ? { title: '실험 가이드', intent: '실험 의도', reagents: '용액/시약', workflow: '실험 순서', ranges: '권장 범위', cautions: '주의할 점' }
-      : { title: 'Experiment Guide', intent: 'Intent', reagents: 'Reagents', workflow: 'Workflow', ranges: 'Recommended range', cautions: 'Cautions' };
+      ? {
+          title: '실험 가이드',
+          intent: '실험 의도',
+          reagents: '용액/시약',
+          workflow: '실험 순서',
+          ranges: '권장 범위',
+          cautions: '주의할 점',
+          glossary: '용어 도움말',
+        }
+      : {
+          title: 'Experiment Guide',
+          intent: 'Intent',
+          reagents: 'Reagents',
+          workflow: 'Workflow',
+          ranges: 'Recommended range',
+          cautions: 'Cautions',
+          glossary: 'Glossary',
+        };
   const guide = GUIDE[id];
   if (!guide) return null;
 
@@ -254,6 +270,27 @@ export function CalculationGuide({ id, locale }: { id: string; locale: Locale })
             <li key={`${id}-caution-${line}`}>{line}</li>
           ))}
         </ul>
+        <details className="rounded border border-slate-200 bg-white p-2">
+          <summary className="cursor-pointer font-semibold">{labels.glossary}</summary>
+          <ul className="mt-2 list-disc pl-5 text-xs text-slate-700">
+            <li>
+              <span className="font-semibold">Overage:</span>{' '}
+              {locale === 'ko' ? 'pipetting 오차를 보정하기 위한 여유 부피/비율' : 'extra volume/ratio to absorb pipetting error'}
+            </li>
+            <li>
+              <span className="font-semibold">Molar ratio:</span>{' '}
+              {locale === 'ko' ? '분자 수 기준 비율(질량비와 다름)' : 'molecule-count based ratio (different from mass ratio)'}
+            </li>
+            <li>
+              <span className="font-semibold">Control:</span>{' '}
+              {locale === 'ko' ? '실험 조건의 정상/오염 여부를 판별하는 기준 반응' : 'reference reaction to validate run quality and contamination status'}
+            </li>
+            <li>
+              <span className="font-semibold">Fold change:</span>{' '}
+              {locale === 'ko' ? '기준군 대비 상대 변화 배수' : 'relative change multiple versus control condition'}
+            </li>
+          </ul>
+        </details>
       </div>
     </section>
   );

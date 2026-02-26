@@ -81,9 +81,11 @@ export function ValidationBanner({
   locale?: 'en' | 'ko';
 }) {
   if (!messages.length) return null;
-  const critical = messages.filter((m) => m.severity === 'critical');
-  const warn = messages.filter((m) => m.severity === 'warn');
-  const info = messages.filter((m) => m.severity === 'info');
+  const severityOrder: Record<'critical' | 'warn' | 'info', number> = { critical: 0, warn: 1, info: 2 };
+  const ordered = [...messages].sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+  const critical = ordered.filter((m) => m.severity === 'critical');
+  const warn = ordered.filter((m) => m.severity === 'warn');
+  const info = ordered.filter((m) => m.severity === 'info');
 
   const labels =
     locale === 'ko'
@@ -113,7 +115,7 @@ export function ValidationBanner({
     <div className="space-y-2" role="status" aria-live="polite">
       {critical.length > 0 ? (
         <section className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-rose-900">
-          <p className="text-sm font-medium">{labels.blocking}</p>
+          <p className="text-sm font-medium">🚫 {labels.blocking}</p>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
             {critical.map((m) => renderItem(m))}
           </ul>
@@ -121,7 +123,7 @@ export function ValidationBanner({
       ) : null}
       {warn.length > 0 ? (
         <section className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
-          <p className="text-sm font-medium">{labels.warning}</p>
+          <p className="text-sm font-medium">⚠️ {labels.warning}</p>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
             {warn.map((m) => renderItem(m))}
           </ul>
@@ -129,7 +131,7 @@ export function ValidationBanner({
       ) : null}
       {info.length > 0 ? (
         <section className="rounded-lg border border-sky-300 bg-sky-50 p-3 text-sky-900">
-          <p className="text-sm font-medium">{labels.note}</p>
+          <p className="text-sm font-medium">ℹ️ {labels.note}</p>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
             {info.map((m) => renderItem(m))}
           </ul>

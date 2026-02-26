@@ -58,10 +58,12 @@ export function RecentCalculationsPanel({
   calculatorId,
   shareState,
   locale,
+  compact = false,
 }: {
   calculatorId: string;
   shareState: Record<string, unknown>;
   locale: 'en' | 'ko';
+  compact?: boolean;
 }) {
   const [items, setItems] = useState<RecentCalculationItem[]>([]);
   const [page, setPage] = useState(1);
@@ -82,6 +84,7 @@ export function RecentCalculationsPanel({
           title: '최근 계산',
           save: '현재 계산 저장',
           load: '불러오기',
+          quickLoad: '최근 불러오기',
           prev: '이전',
           next: '다음',
           page: '페이지',
@@ -91,6 +94,7 @@ export function RecentCalculationsPanel({
           title: 'Recent Calculations',
           save: 'Save current calculation',
           load: 'Load',
+          quickLoad: 'Quick load',
           prev: 'Prev',
           next: 'Next',
           page: 'Page',
@@ -132,7 +136,30 @@ export function RecentCalculationsPanel({
           {labels.save}
         </button>
       </div>
+      {compact ? (
+        <div className="flex items-center gap-2 text-xs">
+          <label className="text-slate-600">{labels.quickLoad}</label>
+          <select
+            className="h-8 min-w-[180px] rounded border border-slate-300 px-2"
+            defaultValue=""
+            onChange={(event) => {
+              const url = event.target.value;
+              if (url) window.location.href = url;
+            }}
+          >
+            <option value="" disabled>
+              {locale === 'ko' ? '선택...' : 'Select...'}
+            </option>
+            {filtered.slice(0, 10).map((item) => (
+              <option key={item.id} value={item.url}>
+                {formatDate(item.createdAt, locale)}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
       {filtered.length === 0 ? <p className="text-xs text-slate-500">{labels.empty}</p> : null}
+      {compact ? null : (
       <ul className="space-y-2">
         {paged.map((item) => (
           <li key={item.id} className="rounded border border-slate-200 p-2 text-xs">
@@ -151,7 +178,8 @@ export function RecentCalculationsPanel({
           </li>
         ))}
       </ul>
-      {filtered.length > PAGE_SIZE ? (
+      )}
+      {!compact && filtered.length > PAGE_SIZE ? (
         <div className="flex items-center justify-end gap-2 text-xs text-slate-600">
           <button
             type="button"
