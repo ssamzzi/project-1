@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocale } from '../../lib/context/LocaleContext';
 import { toolMetas } from '../../lib/data/tools';
 
-type SearchKind = 'tool';
+type SearchKind = 'tool' | 'module';
 
 interface SearchItem {
   kind: SearchKind;
@@ -37,7 +37,15 @@ export function SearchClient() {
       haystack: [tool.nameEn, tool.nameKo, tool.shortEn, tool.shortKo, tool.slug].join(' '),
     }));
 
-    return tools;
+    const moduleItem: SearchItem = {
+      kind: 'module',
+      title: 'LabOps AI',
+      summary: locale === 'ko' ? 'OmniParse, VisionLab, ProtocolGuard, Inventory 통합 모듈' : 'Integrated OmniParse, VisionLab, ProtocolGuard, and Inventory module',
+      href: '/labops-ai',
+      haystack: 'labops ai omniparse visionlab protocolguard inventory parser blot colony barcode freezer',
+    };
+
+    return [moduleItem, ...tools];
   }, [locale]);
 
   const filtered = useMemo(() => {
@@ -50,11 +58,12 @@ export function SearchClient() {
     const collator = locale === 'ko' ? 'ko-KR' : 'en-US';
     const sortByTitle = (a: SearchItem, b: SearchItem) => a.title.localeCompare(b.title, collator);
     return {
+      modules: filtered.filter((item) => item.kind === 'module').sort(sortByTitle),
       tools: filtered.filter((item) => item.kind === 'tool').sort(sortByTitle),
     };
   }, [filtered, locale]);
 
-  const hasAny = grouped.tools.length > 0;
+  const hasAny = grouped.modules.length > 0 || grouped.tools.length > 0;
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
@@ -71,6 +80,17 @@ export function SearchClient() {
 
       {hasAny ? (
         <div className="mt-6">
+          <section>
+            <h2 className="text-lg font-semibold">Modules</h2>
+            <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
+              {grouped.modules.map((item) => (
+                <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
+                  <p className="mt-1 text-slate-600">{item.summary}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
           <section>
             <h2 className="text-lg font-semibold">{t('search.tools')}</h2>
             <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">

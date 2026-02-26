@@ -55,6 +55,9 @@ export function SiteHeader() {
               <Link href="/tools">{t('nav.tools')}</Link>
             </li>
             <li>
+              <Link href="/labops-ai">LabOps AI</Link>
+            </li>
+            <li>
               <Link href="/about">{t('nav.about')}</Link>
             </li>
             <li>

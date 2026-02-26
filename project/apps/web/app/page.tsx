@@ -51,6 +51,12 @@ export default function HomePage() {
           >
             {t('nav.search')}
           </Link>
+          <Link
+            href="/labops-ai"
+            className="rounded-md border border-slate-300 bg-white px-6 py-3 text-base font-semibold text-slate-900 shadow-sm"
+          >
+            LabOps AI
+          </Link>
         </div>
         <form
           className="mt-5 flex flex-wrap gap-2"
@@ -91,6 +97,12 @@ export default function HomePage() {
             <p className="text-sm font-semibold text-slate-900">Ligation</p>
             <p className="mt-1 text-sm text-slate-600">
               {locale === 'ko' ? 'Vector/Insert molar ratio 계산' : 'Vector/insert molar ratio setup'}
+            </p>
+          </Link>
+          <Link href="/labops-ai" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-300">
+            <p className="text-sm font-semibold text-slate-900">LabOps AI</p>
+            <p className="mt-1 text-sm text-slate-600">
+              {locale === 'ko' ? 'OmniParse, VisionLab, ProtocolGuard, Inventory 통합 모듈' : 'Integrated OmniParse, VisionLab, ProtocolGuard, and Inventory modules'}
             </p>
           </Link>
         </div>
