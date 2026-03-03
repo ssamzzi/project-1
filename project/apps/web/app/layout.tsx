@@ -2,12 +2,13 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import './globals.css';
 import { SiteHeader } from '../components/SiteHeader';
+import { SiteFooter } from '../components/SiteFooter';
 import { LocaleProvider } from '../lib/context/LocaleContext';
 import { AdminProvider } from '../lib/context/AdminContext';
 
 export const metadata: Metadata = {
   title: 'BioLT (Bio Lab Tools)',
-  description: 'A free static portal for practical bio lab calculations.',
+  description: 'BioLT provides practical calculators, assumptions, and lab-ready guidance for molecular and cell biology experiments.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AdminProvider>
             <SiteHeader />
             <main>{children}</main>
+            <SiteFooter />
           </AdminProvider>
         </LocaleProvider>
       </body>
