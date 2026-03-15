@@ -1,25 +1,28 @@
 # Osmolarity Curation
 
 ## When to use
-Use this when checking buffer compatibility for cells and enzymes.
+Use this guide while preparing media, wash solutions, or treatment buffers where osmotic stress can affect cell viability or assay behavior.
+
+## Why osmolarity deserves a separate check
+Even when a recipe looks chemically correct, the final solution can drift outside the tolerance of the cells or assay system because multiple solutes contribute to osmotic load. This becomes especially important when supplements, antibiotics, serum replacements, or concentrated additives are layered into the same formulation.
 
 ## Common input mistakes
-- Mixing mOsm/kg and mOsm/L assumptions.
-- Forgetting temperature and density differences.
-- Adding osmolytes without adjusting osmolarity.
+- Assuming molarity and osmolarity are interchangeable.
+- Forgetting dissociation factors for salts.
+- Ignoring the osmotic contribution of supplements or concentrated stocks.
+- Measuring only pH and skipping osmolarity verification after recipe changes.
 
 ## Interpretation pitfalls
-- Osmolarity estimates do not replace full experimental verification.
-- Different solute dissociation states shift effective osmolarity.
+- Two recipes with the same nominal salt concentration can have different osmotic behavior.
+- Freeze-thaw or evaporation can shift osmolarity without obvious visual changes.
+- Cells under osmotic stress may look like they have biological treatment effects when the real cause is media formulation.
 
-## Recommended tools
-- Henderson reference style tables: quick manual check.
-- Spreadsheet calculations: transparent audit.
-- External osmolarity calculators: easy entry.
-
-## Alternative links in case of login/JS issues
-- Public physiology resources.
-- Journal methods sections with measured media values.
+## Practical review checklist
+1. List every major solute that contributes to osmotic load.
+2. Estimate dissociation behavior before calculating total osmolarity.
+3. Recheck the final formulation after adding supplements or drugs.
+4. Compare the result to the tolerance range of the cells or assay.
+5. Measure directly with an osmometer when the experiment is sensitive.
 
 ## Disclaimer
-Estimate values are context-limited; check with reagent datasheet ranges.
+Osmolarity estimates are useful for planning, but direct measurement is preferred whenever viability, morphology, or uptake behavior is critical.

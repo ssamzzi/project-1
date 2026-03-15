@@ -5,19 +5,51 @@ import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
 import { LocaleProvider } from '../lib/context/LocaleContext';
 import { AdminProvider } from '../lib/context/AdminContext';
+import { ADSENSE_CLIENT, CONTACT_EMAIL, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '../lib/site';
 
 export const metadata: Metadata = {
-  title: 'BioLT (Bio Lab Tools)',
-  description: 'BioLT provides practical calculators, assumptions, and lab-ready guidance for molecular and cell biology experiments.',
+  metadataBase: new URL(SITE_URL),
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    type: 'website',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    url: SITE_URL,
+    description: SITE_DESCRIPTION,
+    publisher: {
+      '@type': 'Organization',
+      name: 'BioLT',
+      email: CONTACT_EMAIL,
+    },
+  };
+
   return (
     <html lang="en">
       <head>
-        <meta name="google-adsense-account" content="ca-pub-6511826255220683" />
+        <meta name="google-adsense-account" content={ADSENSE_CLIENT} />
       </head>
       <body>
+        <Script
+          id="google-adsense"
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-65LXZ9XN6V" strategy="afterInteractive" />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
@@ -35,6 +67,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
             })(window, document, "clarity", "script", "vlflozcyxl");
           `}
+        </Script>
+        <Script id="structured-data" type="application/ld+json" strategy="afterInteractive">
+          {JSON.stringify(structuredData)}
         </Script>
         <LocaleProvider>
           <AdminProvider>

@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocale } from '../../lib/context/LocaleContext';
+import { guideMetas } from '../../lib/data/guides';
 import { toolMetas } from '../../lib/data/tools';
+import { workflowMetas } from '../../lib/data/workflows';
 
-type SearchKind = 'tool' | 'module';
+type SearchKind = 'tool' | 'module' | 'guide' | 'workflow';
 
 interface SearchItem {
   kind: SearchKind;
@@ -37,15 +39,31 @@ export function SearchClient() {
       haystack: [tool.nameEn, tool.nameKo, tool.shortEn, tool.shortKo, tool.slug].join(' '),
     }));
 
+    const guides = guideMetas.map((guide) => ({
+      kind: 'guide' as const,
+      title: guide.titleEn,
+      summary: guide.shortEn,
+      href: `/guides/${guide.slug}`,
+      haystack: [guide.titleEn, guide.titleKo, guide.shortEn, guide.shortKo, guide.slug].join(' '),
+    }));
+
+    const workflows = workflowMetas.map((workflow) => ({
+      kind: 'workflow' as const,
+      title: workflow.titleEn,
+      summary: workflow.shortEn,
+      href: `/workflows/${workflow.slug}`,
+      haystack: [workflow.titleEn, workflow.titleKo, workflow.shortEn, workflow.shortKo, workflow.slug, workflow.tools.join(' ')].join(' '),
+    }));
+
     const moduleItem: SearchItem = {
       kind: 'module',
       title: 'LabOps AI',
-      summary: locale === 'ko' ? 'OmniParse, VisionLab, ProtocolGuard, Inventory 통합 모듈' : 'Integrated OmniParse, VisionLab, ProtocolGuard, and Inventory module',
+      summary: locale === 'ko' ? 'AI 분석 모듈과 실무 도우미' : 'Integrated AI analysis and lab utility modules',
       href: '/labops-ai',
       haystack: 'labops ai omniparse visionlab protocolguard inventory parser blot colony barcode freezer',
     };
 
-    return [moduleItem, ...tools];
+    return [moduleItem, ...tools, ...guides, ...workflows];
   }, [locale]);
 
   const filtered = useMemo(() => {
@@ -60,10 +78,12 @@ export function SearchClient() {
     return {
       modules: filtered.filter((item) => item.kind === 'module').sort(sortByTitle),
       tools: filtered.filter((item) => item.kind === 'tool').sort(sortByTitle),
+      guides: filtered.filter((item) => item.kind === 'guide').sort(sortByTitle),
+      workflows: filtered.filter((item) => item.kind === 'workflow').sort(sortByTitle),
     };
   }, [filtered, locale]);
 
-  const hasAny = grouped.modules.length > 0 || grouped.tools.length > 0;
+  const hasAny = grouped.modules.length > 0 || grouped.tools.length > 0 || grouped.guides.length > 0 || grouped.workflows.length > 0;
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
@@ -79,7 +99,7 @@ export function SearchClient() {
       {!hasAny ? <p className="mt-6 text-sm text-slate-600">{t('search.empty')}</p> : null}
 
       {hasAny ? (
-        <div className="mt-6">
+        <div className="mt-6 space-y-6">
           <section>
             <h2 className="text-lg font-semibold">Modules</h2>
             <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
@@ -95,6 +115,28 @@ export function SearchClient() {
             <h2 className="text-lg font-semibold">{t('search.tools')}</h2>
             <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
               {grouped.tools.map((item) => (
+                <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
+                  <p className="mt-1 text-slate-600">{item.summary}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section>
+            <h2 className="text-lg font-semibold">Guides</h2>
+            <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
+              {grouped.guides.map((item) => (
+                <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
+                  <p className="mt-1 text-slate-600">{item.summary}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section>
+            <h2 className="text-lg font-semibold">Workflows</h2>
+            <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
+              {grouped.workflows.map((item) => (
                 <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
                   <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
                   <p className="mt-1 text-slate-600">{item.summary}</p>

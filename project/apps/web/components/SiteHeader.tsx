@@ -1,15 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useLocale } from '../lib/context/LocaleContext';
+import { useEffect, useState } from 'react';
 import { useAdmin } from '../lib/context/AdminContext';
-import { FormEvent, useEffect, useState } from 'react';
+import { useLocale } from '../lib/context/LocaleContext';
 
 export function SiteHeader() {
   const { locale, setLocale, t } = useLocale();
-  const { isAdmin, login, logout } = useAdmin();
-  const [password, setPassword] = useState('');
-  const [adminError, setAdminError] = useState('');
+  const { isAdmin, logout } = useAdmin();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   const nextLocale = locale === 'en' ? 'ko' : 'en';
@@ -26,21 +24,9 @@ export function SiteHeader() {
 
   const toggleTheme = () => {
     const root = document.documentElement;
-    const updated = nextTheme;
-    root.setAttribute('data-theme', updated);
-    window.localStorage.setItem('biolt-theme', updated);
-    setTheme(updated);
-  };
-
-  const handleAdminLogin = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const ok = login(password);
-    if (ok) {
-      setPassword('');
-      setAdminError('');
-    } else {
-      setAdminError(t('admin.badPassword') || 'Wrong password');
-    }
+    root.setAttribute('data-theme', nextTheme);
+    window.localStorage.setItem('biolt-theme', nextTheme);
+    setTheme(nextTheme);
   };
 
   return (
@@ -53,6 +39,12 @@ export function SiteHeader() {
           <ul className="flex flex-wrap items-center gap-3 text-sm">
             <li>
               <Link href="/tools">{t('nav.tools')}</Link>
+            </li>
+            <li>
+              <Link href="/guides">Guides</Link>
+            </li>
+            <li>
+              <Link href="/workflows">Workflows</Link>
             </li>
             <li>
               <Link href="/labops-ai">LabOps AI</Link>
@@ -77,32 +69,18 @@ export function SiteHeader() {
                 {t('nav.theme')}: {theme === 'dark' ? t('nav.theme.dark') : t('nav.theme.light')}
               </button>
             </li>
-            <li>
-              {isAdmin ? (
+            {isAdmin ? (
+              <li>
                 <div className="flex items-center gap-1">
                   <Link href="/admin" className="rounded-md border border-slate-300 px-2 py-1 text-xs">
-                    {locale === 'ko' ? '관리자 창' : 'Admin Panel'}
+                    Admin Panel
                   </Link>
                   <button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-xs" onClick={logout}>
                     {t('admin.logout')}
                   </button>
                 </div>
-              ) : (
-                <form onSubmit={handleAdminLogin} className="flex items-center gap-1">
-                  <input
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    type="password"
-                    placeholder={t('admin.loginPlaceholder')}
-                    className="w-20 rounded border border-slate-300 px-1.5 py-1 text-xs"
-                  />
-                  <button className="rounded bg-slate-900 px-2 py-1 text-xs text-white" type="submit">
-                    {t('admin.login')}
-                  </button>
-                  {adminError ? <span className="text-xs text-rose-600">{adminError}</span> : null}
-                </form>
-              )}
-            </li>
+              </li>
+            ) : null}
           </ul>
         </nav>
       </div>

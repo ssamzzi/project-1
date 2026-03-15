@@ -1,25 +1,28 @@
-# Buffer pH / pKa
+# Buffer pH and pKa
 
 ## When to use
-Use this when preparing or selecting a buffer for enzymatic reactions.
+Use this guide when selecting or troubleshooting a buffer for extraction, enzyme reaction, cell handling, or storage conditions.
+
+## Why compatibility matters
+Buffers are not interchangeable just because their nominal pH values look similar. Buffer capacity depends on how close the working pH is to the buffer pKa, and biochemical compatibility depends on salts, chelators, detergents, temperature, and the downstream assay.
 
 ## Common input mistakes
-- Ignoring ionic strength.
-- Using buffer outside intended pH range.
-- Selecting a buffer with weak capacity near pH transition.
+- Matching only the target pH and ignoring pKa.
+- Forgetting that pH changes with temperature.
+- Using a buffer with incompatible ions for enzyme activity or metal-sensitive assays.
+- Overlooking osmolarity changes when several salts are combined.
 
 ## Interpretation pitfalls
-- Same pH reading does not guarantee same buffering capacity.
-- Temperature change can shift pH with weak buffers.
+- A strong buffer at the wrong pH range can still perform poorly.
+- Stock solution pH does not guarantee the same pH after dilution into another matrix.
+- Cell-based work can fail because osmolarity and ionic composition changed, not because nominal pH was wrong.
 
-## Recommended tools
-- pKa lookup table (paper references): fast reference for chemistry planning.
-- OpenBabel calculators: conversion convenience.
-- Lab notebook checklists: robust tracking.
-
-## Alternative links in case of login/JS issues
-- Official product specification sheets.
-- Public molecular biology manuals.
+## Practical review checklist
+1. Verify the target pH at the actual working temperature.
+2. Check whether the buffer pKa sits close enough to the intended working range.
+3. Review salt, detergent, and chelator compatibility with the assay.
+4. Confirm whether the buffer must remain compatible after dilution into sample matrix.
+5. Record the final formulation, not only the parent stock.
 
 ## Disclaimer
-pH and pKa interpretation depends on exact temperature and ionic condition.
+Buffer choice is contextual. Always confirm compatibility with the enzyme system, cells, or analyte that will actually encounter the formulation.
