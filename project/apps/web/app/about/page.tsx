@@ -10,7 +10,7 @@ export default function AboutPage() {
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8">
-      <SectionCard title={isKo ? 'About BioLT' : 'About BioLT'}>
+      <SectionCard title="About BioLT">
         <div className="space-y-4 text-sm leading-7 text-slate-700">
           <p>
             {isKo

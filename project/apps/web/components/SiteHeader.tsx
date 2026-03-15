@@ -41,10 +41,10 @@ export function SiteHeader() {
               <Link href="/tools">{t('nav.tools')}</Link>
             </li>
             <li>
-              <Link href="/guides">Guides</Link>
+              <Link href="/guides">{locale === 'ko' ? '가이드' : 'Guides'}</Link>
             </li>
             <li>
-              <Link href="/workflows">Workflows</Link>
+              <Link href="/workflows">{locale === 'ko' ? '워크플로' : 'Workflows'}</Link>
             </li>
             <li>
               <Link href="/labops-ai">LabOps AI</Link>

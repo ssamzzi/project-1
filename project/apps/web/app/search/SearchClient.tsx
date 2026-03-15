@@ -30,6 +30,11 @@ export function SearchClient() {
     setQuery(q);
   }, []);
 
+  const sectionLabels =
+    locale === 'ko'
+      ? { modules: '모듈', guides: '가이드', workflows: '워크플로' }
+      : { modules: 'Modules', guides: 'Guides', workflows: 'Workflows' };
+
   const allItems = useMemo<SearchItem[]>(() => {
     const tools = toolMetas.map((tool) => ({
       kind: 'tool' as const,
@@ -41,16 +46,16 @@ export function SearchClient() {
 
     const guides = guideMetas.map((guide) => ({
       kind: 'guide' as const,
-      title: guide.titleEn,
-      summary: guide.shortEn,
+      title: locale === 'ko' ? guide.titleKo : guide.titleEn,
+      summary: locale === 'ko' ? guide.shortKo : guide.shortEn,
       href: `/guides/${guide.slug}`,
       haystack: [guide.titleEn, guide.titleKo, guide.shortEn, guide.shortKo, guide.slug].join(' '),
     }));
 
     const workflows = workflowMetas.map((workflow) => ({
       kind: 'workflow' as const,
-      title: workflow.titleEn,
-      summary: workflow.shortEn,
+      title: locale === 'ko' ? workflow.titleKo : workflow.titleEn,
+      summary: locale === 'ko' ? workflow.shortKo : workflow.shortEn,
       href: `/workflows/${workflow.slug}`,
       haystack: [workflow.titleEn, workflow.titleKo, workflow.shortEn, workflow.shortKo, workflow.slug, workflow.tools.join(' ')].join(' '),
     }));
@@ -101,11 +106,13 @@ export function SearchClient() {
       {hasAny ? (
         <div className="mt-6 space-y-6">
           <section>
-            <h2 className="text-lg font-semibold">Modules</h2>
+            <h2 className="text-lg font-semibold">{sectionLabels.modules}</h2>
             <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
               {grouped.modules.map((item) => (
                 <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
-                  <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
+                  <Link href={item.href} className="font-medium text-indigo-700 underline">
+                    {item.title}
+                  </Link>
                   <p className="mt-1 text-slate-600">{item.summary}</p>
                 </li>
               ))}
@@ -116,29 +123,35 @@ export function SearchClient() {
             <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
               {grouped.tools.map((item) => (
                 <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
-                  <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
+                  <Link href={item.href} className="font-medium text-indigo-700 underline">
+                    {item.title}
+                  </Link>
                   <p className="mt-1 text-slate-600">{item.summary}</p>
                 </li>
               ))}
             </ul>
           </section>
           <section>
-            <h2 className="text-lg font-semibold">Guides</h2>
+            <h2 className="text-lg font-semibold">{sectionLabels.guides}</h2>
             <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
               {grouped.guides.map((item) => (
                 <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
-                  <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
+                  <Link href={item.href} className="font-medium text-indigo-700 underline">
+                    {item.title}
+                  </Link>
                   <p className="mt-1 text-slate-600">{item.summary}</p>
                 </li>
               ))}
             </ul>
           </section>
           <section>
-            <h2 className="text-lg font-semibold">Workflows</h2>
+            <h2 className="text-lg font-semibold">{sectionLabels.workflows}</h2>
             <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
               {grouped.workflows.map((item) => (
                 <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
-                  <Link href={item.href} className="font-medium text-indigo-700 underline">{item.title}</Link>
+                  <Link href={item.href} className="font-medium text-indigo-700 underline">
+                    {item.title}
+                  </Link>
                   <p className="mt-1 text-slate-600">{item.summary}</p>
                 </li>
               ))}
