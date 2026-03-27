@@ -4,18 +4,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { SectionCard } from '../SectionCard';
 import { useLocale } from '../../lib/context/LocaleContext';
 import {
+  analyzeSelectedWorkflowColumns,
+  analyzeWorkflow,
   applySelectedProposals,
   buildChangeLog,
-  buildDefaultPolicy,
-  buildRecommendations,
   changeLogToCsv,
   changeLogToJson,
   exportCleanedContent,
   filterDiffProposals,
   generateDiffProposals,
-  matchMetadataToFasta,
+  linkageReportToJson,
+  linkageRowsToCsv,
   parseInputFile,
-  profileDataset,
   type AnalysisResult,
   type FastaMatchReport,
   type FieldPolicy,
@@ -29,49 +29,52 @@ import {
 
 const PRESET_STORAGE_KEY = 'biolt-genome-metadata-cleaner-presets';
 
-type TabKey = 'upload' | 'fields' | 'preview' | 'export';
+type StepKey = 'upload' | 'columns' | 'selected' | 'linkage' | 'review' | 'export';
 type FilterMode = 'all' | 'safe' | 'review' | 'invalid';
+
+interface WorkflowState {
+  analysis: AnalysisResult;
+  policy: NormalizationPolicy;
+  linkageReport: FastaMatchReport | null;
+}
 
 function getText(isKo: boolean) {
   return isKo
     ? {
-        title: '단계별 정제 워크스페이스',
-        subtitle: '메타데이터와 FASTA를 먼저 올린 뒤, 분석 시작을 눌러 검토 가능한 정제 제안을 생성합니다.',
+        title: 'Genome Metadata Cleaner',
+        subtitle: '메타데이터를 먼저 분석하고, 컬럼을 선택한 뒤, 검토 가능한 변경안만 적용합니다.',
         upload: '업로드',
-        fields: '필드 설정',
-        preview: '미리보기',
+        columns: '컬럼 선택',
+        selected: '선택 컬럼 분석',
+        linkage: 'FASTA 이름 보기',
+        review: '변경 검토',
         export: '내보내기',
-        analyze: '분석 시작',
-        reanalyze: '다시 분석',
-        applySafe: '안전 변경 적용',
-        applySelected: '선택 변경 적용',
-        rows: '행',
-        issues: '이슈',
-        selected: '선택됨',
-        visible: '표시 중',
         metadataFile: '메타데이터 파일',
-        fastaReference: 'FASTA 참조 파일',
-        metadataReady: '메타데이터 준비됨',
-        fastaReady: 'FASTA 준비됨',
+        fastaFile: 'FASTA 파일',
+        startAnalysis: '분석 시작',
+        analyzeAgain: '다시 분석',
+        selectedFile: '선택된 파일',
+        noFile: '선택된 파일 없음',
         optional: '선택 사항',
         analyzing: '분석 중...',
-        uploadToBegin: '먼저 메타데이터 파일을 선택하세요.',
+        analysisComplete: '분석 완료',
+        rows: '행',
+        issues: '이슈',
+        selectedCount: '선택 컬럼',
+        visible: '표시 제안',
         format: '형식',
-        columns: '열',
-        summary: '요약',
-        safeSuggestions: '안전 제안',
-        reviewRequired: '검토 필요',
-        invalidValues: '유효하지 않은 값',
-        summaryAfterAnalysis: '분석 후 요약이 표시됩니다.',
-        fastaMatching: 'FASTA 매칭',
-        matchedRows: '매칭된 행',
-        unmatchedRows: '매칭되지 않은 행',
-        analysisRequired: '먼저 분석이 필요합니다.',
-        fieldList: '필드 목록',
-        selectedField: '선택한 필드',
+        columnsLabel: '열',
         issueSummary: '이슈 요약',
-        recommendedAction: '권장 처리',
-        noRecommendation: '권장 사항 없음',
+        inferredMeaning: '추정 의미',
+        confidence: '신뢰도',
+        dominantPattern: '우세 패턴',
+        dominantCase: '우세 대소문자',
+        dominantSeparator: '우세 구분자',
+        outliers: '이상치 수',
+        chooseColumns: '정제할 컬럼을 선택하세요.',
+        selectedField: '선택한 필드',
+        recommendedAction: '권장 전략',
+        consensusSummary: '컬럼 합의',
         strategy: '전략',
         dateHandling: '날짜 처리',
         preserve: '보존',
@@ -79,74 +82,80 @@ function getText(isKo: boolean) {
         reviewAmbiguous: '애매한 날짜는 검토',
         controlledVocabulary: '통제 어휘',
         off: '끄기',
-        safeOnly: '안전한 값만',
+        safeOnly: '안전한 것만',
         withReview: '검토 포함',
         customMapping: '사용자 매핑',
         originalValue: '원래 값',
         mappedValue: '변환 값',
         addMapping: '매핑 추가',
-        selectFieldPrompt: '왼쪽에서 필드를 선택하세요.',
-        diffPreview: '변경 미리보기',
-        noVisibleProposals: '표시할 제안이 없습니다.',
+        noColumnsSelected: '선택된 컬럼이 없습니다.',
+        linkageSummary: '메타데이터 이름과 FASTA 헤더 이름을 함께 보여줍니다.',
+        noFasta: 'FASTA 파일이 없어서 name linkage view는 비어 있습니다.',
+        name: 'name',
+        fastaName: 'fasta_name',
+        matchStatus: 'name_match_status',
+        matchConfidence: 'name_match_confidence',
+        matchedBy: 'matchedBy',
+        reason: 'reason',
+        noProposals: '표시할 변경 제안이 없습니다.',
         apply: '적용',
         row: '행',
         field: '필드',
         suggested: '제안값',
         issue: '이슈',
-        confidence: '신뢰도',
-        applyAndExport: '적용 및 내보내기',
-        rawPreserved: '원본 데이터는 세션 동안 그대로 유지됩니다.',
-        appliedChanges: '적용된 변경',
+        applySafe: '안전 변경 적용',
+        applySelected: '선택 변경 적용',
+        skipVisible: '보이는 항목 건너뛰기',
+        rawPreserved: '원본 데이터는 적용 전까지 유지됩니다.',
+        appliedChanges: '적용된 변경 수',
         presetName: '프리셋 이름',
         savePreset: '프리셋 저장',
         savedPresets: '저장된 프리셋',
-        cleanedFile: '정제된 파일',
-        applyBeforeExport: '내보내기 전에 먼저 변경을 적용하세요.',
+        cleanedFile: '정제된 메타데이터',
+        changeLog: '변경 로그',
+        linkageReport: '링키지 리포트',
+        linkageView: '링키지 뷰',
+        applyBeforeExport: '먼저 변경을 적용한 뒤 내보내세요.',
         resultSnapshot: '결과 미리보기',
-        appliedRowsAppear: '적용 결과가 여기에 표시됩니다.',
+        selectFieldPrompt: '왼쪽에서 필드를 선택하세요.',
+        reviewFirst: '검토 단계에서 변경 제안을 먼저 확인하세요.',
         confirmApply: '선택한 변경을 적용할까요? 원본 데이터는 그대로 유지됩니다.',
-        selectedFile: '선택된 파일',
-        noFileSelected: '선택된 파일 없음',
-        analysisComplete: '분석이 완료되었습니다.',
       }
     : {
-        title: 'Step-based cleaning workspace',
-        subtitle: 'Upload metadata and FASTA first, then start analysis to generate reviewable cleaning suggestions.',
+        title: 'Genome Metadata Cleaner',
+        subtitle: 'Analyze metadata first, choose target columns, and only apply reviewable suggestions.',
         upload: 'Upload',
-        fields: 'Fields',
-        preview: 'Preview',
+        columns: 'Column selection',
+        selected: 'Selected-column analysis',
+        linkage: 'FASTA-linked names',
+        review: 'Review changes',
         export: 'Export',
-        analyze: 'Start analysis',
-        reanalyze: 'Analyze again',
-        applySafe: 'Apply safe',
-        applySelected: 'Apply selected',
-        rows: 'Rows',
-        issues: 'Issues',
-        selected: 'Selected',
-        visible: 'Visible',
         metadataFile: 'Metadata file',
-        fastaReference: 'FASTA reference',
-        metadataReady: 'Metadata ready',
-        fastaReady: 'FASTA ready',
+        fastaFile: 'FASTA file',
+        startAnalysis: 'Start analysis',
+        analyzeAgain: 'Analyze again',
+        selectedFile: 'Selected file',
+        noFile: 'No file selected',
         optional: 'Optional',
         analyzing: 'Analyzing...',
-        uploadToBegin: 'Select a metadata file to begin.',
+        analysisComplete: 'Analysis completed',
+        rows: 'Rows',
+        issues: 'Issues',
+        selectedCount: 'Selected columns',
+        visible: 'Visible suggestions',
         format: 'Format',
-        columns: 'Columns',
-        summary: 'Summary',
-        safeSuggestions: 'Safe suggestions',
-        reviewRequired: 'Review required',
-        invalidValues: 'Invalid values',
-        summaryAfterAnalysis: 'Summary appears after analysis.',
-        fastaMatching: 'FASTA matching',
-        matchedRows: 'Matched rows',
-        unmatchedRows: 'Unmatched rows',
-        analysisRequired: 'Analysis required first.',
-        fieldList: 'Fields',
-        selectedField: 'Selected field',
+        columnsLabel: 'Columns',
         issueSummary: 'Issue summary',
-        recommendedAction: 'Recommended action',
-        noRecommendation: 'No recommendation',
+        inferredMeaning: 'Inferred meaning',
+        confidence: 'Confidence',
+        dominantPattern: 'Dominant pattern',
+        dominantCase: 'Dominant case',
+        dominantSeparator: 'Dominant separator',
+        outliers: 'Outliers',
+        chooseColumns: 'Choose which columns to clean.',
+        selectedField: 'Selected field',
+        recommendedAction: 'Recommended strategy',
+        consensusSummary: 'Column consensus',
         strategy: 'Strategy',
         dateHandling: 'Date handling',
         preserve: 'Preserve',
@@ -160,29 +169,38 @@ function getText(isKo: boolean) {
         originalValue: 'Original value',
         mappedValue: 'Mapped value',
         addMapping: 'Add mapping',
-        selectFieldPrompt: 'Select a field from the left.',
-        diffPreview: 'Diff preview',
-        noVisibleProposals: 'No visible proposals.',
+        noColumnsSelected: 'No columns selected.',
+        linkageSummary: 'Compare metadata names and FASTA header names side by side.',
+        noFasta: 'No FASTA file was uploaded, so the name linkage view is empty.',
+        name: 'name',
+        fastaName: 'fasta_name',
+        matchStatus: 'name_match_status',
+        matchConfidence: 'name_match_confidence',
+        matchedBy: 'matchedBy',
+        reason: 'reason',
+        noProposals: 'No visible proposals.',
         apply: 'Apply',
         row: 'Row',
         field: 'Field',
         suggested: 'Suggested',
         issue: 'Issue',
-        confidence: 'Confidence',
-        applyAndExport: 'Apply and export',
-        rawPreserved: 'Raw data stays preserved during this session.',
+        applySafe: 'Apply all safe',
+        applySelected: 'Apply selected',
+        skipVisible: 'Skip visible',
+        rawPreserved: 'Raw data stays preserved until apply.',
         appliedChanges: 'Applied changes',
         presetName: 'Preset name',
         savePreset: 'Save preset',
         savedPresets: 'Saved presets',
-        cleanedFile: 'Cleaned file',
+        cleanedFile: 'Cleaned metadata',
+        changeLog: 'Change log',
+        linkageReport: 'Linkage report',
+        linkageView: 'Linkage-aware view',
         applyBeforeExport: 'Apply changes before exporting.',
         resultSnapshot: 'Result snapshot',
-        appliedRowsAppear: 'Applied rows appear here.',
+        selectFieldPrompt: 'Select a field from the left.',
+        reviewFirst: 'Review suggestions first.',
         confirmApply: 'Apply selected changes? Raw data stays preserved.',
-        selectedFile: 'Selected file',
-        noFileSelected: 'No file selected',
-        analysisComplete: 'Analysis completed.',
       };
 }
 
@@ -196,7 +214,7 @@ function downloadText(filename: string, data: string, type = 'text/plain;charset
   URL.revokeObjectURL(url);
 }
 
-function totalIssues(profile: FieldProfile) {
+function issueTotal(profile: FieldProfile) {
   return profile.issueCounts.reduce((sum, issue) => sum + issue.count, 0);
 }
 
@@ -204,13 +222,31 @@ function summarizeField(profile: FieldProfile, isKo: boolean) {
   if (!profile.issueCounts.length) {
     return isKo ? '문제가 발견되지 않았습니다.' : 'No issues detected.';
   }
-
   const summary = profile.issueCounts
     .slice(0, 3)
     .map((issue) => `${issue.type} (${issue.count})`)
     .join(', ');
+  return isKo ? `총 ${issueTotal(profile)}건: ${summary}` : `${issueTotal(profile)} issues: ${summary}`;
+}
 
-  return isKo ? `총 ${totalIssues(profile)}건: ${summary}` : `${totalIssues(profile)} issues: ${summary}`;
+function linkageAwareViewCsv(dataset: ParsedDataset, rows: ParsedRow[], linkageReport: FastaMatchReport | null) {
+  const linkageByRow = new Map((linkageReport?.rows || []).map((row) => [row.rowIndex, row]));
+  const headers = [...dataset.headers, 'name', 'fasta_name', 'name_match_status', 'name_match_confidence'];
+  const lines = [
+    headers.join(','),
+    ...rows.map((row) => {
+      const linkage = linkageByRow.get(row.__rowIndex);
+      const values = headers.map((header) => {
+        if (header in row) return `"${String(row[header] ?? '').replace(/"/g, '""')}"`;
+        if (header === 'name') return `"${String(linkage?.name ?? '').replace(/"/g, '""')}"`;
+        if (header === 'fasta_name') return `"${String(linkage?.fasta_name ?? '').replace(/"/g, '""')}"`;
+        if (header === 'name_match_status') return `"${String(linkage?.name_match_status ?? '').replace(/"/g, '""')}"`;
+        return `"${String(linkage?.name_match_confidence ?? '').replace(/"/g, '""')}"`;
+      });
+      return values.join(',');
+    }),
+  ];
+  return lines.join('\n');
 }
 
 export function GenomeMetadataCleanerClient() {
@@ -218,24 +254,22 @@ export function GenomeMetadataCleanerClient() {
   const isKo = locale === 'ko';
   const text = getText(isKo);
 
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [policy, setPolicy] = useState<NormalizationPolicy | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('upload');
+  const [step, setStep] = useState<StepKey>('upload');
+  const [metadataFile, setMetadataFile] = useState<File | null>(null);
+  const [fastaFile, setFastaFile] = useState<File | null>(null);
+  const [workflow, setWorkflow] = useState<WorkflowState | null>(null);
+  const [selectedHeaders, setSelectedHeaders] = useState<string[]>([]);
   const [selectedHeader, setSelectedHeader] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [filter, setFilter] = useState<FilterMode>('all');
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [appliedRows, setAppliedRows] = useState<ParsedRow[] | null>(null);
   const [appliedLog, setAppliedLog] = useState<ReturnType<typeof buildChangeLog>>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [presets, setPresets] = useState<PresetRecord[]>([]);
   const [presetName, setPresetName] = useState('');
   const [mappingSource, setMappingSource] = useState('');
   const [mappingTarget, setMappingTarget] = useState('');
-  const [referenceFasta, setReferenceFasta] = useState<ParsedDataset | null>(null);
-  const [matchReport, setMatchReport] = useState<FastaMatchReport | null>(null);
-  const [metadataFile, setMetadataFile] = useState<File | null>(null);
-  const [referenceFile, setReferenceFile] = useState<File | null>(null);
 
   useEffect(() => {
     try {
@@ -246,6 +280,10 @@ export function GenomeMetadataCleanerClient() {
     }
   }, []);
 
+  const analysis = workflow?.analysis ?? null;
+  const policy = workflow?.policy ?? null;
+  const linkageReport = workflow?.linkageReport ?? null;
+
   const schemaByHeader = useMemo<Record<string, SupportedField | undefined>>(() => {
     if (!analysis) return {};
     return analysis.dataset.headers.reduce<Record<string, SupportedField | undefined>>((acc, header) => {
@@ -254,22 +292,31 @@ export function GenomeMetadataCleanerClient() {
     }, {});
   }, [analysis]);
 
-  const generated = useMemo(() => {
-    if (!analysis || !policy) return [];
-    return generateDiffProposals(analysis.dataset, schemaByHeader, policy);
-  }, [analysis, policy, schemaByHeader]);
+  const selectedAnalysis = useMemo(() => {
+    if (!analysis || !selectedHeaders.length) return null;
+    return analyzeSelectedWorkflowColumns(analysis, selectedHeaders);
+  }, [analysis, selectedHeaders]);
 
-  const proposals = useMemo(
-    () => generated.map((proposal) => ({ ...proposal, apply: overrides[proposal.id] ?? proposal.apply })),
-    [generated, overrides],
-  );
+  const proposals = useMemo(() => {
+    if (!analysis || !policy || !selectedAnalysis) return [];
+    return generateDiffProposals(analysis.dataset, schemaByHeader, policy, {
+      selectedHeaders,
+      consensusProfiles: selectedAnalysis.columnConsensus,
+      linkageReport: linkageReport || undefined,
+    }).map((proposal) => ({
+      ...proposal,
+      apply: overrides[proposal.id] ?? proposal.apply,
+    }));
+  }, [analysis, policy, selectedAnalysis, schemaByHeader, selectedHeaders, linkageReport, overrides]);
+
   const visible = useMemo(() => filterDiffProposals(proposals, filter), [proposals, filter]);
-  const selectedProfile = analysis?.profiles.find((item) => item.header === selectedHeader) ?? null;
-  const selectedRecommendation = analysis?.recommendations.find((item) => item.header === selectedHeader) ?? null;
-  const selectedPolicy = selectedHeader && policy ? policy.fieldPolicies[selectedHeader] ?? null : null;
-  const rows = appliedRows ?? analysis?.dataset.rows ?? [];
+  const currentRows = appliedRows ?? analysis?.dataset.rows ?? [];
+  const currentProfile = selectedAnalysis?.profiles.find((item) => item.header === selectedHeader) ?? null;
+  const currentRecommendation = selectedAnalysis?.recommendations.find((item) => item.header === selectedHeader) ?? null;
+  const currentConsensus = selectedAnalysis?.columnConsensus.find((item) => item.header === selectedHeader) ?? null;
+  const currentPolicy = selectedHeader && policy ? policy.fieldPolicies[selectedHeader] ?? null : null;
 
-  async function runAnalysis() {
+  async function handleAnalyze() {
     if (!metadataFile) return;
 
     setLoading(true);
@@ -277,26 +324,20 @@ export function GenomeMetadataCleanerClient() {
     setAppliedRows(null);
     setAppliedLog([]);
     setOverrides({});
-    setMatchReport(null);
-    setAnalysis(null);
-    setPolicy(null);
 
     try {
-      const dataset = await parseInputFile(metadataFile);
-      const fastaDataset = referenceFile ? await parseInputFile(referenceFile) : null;
-      const base = profileDataset(dataset);
-      const next = { ...base, recommendations: buildRecommendations(base) };
+      const metadataDataset = await parseInputFile(metadataFile);
+      const fastaDataset = fastaFile ? await parseInputFile(fastaFile) : null;
+      const next = analyzeWorkflow(metadataDataset, fastaDataset);
+      setWorkflow(next);
 
-      setAnalysis(next);
-      setPolicy(buildDefaultPolicy(next));
-      setSelectedHeader(next.dataset.headers[0] ?? '');
-      setReferenceFasta(fastaDataset);
-
-      if (fastaDataset) {
-        setMatchReport(matchMetadataToFasta(dataset.rows, fastaDataset));
-      }
-
-      setActiveTab('fields');
+      const defaults = next.analysis.profiles
+        .filter((profile) => profile.issueCounts.length || next.analysis.schema.some((item) => item.header === profile.header))
+        .map((profile) => profile.header);
+      const initialHeaders = defaults.length ? defaults : next.analysis.dataset.headers.slice(0, 4);
+      setSelectedHeaders(initialHeaders);
+      setSelectedHeader(initialHeaders[0] ?? '');
+      setStep('columns');
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Failed to analyze file.');
     } finally {
@@ -304,18 +345,41 @@ export function GenomeMetadataCleanerClient() {
     }
   }
 
+  function resetWorkflowForNewFiles() {
+    setWorkflow(null);
+    setSelectedHeaders([]);
+    setSelectedHeader('');
+    setAppliedRows(null);
+    setAppliedLog([]);
+    setOverrides({});
+    setStep('upload');
+  }
+
+  function toggleHeader(header: string) {
+    setSelectedHeaders((current) => {
+      const next = current.includes(header) ? current.filter((item) => item !== header) : [...current, header];
+      if (next.length && !next.includes(selectedHeader)) {
+        setSelectedHeader(next[0]);
+      }
+      if (!next.length) {
+        setSelectedHeader('');
+      }
+      return next;
+    });
+  }
+
   function updateFieldPolicy(header: string, patch: Partial<FieldPolicy>) {
-    setPolicy((current) => {
+    setWorkflow((current) => {
       if (!current) return current;
-      const existing = current.fieldPolicies[header];
+      const existing = current.policy.fieldPolicies[header];
       if (!existing) return current;
       return {
         ...current,
-        fieldPolicies: {
-          ...current.fieldPolicies,
-          [header]: {
-            ...existing,
-            ...patch,
+        policy: {
+          ...current.policy,
+          fieldPolicies: {
+            ...current.policy.fieldPolicies,
+            [header]: { ...existing, ...patch },
           },
         },
       };
@@ -324,7 +388,6 @@ export function GenomeMetadataCleanerClient() {
 
   function setStrategy(header: string, strategy: FieldPolicy['strategy']) {
     const patch: Partial<FieldPolicy> = { strategy, enabled: strategy !== 'skip' };
-
     if (strategy === 'canonicalize-safe') {
       patch.applyControlledVocabulary = 'safe-only';
       patch.normalizeDates = 'normalize-unambiguous';
@@ -335,37 +398,50 @@ export function GenomeMetadataCleanerClient() {
       patch.applyControlledVocabulary = 'off';
       patch.normalizeDates = 'preserve';
     }
-
     updateFieldPolicy(header, patch);
+  }
+
+  function addMapping() {
+    if (!selectedHeader || !mappingSource.trim() || !mappingTarget.trim()) return;
+    updateFieldPolicy(selectedHeader, {
+      customMappings: {
+        ...(currentPolicy?.customMappings ?? {}),
+        [mappingSource.trim()]: mappingTarget.trim(),
+      },
+    });
+    setMappingSource('');
+    setMappingTarget('');
   }
 
   function toggleProposal(id: string, checked: boolean) {
     setOverrides((current) => ({ ...current, [id]: checked }));
   }
 
-  function applyNow(mode: 'safe' | 'selected') {
-    if (!analysis) return;
+  function clearVisibleSelection() {
+    setOverrides((current) => {
+      const next = { ...current };
+      visible.forEach((proposal) => {
+        next[proposal.id] = false;
+      });
+      return next;
+    });
+  }
 
+  function applyChanges(mode: 'safe' | 'selected') {
+    if (!analysis) return;
     const chosen = proposals.map((proposal) => ({
       ...proposal,
       apply: mode === 'safe' ? proposal.status === 'safe' : proposal.apply,
     }));
-
     if (!window.confirm(text.confirmApply)) return;
-
     const result = applySelectedProposals(analysis.dataset, chosen);
     setAppliedRows(result.rows);
     setAppliedLog(buildChangeLog(chosen));
-    setActiveTab('export');
-
-    if (referenceFasta) {
-      setMatchReport(matchMetadataToFasta(result.rows, referenceFasta));
-    }
+    setStep('export');
   }
 
   function savePreset() {
     if (!policy || !presetName.trim()) return;
-
     const name = presetName.trim();
     const next = [...presets.filter((preset) => preset.name !== name), { name, createdAt: new Date().toISOString(), policy }];
     setPresets(next);
@@ -375,30 +451,17 @@ export function GenomeMetadataCleanerClient() {
 
   function applyPreset(name: string) {
     const preset = presets.find((item) => item.name === name);
-    if (preset) {
-      setPolicy(preset.policy);
-    }
+    if (!preset) return;
+    setWorkflow((current) => (current ? { ...current, policy: preset.policy } : current));
   }
 
-  function addMapping() {
-    if (!selectedHeader || !mappingSource.trim() || !mappingTarget.trim()) return;
-
-    updateFieldPolicy(selectedHeader, {
-      customMappings: {
-        ...(selectedPolicy?.customMappings ?? {}),
-        [mappingSource.trim()]: mappingTarget.trim(),
-      },
-    });
-
-    setMappingSource('');
-    setMappingTarget('');
-  }
-
-  const tabLabels: Array<{ key: TabKey; label: string }> = [
+  const steps: Array<{ key: StepKey; label: string }> = [
     { key: 'upload', label: `1. ${text.upload}` },
-    { key: 'fields', label: `2. ${text.fields}` },
-    { key: 'preview', label: `3. ${text.preview}` },
-    { key: 'export', label: `4. ${text.export}` },
+    { key: 'columns', label: `2. ${text.columns}` },
+    { key: 'selected', label: `3. ${text.selected}` },
+    { key: 'linkage', label: `4. ${text.linkage}` },
+    { key: 'review', label: `5. ${text.review}` },
+    { key: 'export', label: `6. ${text.export}` },
   ];
 
   return (
@@ -412,31 +475,30 @@ export function GenomeMetadataCleanerClient() {
       <div className="sticky top-16 z-[5] mt-6 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
-            {tabLabels.map((tab) => (
+            {steps.map((item) => (
               <button
-                key={tab.key}
+                key={item.key}
                 type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={`rounded-full px-3 py-2 text-sm ${activeTab === tab.key ? 'bg-slate-900 text-white' : 'border border-slate-300 bg-white'}`}
+                onClick={() => setStep(item.key)}
+                className={`rounded-full px-3 py-2 text-sm ${step === item.key ? 'bg-slate-900 text-white' : 'border border-slate-300 bg-white'}`}
               >
-                {tab.label}
+                {item.label}
               </button>
             ))}
           </div>
-
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               className="rounded-lg border border-cyan-700 px-3 py-2 text-sm font-medium text-cyan-800 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => void runAnalysis()}
+              onClick={() => void handleAnalyze()}
               disabled={!metadataFile || loading}
             >
-              {analysis ? text.reanalyze : text.analyze}
+              {workflow ? text.analyzeAgain : text.startAnalysis}
             </button>
             <button
               type="button"
               className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => applyNow('safe')}
+              onClick={() => applyChanges('safe')}
               disabled={!analysis}
             >
               {text.applySafe}
@@ -444,7 +506,7 @@ export function GenomeMetadataCleanerClient() {
             <button
               type="button"
               className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => applyNow('selected')}
+              onClick={() => applyChanges('selected')}
               disabled={!analysis}
             >
               {text.applySelected}
@@ -462,8 +524,8 @@ export function GenomeMetadataCleanerClient() {
             <p className="mt-1 text-xl font-semibold">{analysis?.dashboard.totalIssues ?? 0}</p>
           </div>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <p className="text-xs uppercase tracking-[0.16em] text-amber-700">{text.selected}</p>
-            <p className="mt-1 text-xl font-semibold text-amber-900">{proposals.filter((proposal) => proposal.apply).length}</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-amber-700">{text.selectedCount}</p>
+            <p className="mt-1 text-xl font-semibold text-amber-900">{selectedHeaders.length}</p>
           </div>
           <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-3">
             <p className="text-xs uppercase tracking-[0.16em] text-cyan-700">{text.visible}</p>
@@ -472,7 +534,7 @@ export function GenomeMetadataCleanerClient() {
         </div>
       </div>
 
-      {activeTab === 'upload' ? (
+      {step === 'upload' ? (
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
           <SectionCard title={text.upload}>
             <div className="space-y-4 text-sm">
@@ -483,155 +545,214 @@ export function GenomeMetadataCleanerClient() {
                   accept=".csv,.tsv,.txt,.xlsx,.xls"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2"
                   onChange={(event) => {
-                    const file = event.target.files?.[0] ?? null;
-                    setMetadataFile(file);
-                    setAnalysis(null);
-                    setPolicy(null);
-                    setAppliedRows(null);
-                    setAppliedLog([]);
-                    setMatchReport(null);
-                    setActiveTab('upload');
-                    setError('');
+                    setMetadataFile(event.target.files?.[0] ?? null);
+                    resetWorkflowForNewFiles();
                   }}
                 />
                 <p className="mt-2 text-xs text-slate-600">
-                  {text.selectedFile}: {metadataFile?.name ?? text.noFileSelected}
+                  {text.selectedFile}: {metadataFile?.name ?? text.noFile}
                 </p>
               </div>
 
               <div>
                 <label className="mb-1 block font-medium">
-                  {text.fastaReference} <span className="text-slate-500">({text.optional})</span>
+                  {text.fastaFile} <span className="text-slate-500">({text.optional})</span>
                 </label>
                 <input
                   type="file"
                   accept=".fasta,.fa,.fna,.faa"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2"
                   onChange={(event) => {
-                    const file = event.target.files?.[0] ?? null;
-                    setReferenceFile(file);
-                    setReferenceFasta(null);
-                    setMatchReport(null);
-                    setError('');
+                    setFastaFile(event.target.files?.[0] ?? null);
+                    resetWorkflowForNewFiles();
                   }}
                 />
                 <p className="mt-2 text-xs text-slate-600">
-                  {text.selectedFile}: {referenceFile?.name ?? text.noFileSelected}
+                  {text.selectedFile}: {fastaFile?.name ?? text.noFile}
                 </p>
               </div>
 
               <button
                 type="button"
                 className="w-full rounded-lg bg-cyan-700 px-3 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => void runAnalysis()}
+                onClick={() => void handleAnalyze()}
                 disabled={!metadataFile || loading}
               >
-                {loading ? text.analyzing : analysis ? text.reanalyze : text.analyze}
+                {loading ? text.analyzing : workflow ? text.analyzeAgain : text.startAnalysis}
               </button>
 
               {error ? <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-800">{error}</p> : null}
-              {!metadataFile && !loading ? <p className="text-sm text-slate-600">{text.uploadToBegin}</p> : null}
-              {analysis ? <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800">{text.analysisComplete}</p> : null}
+              {workflow ? <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800">{text.analysisComplete}</p> : null}
             </div>
           </SectionCard>
 
-          <SectionCard title={text.summary}>
+          <SectionCard title={text.issueSummary}>
             {analysis ? (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-3 text-sm">
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{text.safeSuggestions}</p>
-                  <p className="mt-1 text-2xl font-semibold">{analysis.dashboard.safeSuggestions}</p>
+                  <p className="font-medium">{analysis.dataset.fileName}</p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {text.format}: {analysis.dataset.format.toUpperCase()} | {text.columnsLabel}: {analysis.dataset.headers.length} | {text.rows}: {analysis.dataset.rows.length}
+                  </p>
                 </div>
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-amber-700">{text.reviewRequired}</p>
-                  <p className="mt-1 text-2xl font-semibold text-amber-900">{analysis.dashboard.reviewSuggestions}</p>
-                </div>
-                <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 sm:col-span-2">
-                  <p className="text-xs uppercase tracking-[0.16em] text-rose-700">{text.invalidValues}</p>
-                  <p className="mt-1 text-2xl font-semibold text-rose-900">{analysis.dashboard.invalidValues}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">safe</p>
+                    <p className="mt-1 text-2xl font-semibold">{analysis.dashboard.safeSuggestions}</p>
+                  </div>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-amber-700">review</p>
+                    <p className="mt-1 text-2xl font-semibold text-amber-900">{analysis.dashboard.reviewSuggestions}</p>
+                  </div>
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 sm:col-span-2">
+                    <p className="text-xs uppercase tracking-[0.16em] text-rose-700">invalid</p>
+                    <p className="mt-1 text-2xl font-semibold text-rose-900">{analysis.dashboard.invalidValues}</p>
+                  </div>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-slate-600">{text.summaryAfterAnalysis}</p>
+              <p className="text-sm text-slate-600">{text.reviewFirst}</p>
             )}
           </SectionCard>
 
-          <SectionCard title={text.fastaMatching}>
-            <div className="space-y-3 text-sm">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="font-medium">{text.metadataReady}</p>
-                <p className="mt-1 text-xs text-slate-600">{metadataFile?.name ?? text.noFileSelected}</p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="font-medium">{text.fastaReady}</p>
-                <p className="mt-1 text-xs text-slate-600">{referenceFile?.name ?? text.noFileSelected}</p>
-              </div>
-              {referenceFasta && matchReport ? (
+          <SectionCard title={text.linkage}>
+            {linkageReport ? (
+              <div className="space-y-3 text-sm">
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="font-medium">{referenceFasta.fileName}</p>
+                  <p className="font-medium">{text.linkageSummary}</p>
                   <p className="mt-1 text-xs text-slate-600">
-                    {text.matchedRows}: {matchReport.matchedRows} / {matchReport.totalMetadataRows}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-600">
-                    {text.unmatchedRows}: {matchReport.unmatchedMetadataRows}
+                    {text.rows}: {linkageReport.totalMetadataRows} | exact: {linkageReport.exactMatches} | normalized: {linkageReport.normalizedMatches} | review: {linkageReport.reviewMatches}
                   </p>
                 </div>
-              ) : (
-                <p className="text-sm text-slate-600">{text.optional}</p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-600">{text.noFasta}</p>
+            )}
           </SectionCard>
         </div>
       ) : null}
 
-      {activeTab === 'fields' ? (
-        <div className="mt-6 grid gap-4 xl:grid-cols-[300px_1fr]">
-          <SectionCard title={text.fieldList}>
+      {step === 'columns' ? (
+        <div className="mt-6">
+          <SectionCard title={text.columns}>
             {analysis ? (
-              <div className="space-y-2">
-                {analysis.profiles.map((profile) => (
-                  <button
-                    key={profile.header}
-                    type="button"
-                    onClick={() => setSelectedHeader(profile.header)}
-                    className={`w-full rounded-xl border p-3 text-left ${
-                      selectedHeader === profile.header ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white'
-                    }`}
-                  >
-                    <p className="font-medium">{profile.header}</p>
-                    <p className={`mt-1 text-xs ${selectedHeader === profile.header ? 'text-slate-200' : 'text-slate-500'}`}>
-                      {summarizeField(profile, isKo)}
-                    </p>
-                  </button>
-                ))}
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">{text.chooseColumns}</p>
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                  <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left">{text.apply}</th>
+                        <th className="px-3 py-2 text-left">{text.field}</th>
+                        <th className="px-3 py-2 text-left">{text.inferredMeaning}</th>
+                        <th className="px-3 py-2 text-left">{text.confidence}</th>
+                        <th className="px-3 py-2 text-left">{text.issueSummary}</th>
+                        <th className="px-3 py-2 text-left">{text.dominantPattern}</th>
+                        <th className="px-3 py-2 text-left">{text.outliers}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {analysis.dataset.headers.map((header) => {
+                        const profile = analysis.profiles.find((item) => item.header === header);
+                        const schema = analysis.schema.find((item) => item.header === header);
+                        const consensus = analysis.columnConsensus.find((item) => item.header === header);
+                        return (
+                          <tr key={header}>
+                            <td className="px-3 py-2 align-top">
+                              <input type="checkbox" checked={selectedHeaders.includes(header)} onChange={() => toggleHeader(header)} />
+                            </td>
+                            <td className="px-3 py-2 align-top font-medium">{header}</td>
+                            <td className="px-3 py-2 align-top">{schema?.field ?? '-'}</td>
+                            <td className="px-3 py-2 align-top">{schema ? schema.confidence.toFixed(2) : '-'}</td>
+                            <td className="px-3 py-2 align-top">{profile ? issueTotal(profile) : 0}</td>
+                            <td className="px-3 py-2 align-top">{consensus?.dominantPattern ?? '-'}</td>
+                            <td className="px-3 py-2 align-top">{consensus?.outlierCount ?? 0}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-slate-600">{text.analysisRequired}</p>
+              <p className="text-sm text-slate-600">{text.reviewFirst}</p>
+            )}
+          </SectionCard>
+        </div>
+      ) : null}
+
+      {step === 'selected' ? (
+        <div className="mt-6 grid gap-4 xl:grid-cols-[300px_1fr]">
+          <SectionCard title={text.columns}>
+            {selectedAnalysis && selectedAnalysis.headers.length ? (
+              <div className="space-y-2">
+                {selectedAnalysis.headers.map((header) => {
+                  const profile = selectedAnalysis.profiles.find((item) => item.header === header);
+                  return (
+                    <button
+                      key={header}
+                      type="button"
+                      onClick={() => setSelectedHeader(header)}
+                      className={`w-full rounded-xl border p-3 text-left ${
+                        selectedHeader === header ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      <p className="font-medium">{header}</p>
+                      <p className={`mt-1 text-xs ${selectedHeader === header ? 'text-slate-200' : 'text-slate-500'}`}>
+                        {profile ? summarizeField(profile, isKo) : text.noColumnsSelected}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-600">{text.noColumnsSelected}</p>
             )}
           </SectionCard>
 
           <SectionCard title={text.selectedField}>
-            {selectedProfile && selectedPolicy ? (
+            {currentProfile && currentPolicy ? (
               <div className="space-y-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <h3 className="text-xl font-semibold text-slate-900">{selectedProfile.header}</h3>
+                  <h3 className="text-xl font-semibold text-slate-900">{currentProfile.header}</h3>
                   <p className="mt-2 text-sm text-slate-700">
-                    {text.issueSummary}: {summarizeField(selectedProfile, isKo)}
+                    {text.issueSummary}: {summarizeField(currentProfile, isKo)}
                   </p>
                   <p className="mt-2 text-sm text-slate-700">
-                    {text.recommendedAction}: {selectedRecommendation?.recommendedReason ?? text.noRecommendation}
+                    {text.recommendedAction}: {currentRecommendation?.recommendedReason ?? '-'}
                   </p>
                 </div>
+
+                {currentConsensus ? (
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{text.dominantPattern}</p>
+                      <p className="mt-1 font-semibold">{currentConsensus.dominantPattern}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{text.dominantCase}</p>
+                      <p className="mt-1 font-semibold">{currentConsensus.dominantCase}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{text.dominantSeparator}</p>
+                      <p className="mt-1 font-semibold">{currentConsensus.dominantSeparator}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{text.outliers}</p>
+                      <p className="mt-1 font-semibold">{currentConsensus.outlierCount}</p>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="grid gap-4 lg:grid-cols-2">
                   <label className="text-sm">
                     <span className="mb-1 block font-medium">{text.strategy}</span>
                     <select
-                      value={selectedPolicy.strategy}
+                      value={currentPolicy.strategy}
                       onChange={(event) => setStrategy(selectedHeader, event.target.value as FieldPolicy['strategy'])}
                       className="w-full rounded-lg border border-slate-300 px-3 py-2"
                     >
-                      {(selectedRecommendation?.options ?? []).map((option) => (
+                      {(currentRecommendation?.options ?? []).map((option) => (
                         <option key={option.id} value={option.id}>
                           {option.label}
                         </option>
@@ -642,12 +763,8 @@ export function GenomeMetadataCleanerClient() {
                   <label className="text-sm">
                     <span className="mb-1 block font-medium">{text.dateHandling}</span>
                     <select
-                      value={selectedPolicy.normalizeDates}
-                      onChange={(event) =>
-                        updateFieldPolicy(selectedHeader, {
-                          normalizeDates: event.target.value as FieldPolicy['normalizeDates'],
-                        })
-                      }
+                      value={currentPolicy.normalizeDates}
+                      onChange={(event) => updateFieldPolicy(selectedHeader, { normalizeDates: event.target.value as FieldPolicy['normalizeDates'] })}
                       className="w-full rounded-lg border border-slate-300 px-3 py-2"
                     >
                       <option value="preserve">{text.preserve}</option>
@@ -659,7 +776,7 @@ export function GenomeMetadataCleanerClient() {
                   <label className="text-sm">
                     <span className="mb-1 block font-medium">{text.controlledVocabulary}</span>
                     <select
-                      value={selectedPolicy.applyControlledVocabulary}
+                      value={currentPolicy.applyControlledVocabulary}
                       onChange={(event) =>
                         updateFieldPolicy(selectedHeader, {
                           applyControlledVocabulary: event.target.value as FieldPolicy['applyControlledVocabulary'],
@@ -692,16 +809,6 @@ export function GenomeMetadataCleanerClient() {
                         {text.addMapping}
                       </button>
                     </div>
-
-                    {selectedPolicy.customMappings && Object.keys(selectedPolicy.customMappings).length ? (
-                      <div className="mt-3 space-y-2">
-                        {Object.entries(selectedPolicy.customMappings).map(([source, target]) => (
-                          <div key={`${source}-${target}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
-                            <span className="font-medium">{source}</span> {'->'} {target}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               </div>
@@ -712,9 +819,51 @@ export function GenomeMetadataCleanerClient() {
         </div>
       ) : null}
 
-      {activeTab === 'preview' ? (
+      {step === 'linkage' ? (
         <div className="mt-6">
-          <SectionCard title={text.diffPreview}>
+          <SectionCard title={text.linkage}>
+            {linkageReport ? (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">{text.linkageSummary}</p>
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                  <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left">{text.row}</th>
+                        <th className="px-3 py-2 text-left">{text.name}</th>
+                        <th className="px-3 py-2 text-left">{text.fastaName}</th>
+                        <th className="px-3 py-2 text-left">{text.matchStatus}</th>
+                        <th className="px-3 py-2 text-left">{text.matchConfidence}</th>
+                        <th className="px-3 py-2 text-left">{text.matchedBy}</th>
+                        <th className="px-3 py-2 text-left">{text.reason}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {linkageReport.rows.slice(0, 200).map((row) => (
+                        <tr key={row.rowIndex}>
+                          <td className="px-3 py-2 align-top">{row.rowIndex}</td>
+                          <td className="px-3 py-2 align-top">{row.name}</td>
+                          <td className="px-3 py-2 align-top">{row.fasta_name}</td>
+                          <td className="px-3 py-2 align-top">{row.name_match_status}</td>
+                          <td className="px-3 py-2 align-top">{row.name_match_confidence.toFixed(2)}</td>
+                          <td className="px-3 py-2 align-top">{row.matchedBy || '-'}</td>
+                          <td className="px-3 py-2 align-top">{row.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-600">{text.noFasta}</p>
+            )}
+          </SectionCard>
+        </div>
+      ) : null}
+
+      {step === 'review' ? (
+        <div className="mt-6">
+          <SectionCard title={text.review}>
             {analysis ? (
               <>
                 <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -728,6 +877,9 @@ export function GenomeMetadataCleanerClient() {
                       {mode}
                     </button>
                   ))}
+                  <button type="button" className="rounded-full border border-slate-300 px-3 py-1 text-sm" onClick={clearVisibleSelection}>
+                    {text.skipVisible}
+                  </button>
                 </div>
 
                 {visible.length ? (
@@ -745,14 +897,10 @@ export function GenomeMetadataCleanerClient() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 bg-white">
-                        {visible.slice(0, 200).map((proposal) => (
+                        {visible.slice(0, 300).map((proposal) => (
                           <tr key={proposal.id}>
                             <td className="px-3 py-2 align-top">
-                              <input
-                                type="checkbox"
-                                checked={proposal.apply}
-                                onChange={(event) => toggleProposal(proposal.id, event.target.checked)}
-                              />
+                              <input type="checkbox" checked={proposal.apply} onChange={(event) => toggleProposal(proposal.id, event.target.checked)} />
                             </td>
                             <td className="px-3 py-2 align-top">{proposal.rowIndex}</td>
                             <td className="px-3 py-2 align-top">{proposal.header}</td>
@@ -769,19 +917,19 @@ export function GenomeMetadataCleanerClient() {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-600">{text.noVisibleProposals}</p>
+                  <p className="text-sm text-slate-600">{text.noProposals}</p>
                 )}
               </>
             ) : (
-              <p className="text-sm text-slate-600">{text.analysisRequired}</p>
+              <p className="text-sm text-slate-600">{text.reviewFirst}</p>
             )}
           </SectionCard>
         </div>
       ) : null}
 
-      {activeTab === 'export' ? (
+      {step === 'export' ? (
         <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-          <SectionCard title={text.applyAndExport}>
+          <SectionCard title={text.export}>
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-sm text-slate-700">{text.rawPreserved}</p>
@@ -799,26 +947,15 @@ export function GenomeMetadataCleanerClient() {
                     className="w-full rounded-lg border border-slate-300 px-3 py-2"
                     placeholder={isKo ? '예: 인플루엔자 표준' : 'e.g. Influenza standard'}
                   />
-                  <button
-                    type="button"
-                    className="mt-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    onClick={savePreset}
-                    disabled={!policy}
-                  >
+                  <button type="button" className="mt-2 rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={savePreset} disabled={!policy}>
                     {text.savePreset}
                   </button>
                 </div>
-
                 <div>
                   <p className="mb-1 text-sm font-medium">{text.savedPresets}</p>
                   <div className="flex flex-wrap gap-2">
                     {presets.map((preset) => (
-                      <button
-                        key={preset.name}
-                        type="button"
-                        className="rounded-full border border-slate-300 px-3 py-1 text-xs"
-                        onClick={() => applyPreset(preset.name)}
-                      >
+                      <button key={preset.name} type="button" className="rounded-full border border-slate-300 px-3 py-1 text-xs" onClick={() => applyPreset(preset.name)}>
                         {preset.name}
                       </button>
                     ))}
@@ -827,7 +964,7 @@ export function GenomeMetadataCleanerClient() {
               </div>
 
               {analysis && appliedRows ? (
-                <div className="grid gap-2 sm:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"
                     className="rounded-lg bg-cyan-700 px-3 py-2 text-sm font-medium text-white"
@@ -838,16 +975,37 @@ export function GenomeMetadataCleanerClient() {
                   <button
                     type="button"
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"
-                    onClick={() => downloadText('change-log.json', changeLogToJson(appliedLog), 'application/json;charset=utf-8')}
+                    onClick={() => downloadText('change-log.csv', changeLogToCsv(appliedLog), 'text/csv;charset=utf-8')}
                   >
-                    JSON
+                    {text.changeLog} CSV
                   </button>
                   <button
                     type="button"
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"
-                    onClick={() => downloadText('change-log.csv', changeLogToCsv(appliedLog), 'text/csv;charset=utf-8')}
+                    onClick={() => downloadText('linkage-report.csv', linkageRowsToCsv(linkageReport?.rows || []), 'text/csv;charset=utf-8')}
                   >
-                    CSV
+                    {text.linkageReport} CSV
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"
+                    onClick={() => downloadText('linkage-view.csv', linkageAwareViewCsv(analysis.dataset, appliedRows, linkageReport), 'text/csv;charset=utf-8')}
+                  >
+                    {text.linkageView} CSV
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"
+                    onClick={() => downloadText('change-log.json', changeLogToJson(appliedLog), 'application/json;charset=utf-8')}
+                  >
+                    {text.changeLog} JSON
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium"
+                    onClick={() => downloadText('linkage-report.json', linkageReportToJson(linkageReport || { totalMetadataRows: 0, totalFastaRows: 0, matchedRows: 0, unmatchedMetadataRows: 0, exactMatches: 0, normalizedMatches: 0, reviewMatches: 0, unmatchedRows: 0, candidates: [], rows: [] }), 'application/json;charset=utf-8')}
+                  >
+                    {text.linkageReport} JSON
                   </button>
                 </div>
               ) : (
@@ -857,12 +1015,12 @@ export function GenomeMetadataCleanerClient() {
           </SectionCard>
 
           <SectionCard title={text.resultSnapshot}>
-            {analysis && rows.length ? (
+            {analysis && currentRows.length ? (
               <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="min-w-full divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50">
                     <tr>
-                      {analysis.dataset.headers.slice(0, 8).map((header) => (
+                      {analysis.dataset.headers.slice(0, 6).map((header) => (
                         <th key={header} className="px-3 py-2 text-left">
                           {header}
                         </th>
@@ -870,9 +1028,9 @@ export function GenomeMetadataCleanerClient() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 bg-white">
-                    {rows.slice(0, 10).map((row) => (
+                    {currentRows.slice(0, 10).map((row) => (
                       <tr key={row.__rowIndex}>
-                        {analysis.dataset.headers.slice(0, 8).map((header) => (
+                        {analysis.dataset.headers.slice(0, 6).map((header) => (
                           <td key={`${row.__rowIndex}-${header}`} className="px-3 py-2">
                             {String(row[header] ?? '')}
                           </td>
@@ -883,7 +1041,7 @@ export function GenomeMetadataCleanerClient() {
                 </table>
               </div>
             ) : (
-              <p className="text-sm text-slate-600">{text.appliedRowsAppear}</p>
+              <p className="text-sm text-slate-600">{text.applyBeforeExport}</p>
             )}
           </SectionCard>
         </div>

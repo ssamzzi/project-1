@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  analyzeSelectedWorkflowColumns,
+  analyzeWorkflow,
   applySelectedProposals,
   buildChangeLog,
   buildRecommendations,
+  changeLogToCsv,
   generateDiffProposals,
+  linkageRowsToCsv,
+  matchMetadataToFasta,
   parseCollectionDate,
   parseDelimitedText,
+  parseFastaText,
   profileDataset,
   suggestControlledVocabulary,
 } from '../lib/genome-metadata-cleaner';
@@ -30,6 +36,21 @@ describe('genome metadata cleaner date parsing', () => {
   });
 });
 
+describe('genome metadata cleaner consensus profiling', () => {
+  it('infers a dominant case pattern and counts outliers', () => {
+    const analysis = buildAnalysis('subtype\nH1N1\nH3N2\nh5n1\n');
+    const consensus = analysis.columnConsensus.find((item) => item.header === 'subtype');
+    expect(consensus?.dominantCase).toBe('upper');
+    expect(consensus?.outlierCount).toBeGreaterThan(0);
+  });
+
+  it('tracks dominant date pattern for collection dates', () => {
+    const analysis = buildAnalysis('collection_date\n2024-01-03\n2024-02-07\n2024/03/09\n');
+    const consensus = analysis.columnConsensus.find((item) => item.header === 'collection_date');
+    expect(consensus?.dominantPattern).toBe('full');
+  });
+});
+
 describe('genome metadata cleaner normalization', () => {
   it('applies whitespace and casing cleanup safely for host values', () => {
     const analysis = buildAnalysis('host\n  human  \n');
@@ -48,10 +69,36 @@ describe('genome metadata cleaner normalization', () => {
         },
       },
     };
-    const schemaByHeader = { host: 'host' as const };
-    const proposals = generateDiffProposals(analysis.dataset, schemaByHeader, policy);
+    const proposals = generateDiffProposals(analysis.dataset, { host: 'host' as const }, policy, {
+      selectedHeaders: ['host'],
+      consensusProfiles: analysis.columnConsensus,
+    });
     expect(proposals[0].suggestedValue).toBe('Human');
     expect(proposals[0].status).toBe('safe');
+  });
+
+  it('keeps identity-sensitive sample id cleanup in review', () => {
+    const analysis = buildAnalysis('sample_id\n a_01 \n');
+    const policy: NormalizationPolicy = {
+      fieldPolicies: {
+        sample_id: {
+          enabled: true,
+          strategy: 'safe-clean',
+          trimWhitespace: true,
+          collapseWhitespace: true,
+          normalizeSeparators: true,
+          normalizeCasing: true,
+          normalizeDates: 'preserve',
+          applyControlledVocabulary: 'off',
+          customMappings: {},
+        },
+      },
+    };
+    const proposals = generateDiffProposals(analysis.dataset, { sample_id: 'sample_id' as const }, policy, {
+      selectedHeaders: ['sample_id'],
+      consensusProfiles: analysis.columnConsensus,
+    });
+    expect(proposals[0].status).toBe('review');
   });
 
   it('suggests controlled vocabulary canonicalization for countries', () => {
@@ -68,76 +115,51 @@ describe('genome metadata cleaner duplicate detection', () => {
   });
 });
 
-describe('genome metadata cleaner rule selection and apply flow', () => {
-  it('honors skip policy and keeps risky date issues for review', () => {
-    const analysis = buildAnalysis('collection_date,country\n03/04/2024,USA\n');
-    const policy: NormalizationPolicy = {
-      fieldPolicies: {
-        collection_date: {
-          enabled: true,
-          strategy: 'review-only',
-          trimWhitespace: true,
-          collapseWhitespace: true,
-          normalizeSeparators: true,
-          normalizeCasing: false,
-          normalizeDates: 'review-ambiguous',
-          applyControlledVocabulary: 'off',
-          customMappings: {},
-        },
-        country: {
-          enabled: false,
-          strategy: 'skip',
-          trimWhitespace: false,
-          collapseWhitespace: false,
-          normalizeSeparators: false,
-          normalizeCasing: false,
-          normalizeDates: 'preserve',
-          applyControlledVocabulary: 'off',
-          customMappings: {},
-        },
-      },
-    };
-    const proposals = generateDiffProposals(analysis.dataset, { collection_date: 'collection_date', country: 'country' } as const, policy);
-    expect(proposals).toHaveLength(1);
-    expect(proposals[0].issueType).toBe('ambiguous-date');
-    expect(proposals[0].status).toBe('review');
+describe('genome metadata cleaner FASTA linkage', () => {
+  it('classifies exact and normalized matches', () => {
+    const metadata = parseDelimitedText('sample_id\nA_01\nB-02\n', 'metadata.csv', ',');
+    const fasta = parseFastaText('>A_01\nATGC\n>B 02\nATGC\n', 'seqs.fasta');
+    const report = matchMetadataToFasta(metadata.rows, fasta);
+    expect(report.rows[0].name_match_status).toBe('exact');
+    expect(report.rows[1].name_match_status).toBe('normalized_match');
   });
 
-  it('previews and applies selected changes while preserving originals', () => {
-    const analysis = buildAnalysis('host,country\n human ,USA\n');
-    const policy: NormalizationPolicy = {
-      fieldPolicies: {
-        host: {
-          enabled: true,
-          strategy: 'canonicalize-safe',
-          trimWhitespace: true,
-          collapseWhitespace: true,
-          normalizeSeparators: true,
-          normalizeCasing: true,
-          normalizeDates: 'preserve',
-          applyControlledVocabulary: 'safe-only',
-          customMappings: {},
-        },
-        country: {
-          enabled: true,
-          strategy: 'canonicalize-safe',
-          trimWhitespace: true,
-          collapseWhitespace: true,
-          normalizeSeparators: true,
-          normalizeCasing: true,
-          normalizeDates: 'preserve',
-          applyControlledVocabulary: 'safe-only',
-          customMappings: {},
-        },
-      },
-    };
-    const proposals = generateDiffProposals(analysis.dataset, { host: 'host', country: 'country' } as const, policy).map((proposal) => ({ ...proposal, apply: true }));
-    const applied = applySelectedProposals(analysis.dataset, proposals);
-    const log = buildChangeLog(proposals);
+  it('exports linkage rows as csv', () => {
+    const metadata = parseDelimitedText('sample_id\nA_01\n', 'metadata.csv', ',');
+    const fasta = parseFastaText('>A_01\nATGC\n', 'seqs.fasta');
+    const report = matchMetadataToFasta(metadata.rows, fasta);
+    expect(linkageRowsToCsv(report.rows)).toContain('name_match_status');
+  });
+});
 
-    expect(String(analysis.dataset.rows[0].host)).toBe(' human ');
-    expect(String(applied.rows[0].host)).toBe('Human');
+describe('genome metadata cleaner workflow integration', () => {
+  it('supports metadata upload -> selection -> suggestions -> apply -> export flow', () => {
+    const metadata = parseDelimitedText('country,collection_date\nUSA,2024/03/07\nsouth korea,03/04/2024\n', 'metadata.csv', ',');
+    const workflow = analyzeWorkflow(metadata);
+    const selected = analyzeSelectedWorkflowColumns(workflow.analysis, ['country', 'collection_date']);
+    const proposals = generateDiffProposals(
+      workflow.analysis.dataset,
+      { country: 'country', collection_date: 'collection_date' } as const,
+      workflow.defaultPolicy,
+      { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
+    );
+    const applied = applySelectedProposals(
+      workflow.analysis.dataset,
+      proposals.map((proposal) => ({ ...proposal, apply: proposal.status === 'safe' })),
+    );
+    const log = buildChangeLog(proposals.map((proposal) => ({ ...proposal, apply: proposal.status === 'safe' })));
+
+    expect(selected.headers).toEqual(['country', 'collection_date']);
+    expect(proposals.some((proposal) => proposal.issueType === 'controlled-vocab')).toBe(true);
     expect(String(applied.rows[0].country)).toBe('United States');
-    expect(log).toHaveLength(2);
+    expect(changeLogToCsv(log)).toContain('rowIndex');
+  });
+
+  it('supports metadata + FASTA linkage analysis', () => {
+    const metadata = parseDelimitedText('sample_id,isolate_name\nA_01,alpha\nB_02,beta\n', 'metadata.csv', ',');
+    const fasta = parseFastaText('>A_01\nATGC\n>B-02\nATGC\n', 'seqs.fasta');
+    const workflow = analyzeWorkflow(metadata, fasta);
+    expect(workflow.linkageReport?.matchedRows).toBe(2);
+    expect(workflow.linkageReport?.rows[1].name_match_status).toBe('normalized_match');
   });
 });

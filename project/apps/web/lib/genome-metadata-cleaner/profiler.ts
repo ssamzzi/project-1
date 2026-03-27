@@ -1,6 +1,21 @@
 import { suggestControlledVocabulary } from './controlledVocab';
 import { detectSchema, fieldForHeader } from './schemaDetector';
-import type { AnalysisResult, DashboardSummary, DateParseResult, FieldProfile, IssueCount, IssueType, ParsedDataset, ParsedRow, SupportedField } from './types';
+import type {
+  AnalysisResult,
+  CaseStyle,
+  ColumnConsensusProfile,
+  DashboardSummary,
+  DateParseResult,
+  FieldProfile,
+  FieldRecommendation,
+  IssueCount,
+  IssueType,
+  ParsedDataset,
+  ParsedRow,
+  SelectedColumnAnalysis,
+  SeparatorStyle,
+  SupportedField,
+} from './types';
 
 function valueAt(row: ParsedRow, header: string) {
   return String(row[header] ?? '');
@@ -12,6 +27,98 @@ function normalizedDuplicateKey(value: string) {
 
 function uniqueExamples(values: string[]) {
   return Array.from(new Set(values.filter(Boolean))).slice(0, 5);
+}
+
+function detectCaseStyle(value: string): CaseStyle {
+  const trimmed = value.trim();
+  if (!trimmed) return 'other';
+  if (/^[0-9._\-\/\s]+$/.test(trimmed)) return 'numeric';
+  if (trimmed === trimmed.toUpperCase() && /[A-Z]/i.test(trimmed)) return 'upper';
+  if (trimmed === trimmed.toLowerCase() && /[A-Z]/i.test(trimmed)) return 'lower';
+  const title = trimmed
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+  if (title === trimmed) return 'title';
+  return 'mixed';
+}
+
+function detectSeparatorStyle(value: string): SeparatorStyle {
+  const trimmed = value.trim();
+  if (!trimmed) return 'none';
+  const flags = [trimmed.includes(' '), trimmed.includes('-'), trimmed.includes('/'), trimmed.includes('_')];
+  const count = flags.filter(Boolean).length;
+  if (count === 0) return 'none';
+  if (count > 1) return 'mixed';
+  if (trimmed.includes(' ')) return 'space';
+  if (trimmed.includes('-')) return 'hyphen';
+  if (trimmed.includes('/')) return 'slash';
+  return 'underscore';
+}
+
+function patternSignature(value: string, field: SupportedField | undefined) {
+  const trimmed = value.trim();
+  if (!trimmed) return 'empty';
+  if (field === 'collection_date') {
+    const parsed = parseCollectionDate(trimmed);
+    return parsed.kind;
+  }
+  if (field === 'subtype' && /^H\d{1,2}N\d{1,2}$/i.test(trimmed.replace(/[^A-Za-z0-9]/g, ''))) return 'subtype';
+  if (/^[A-Z]{1,3}\d+$/i.test(trimmed)) return 'alpha-numeric';
+  if (/^\d+$/.test(trimmed)) return 'numeric';
+  if (/^[A-Za-z]+$/.test(trimmed.replace(/\s+/g, ''))) return 'letters';
+  return 'mixed';
+}
+
+function mostCommonValue(values: string[]) {
+  const counts = new Map<string, number>();
+  values.forEach((value) => counts.set(value, (counts.get(value) || 0) + 1));
+  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
+}
+
+function buildConsensusProfile(header: string, field: SupportedField | undefined, rows: ParsedRow[]): ColumnConsensusProfile {
+  const nonEmpty = rows.map((row) => valueAt(row, header).trim()).filter(Boolean);
+  const caseValues = nonEmpty.map(detectCaseStyle);
+  const separatorValues = nonEmpty.map(detectSeparatorStyle);
+  const patternValues = nonEmpty.map((value) => patternSignature(value, field));
+  const dominantPattern = mostCommonValue(patternValues) || 'empty';
+  const dominantCase = (mostCommonValue(caseValues) || 'other') as CaseStyle;
+  const dominantSeparator = (mostCommonValue(separatorValues) || 'none') as SeparatorStyle;
+  const dominantDateKind = field === 'collection_date' ? (mostCommonValue(patternValues.filter((value) => value !== 'invalid')) as DateParseResult['kind'] | undefined) : undefined;
+
+  const canonicalCandidates = nonEmpty
+    .map((value) => {
+      const suggestions = suggestControlledVocabulary(field, value);
+      return suggestions[0]?.canonical || value;
+    })
+    .filter(Boolean);
+  const canonicalValue = mostCommonValue(canonicalCandidates);
+
+  const outlierCount = nonEmpty.filter((value) => {
+    const patternOutlier = patternSignature(value, field) !== dominantPattern;
+    const caseOutlier = detectCaseStyle(value) !== dominantCase && dominantCase !== 'mixed';
+    const separatorOutlier = detectSeparatorStyle(value) !== dominantSeparator && dominantSeparator !== 'mixed';
+    const canonicalOutlier =
+      !!canonicalValue &&
+      !!field &&
+      ['country', 'host', 'region', 'subtype', 'segment'].includes(field) &&
+      (suggestControlledVocabulary(field, value)[0]?.canonical || value) !== canonicalValue;
+    return patternOutlier || caseOutlier || separatorOutlier || canonicalOutlier;
+  }).length;
+
+  return {
+    header,
+    field,
+    dominantPattern,
+    dominantCase,
+    dominantSeparator,
+    dominantDateKind,
+    canonicalValue,
+    outlierCount,
+    examples: uniqueExamples(nonEmpty),
+  };
 }
 
 export function parseCollectionDate(value: string): DateParseResult {
@@ -162,11 +269,27 @@ export function profileDataset(dataset: ParsedDataset): AnalysisResult {
     if (match) profile.confidence = match.confidence;
     return profile;
   });
+  const columnConsensus = dataset.headers.map((header) => buildConsensusProfile(header, fieldForHeader(schema, header), dataset.rows));
   return {
     dataset,
     schema,
     profiles,
+    columnConsensus,
     recommendations: [],
+    dashboard: summarizeDashboard(profiles),
+  };
+}
+
+export function profileSelectedColumns(analysis: AnalysisResult, headers: string[], recommendations: FieldRecommendation[]): SelectedColumnAnalysis {
+  const selectedHeaders = headers.filter((header) => analysis.dataset.headers.includes(header));
+  const profiles = analysis.profiles.filter((profile) => selectedHeaders.includes(profile.header));
+  const columnConsensus = analysis.columnConsensus.filter((profile) => selectedHeaders.includes(profile.header));
+  return {
+    dataset: analysis.dataset,
+    headers: selectedHeaders,
+    profiles,
+    columnConsensus,
+    recommendations: recommendations.filter((item) => selectedHeaders.includes(item.header)),
     dashboard: summarizeDashboard(profiles),
   };
 }

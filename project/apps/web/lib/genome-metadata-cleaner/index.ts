@@ -9,3 +9,4 @@ export * from './diff';
 export * from './apply';
 export * from './export';
 export * from './matcher';
+export * from './workflow';

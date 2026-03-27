@@ -1,6 +1,6 @@
 import { suggestControlledVocabulary } from './controlledVocab';
 import { parseCollectionDate } from './profiler';
-import type { DiffProposal, FieldPolicy, NormalizationPolicy, ParsedDataset, SupportedField } from './types';
+import type { ColumnConsensusProfile, DiffProposal, FastaMatchReport, FieldPolicy, NormalizationPolicy, ParsedDataset, SupportedField } from './types';
 
 function normalizeWhitespace(value: string, policy: FieldPolicy) {
   let next = value;
@@ -50,14 +50,30 @@ function customMappingFor(value: string, policy: FieldPolicy) {
   return compact?.[1];
 }
 
-export function generateDiffProposals(dataset: ParsedDataset, schemaByHeader: Record<string, SupportedField | undefined>, policy: NormalizationPolicy): DiffProposal[] {
+function consensusFor(header: string, consensusProfiles?: ColumnConsensusProfile[]) {
+  return consensusProfiles?.find((item) => item.header === header);
+}
+
+function linkageFor(rowIndex: number, linkage?: FastaMatchReport) {
+  return linkage?.rows.find((item) => item.rowIndex === rowIndex);
+}
+
+export function generateDiffProposals(
+  dataset: ParsedDataset,
+  schemaByHeader: Record<string, SupportedField | undefined>,
+  policy: NormalizationPolicy,
+  options?: { selectedHeaders?: string[]; consensusProfiles?: ColumnConsensusProfile[]; linkageReport?: FastaMatchReport },
+): DiffProposal[] {
   const proposals: DiffProposal[] = [];
   dataset.rows.forEach((row) => {
     dataset.headers.forEach((header) => {
+      if (options?.selectedHeaders && !options.selectedHeaders.includes(header)) return;
       const field = schemaByHeader[header];
       const original = String(row[header] ?? '');
       const fieldPolicy = policy.fieldPolicies[header];
       if (!fieldPolicy || !fieldPolicy.enabled || !original.trim()) return;
+      const consensus = consensusFor(header, options?.consensusProfiles);
+      const linkage = linkageFor(row.__rowIndex, options?.linkageReport);
 
       const custom = customMappingFor(original, fieldPolicy);
       if (custom && custom !== original) {
@@ -89,14 +105,28 @@ export function generateDiffProposals(dataset: ParsedDataset, schemaByHeader: Re
       const separatorNormalized = normalizeSeparators(next, field, fieldPolicy);
       if (separatorNormalized !== next) {
         const unsafe = !!(field && ['sample_id', 'isolate_name', 'strain_name'].includes(field));
-        changeReasons.push({ issueType: 'separator', reason: 'Separator cleanup can make formatting consistent.', confidence: unsafe ? 0.72 : 0.97, unsafe });
+        changeReasons.push({
+          issueType: 'separator',
+          reason: consensus?.dominantSeparator && consensus.dominantSeparator !== 'mixed'
+            ? `Separator cleanup can align this value to the dominant ${consensus.dominantSeparator} style.`
+            : 'Separator cleanup can make formatting consistent.',
+          confidence: unsafe ? 0.72 : 0.97,
+          unsafe,
+        });
         next = separatorNormalized;
       }
 
       const caseNormalized = normalizeCase(next, field, fieldPolicy);
       if (caseNormalized !== next) {
         const unsafe = !!(field && ['sample_id', 'isolate_name', 'strain_name'].includes(field));
-        changeReasons.push({ issueType: 'casing', reason: 'Case normalization can make the field more consistent.', confidence: unsafe ? 0.68 : 0.96, unsafe });
+        changeReasons.push({
+          issueType: 'casing',
+          reason: consensus?.dominantCase && consensus.dominantCase !== 'mixed'
+            ? `Case normalization can align this value to the dominant ${consensus.dominantCase} style.`
+            : 'Case normalization can make the field more consistent.',
+          confidence: unsafe ? 0.68 : 0.96,
+          unsafe,
+        });
         next = caseNormalized;
       }
 
@@ -144,14 +174,25 @@ export function generateDiffProposals(dataset: ParsedDataset, schemaByHeader: Re
         const suggestions = suggestControlledVocabulary(field, next);
         const best = suggestions[0];
         if (best && best.canonical !== next) {
+          const consensusCanonical = consensus?.canonicalValue;
+          const consensusBoost = consensusCanonical && best.canonical === consensusCanonical ? 0.02 : 0;
           const unsafe = fieldPolicy.applyControlledVocabulary === 'with-review' && !best.safe;
-          changeReasons.push({ issueType: 'controlled-vocab', reason: best.reason, confidence: best.confidence, unsafe: unsafe || !best.safe });
-          next = best.canonical;
+          changeReasons.push({
+            issueType: 'controlled-vocab',
+            reason: consensusCanonical && best.canonical === consensusCanonical
+              ? `${best.reason} This matches the dominant column canonical value.`
+              : best.reason,
+            confidence: Math.min(best.confidence + consensusBoost, 0.99),
+            unsafe: unsafe || !best.safe,
+          });
+          next = consensusCanonical && best.canonical !== consensusCanonical && best.safe ? consensusCanonical : best.canonical;
         }
       }
 
       if (next !== original && changeReasons.length) {
         const strongest = changeReasons[changeReasons.length - 1];
+        const identitySensitive = !!(field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field));
+        const linkageUnsafe = identitySensitive && linkage && linkage.name_match_status !== 'exact';
         proposals.push(
           buildProposal({
             rowIndex: row.__rowIndex,
@@ -160,9 +201,9 @@ export function generateDiffProposals(dataset: ParsedDataset, schemaByHeader: Re
             originalValue: original,
             suggestedValue: next,
             issueType: strongest.issueType,
-            reason: changeReasons.map((item) => item.reason).join(' '),
+            reason: changeReasons.map((item) => item.reason).join(' ') + (linkageUnsafe ? ` FASTA linkage status is ${linkage.name_match_status}, so review is required.` : ''),
             confidence: strongest.confidence,
-            status: proposalStatus(strongest.confidence, !!strongest.unsafe),
+            status: proposalStatus(strongest.confidence, !!strongest.unsafe || linkageUnsafe),
           }),
         );
       }

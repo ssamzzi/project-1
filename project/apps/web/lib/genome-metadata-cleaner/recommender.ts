@@ -55,14 +55,19 @@ function recommendedStrategyForProfile(profile: FieldProfile): Pick<FieldRecomme
 
 export function buildRecommendations(analysis: AnalysisResult): FieldRecommendation[] {
   return analysis.profiles.map((profile) => {
+    const consensus = analysis.columnConsensus.find((item) => item.header === profile.header);
     const recommended = recommendedStrategyForProfile(profile);
+    const consensusSummary = consensus
+      ? `Dominant pattern: ${consensus.dominantPattern}; case: ${consensus.dominantCase}; outliers: ${consensus.outlierCount}.`
+      : undefined;
     return {
       header: profile.header,
       field: profile.field,
       recommendedStrategy: recommended.recommendedStrategy,
-      recommendedReason: recommended.recommendedReason,
+      recommendedReason: consensusSummary ? `${recommended.recommendedReason} ${consensusSummary}` : recommended.recommendedReason,
       options: strategyOptions(profile.field),
       risky: recommended.risky,
+      consensusSummary,
     };
   });
 }

@@ -1,4 +1,4 @@
-import type { ChangeLogEntry, ParsedDataset, ParsedRow } from './types';
+import type { ChangeLogEntry, FastaMatchReport, NameViewRow, ParsedDataset, ParsedRow } from './types';
 
 function escapeCell(value: string) {
   return `"${value.replace(/"/g, '""')}"`;
@@ -50,6 +50,19 @@ export function changeLogToCsv(changeLog: ChangeLogEntry[]) {
         .map((header) => escapeCell(String(entry[header as keyof ChangeLogEntry] ?? '')))
         .join(','),
     ),
+  ];
+  return lines.join('\n');
+}
+
+export function linkageReportToJson(report: FastaMatchReport) {
+  return JSON.stringify(report, null, 2);
+}
+
+export function linkageRowsToCsv(rows: NameViewRow[]) {
+  const headers = ['rowIndex', 'name', 'raw_name', 'fasta_name', 'raw_fasta_name', 'name_match_status', 'name_match_confidence', 'matchedBy', 'reason'];
+  const lines = [
+    headers.join(','),
+    ...rows.map((row) => headers.map((header) => escapeCell(String(row[header as keyof NameViewRow] ?? ''))).join(',')),
   ];
   return lines.join('\n');
 }

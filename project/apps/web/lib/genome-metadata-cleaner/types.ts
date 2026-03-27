@@ -27,6 +27,9 @@ export type IssueType =
   | 'missing-value';
 
 export type ProposalStatus = 'safe' | 'review' | 'invalid';
+export type MatchStatus = 'exact' | 'normalized_match' | 'custom_mapping_match' | 'review' | 'unmatched';
+export type CaseStyle = 'upper' | 'lower' | 'title' | 'mixed' | 'numeric' | 'other';
+export type SeparatorStyle = 'space' | 'hyphen' | 'slash' | 'underscore' | 'none' | 'mixed';
 
 export interface ParsedRow {
   __rowIndex: number;
@@ -74,6 +77,18 @@ export interface FieldProfile {
   distinctExamples: string[];
 }
 
+export interface ColumnConsensusProfile {
+  header: string;
+  field?: SupportedField;
+  dominantPattern: string;
+  dominantCase: CaseStyle;
+  dominantSeparator: SeparatorStyle;
+  dominantDateKind?: DateParseResult['kind'];
+  canonicalValue?: string;
+  outlierCount: number;
+  examples: string[];
+}
+
 export interface DashboardSummary {
   totalRows: number;
   totalIssues: number;
@@ -95,6 +110,7 @@ export interface FieldRecommendation {
   recommendedReason: string;
   options: StrategyOption[];
   risky: boolean;
+  consensusSummary?: string;
 }
 
 export interface ControlledSuggestion {
@@ -152,6 +168,16 @@ export interface AnalysisResult {
   dataset: ParsedDataset;
   schema: SchemaMatch[];
   profiles: FieldProfile[];
+  columnConsensus: ColumnConsensusProfile[];
+  recommendations: FieldRecommendation[];
+  dashboard: DashboardSummary;
+}
+
+export interface SelectedColumnAnalysis {
+  dataset: ParsedDataset;
+  headers: string[];
+  profiles: FieldProfile[];
+  columnConsensus: ColumnConsensusProfile[];
   recommendations: FieldRecommendation[];
   dashboard: DashboardSummary;
 }
@@ -186,6 +212,21 @@ export interface FastaMatchCandidate {
   fastaValue: string;
   score: number;
   key: string;
+  status: MatchStatus;
+  confidence: number;
+  reason: string;
+}
+
+export interface NameViewRow {
+  rowIndex: number;
+  name: string;
+  raw_name: string;
+  fasta_name: string;
+  raw_fasta_name: string;
+  name_match_status: MatchStatus;
+  name_match_confidence: number;
+  matchedBy?: string;
+  reason: string;
 }
 
 export interface FastaMatchReport {
@@ -193,5 +234,10 @@ export interface FastaMatchReport {
   totalFastaRows: number;
   matchedRows: number;
   unmatchedMetadataRows: number;
+  exactMatches: number;
+  normalizedMatches: number;
+  reviewMatches: number;
+  unmatchedRows: number;
   candidates: FastaMatchCandidate[];
+  rows: NameViewRow[];
 }
