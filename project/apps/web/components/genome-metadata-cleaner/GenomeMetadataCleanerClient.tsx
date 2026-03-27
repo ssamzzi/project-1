@@ -113,9 +113,13 @@ export function GenomeMetadataCleanerClient() {
   }
 
   async function handleReferenceUpload(file: File) {
-    const dataset = await parseInputFile(file);
-    setReferenceFasta(dataset);
-    if (rows.length) setMatchReport(matchMetadataToFasta(rows, dataset));
+    try {
+      const dataset = await parseInputFile(file);
+      setReferenceFasta(dataset);
+      if (rows.length) setMatchReport(matchMetadataToFasta(rows, dataset));
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Failed to analyze reference FASTA.');
+    }
   }
 
   function updateFieldPolicy(header: string, patch: Partial<FieldPolicy>) {
@@ -135,6 +139,10 @@ export function GenomeMetadataCleanerClient() {
       patch.normalizeDates = 'preserve';
     }
     updateFieldPolicy(header, patch);
+  }
+
+  function toggleProposal(id: string, checked: boolean) {
+    setOverrides((current) => ({ ...current, [id]: checked }));
   }
 
   function applyNow(mode: 'safe' | 'selected') {
