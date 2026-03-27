@@ -58,6 +58,10 @@ function linkageFor(rowIndex: number, linkage?: FastaMatchReport) {
   return linkage?.rows.find((item) => item.rowIndex === rowIndex);
 }
 
+function normalizedDuplicateKey(value: string) {
+  return value.toLowerCase().replace(/[\s._\-]+/g, '');
+}
+
 export function generateDiffProposals(
   dataset: ParsedDataset,
   schemaByHeader: Record<string, SupportedField | undefined>,
@@ -65,6 +69,21 @@ export function generateDiffProposals(
   options?: { selectedHeaders?: string[]; consensusProfiles?: ColumnConsensusProfile[]; linkageReport?: FastaMatchReport },
 ): DiffProposal[] {
   const proposals: DiffProposal[] = [];
+  const duplicateIndexByHeader = new Map<string, Map<string, number[]>>();
+
+  dataset.headers.forEach((header) => {
+    const field = schemaByHeader[header];
+    if (!field || !['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return;
+    const groups = new Map<string, number[]>();
+    dataset.rows.forEach((row) => {
+      const original = String(row[header] ?? '').trim();
+      if (!original) return;
+      const key = normalizedDuplicateKey(original);
+      groups.set(key, [...(groups.get(key) || []), row.__rowIndex]);
+    });
+    duplicateIndexByHeader.set(header, groups);
+  });
+
   dataset.rows.forEach((row) => {
     dataset.headers.forEach((header) => {
       if (options?.selectedHeaders && !options.selectedHeaders.includes(header)) return;
@@ -74,6 +93,8 @@ export function generateDiffProposals(
       if (!fieldPolicy || !fieldPolicy.enabled || !original.trim()) return;
       const consensus = consensusFor(header, options?.consensusProfiles);
       const linkage = linkageFor(row.__rowIndex, options?.linkageReport);
+      const trimmedOriginal = original.trim();
+      const duplicateGroup = duplicateIndexByHeader.get(header)?.get(normalizedDuplicateKey(trimmedOriginal)) || [];
 
       const custom = customMappingFor(original, fieldPolicy);
       if (custom && custom !== original) {
@@ -168,6 +189,40 @@ export function generateDiffProposals(
           changeReasons.push({ issueType: 'mixed-date-format', reason: parsed.reason, confidence: 0.99 });
           next = parsed.normalized;
         }
+      } else if (field === 'collection_date' && trimmedOriginal) {
+        const parsed = parseCollectionDate(trimmedOriginal);
+        if (parsed.kind === 'ambiguous') {
+          proposals.push(
+            buildProposal({
+              rowIndex: row.__rowIndex,
+              header,
+              field,
+              originalValue: original,
+              suggestedValue: original,
+              issueType: 'ambiguous-date',
+              reason: parsed.reason,
+              confidence: 0.2,
+              status: 'review',
+            }),
+          );
+          return;
+        }
+        if (parsed.kind === 'impossible' || parsed.kind === 'invalid') {
+          proposals.push(
+            buildProposal({
+              rowIndex: row.__rowIndex,
+              header,
+              field,
+              originalValue: original,
+              suggestedValue: original,
+              issueType: parsed.kind === 'impossible' ? 'impossible-date' : 'invalid-value',
+              reason: parsed.reason,
+              confidence: 0.1,
+              status: 'invalid',
+            }),
+          );
+          return;
+        }
       }
 
       if (fieldPolicy.applyControlledVocabulary !== 'off') {
@@ -186,6 +241,22 @@ export function generateDiffProposals(
             unsafe: unsafe || !best.safe,
           });
           next = consensusCanonical && best.canonical !== consensusCanonical && best.safe ? consensusCanonical : best.canonical;
+        }
+        if (!suggestions.length && field && ['country', 'host', 'subtype', 'segment', 'region'].includes(field) && trimmedOriginal) {
+          proposals.push(
+            buildProposal({
+              rowIndex: row.__rowIndex,
+              header,
+              field,
+              originalValue: original,
+              suggestedValue: original,
+              issueType: 'invalid-value',
+              reason: 'No plausible controlled vocabulary candidate was found for this value.',
+              confidence: 0.1,
+              status: 'invalid',
+            }),
+          );
+          return;
         }
       }
 
@@ -206,6 +277,44 @@ export function generateDiffProposals(
             status: proposalStatus(strongest.confidence, !!strongest.unsafe || linkageUnsafe),
           }),
         );
+        return;
+      }
+
+      if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field) && duplicateGroup.length > 1) {
+        proposals.push(
+          buildProposal({
+            rowIndex: row.__rowIndex,
+            header,
+            field,
+            originalValue: original,
+            suggestedValue: original,
+            issueType: duplicateGroup.every((index) => String(dataset.rows[index]?.[header] ?? '').trim() === trimmedOriginal) ? 'duplicate' : 'likely-duplicate',
+            reason: `This value shares the same normalized identity with rows ${duplicateGroup.join(', ')} and should be reviewed before any merge or rename.`,
+            confidence: 0.35,
+            status: 'review',
+          }),
+        );
+        return;
+      }
+
+      if (consensus && trimmedOriginal && field && ['country', 'host', 'region', 'subtype', 'segment'].includes(field)) {
+        const parsedSuggestions = suggestControlledVocabulary(field, trimmedOriginal);
+        const likelyCanonical = parsedSuggestions[0]?.canonical || trimmedOriginal;
+        if (consensus.canonicalValue && likelyCanonical !== consensus.canonicalValue) {
+          proposals.push(
+            buildProposal({
+              rowIndex: row.__rowIndex,
+              header,
+              field,
+              originalValue: original,
+              suggestedValue: original,
+              issueType: 'controlled-vocab',
+              reason: 'This value disagrees with the dominant canonical form in the selected column and should be reviewed.',
+              confidence: 0.45,
+              status: 'review',
+            }),
+          );
+        }
       }
     });
   });

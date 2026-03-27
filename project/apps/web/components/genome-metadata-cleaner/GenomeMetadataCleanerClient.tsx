@@ -338,7 +338,7 @@ export function GenomeMetadataCleanerClient() {
   const currentConsensus = selectedAnalysis?.columnConsensus.find((item) => item.header === selectedHeader) ?? null;
   const currentPolicy = selectedHeader && policy ? policy.fieldPolicies[selectedHeader] ?? null : null;
   const currentHeaderIndex = selectedHeaders.findIndex((header) => header === selectedHeader);
-  const currentFieldProposalCount = visible.filter((proposal) => proposal.header === selectedHeader).length;
+  const currentFieldProposalCount = proposals.filter((proposal) => proposal.header === selectedHeader).length;
 
   async function handleAnalyze() {
     if (!metadataFile) return;
