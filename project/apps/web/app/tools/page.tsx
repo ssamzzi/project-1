@@ -13,6 +13,18 @@ export default function ToolsPage() {
     <section className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="text-3xl font-semibold">{t('tools.title')}</h1>
       <p className="mt-2 text-slate-600">{t('tools.description')}</p>
+      <div className="mt-4 rounded-2xl border border-cyan-200 bg-cyan-50/60 p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">{locale === 'ko' ? '신규 워크플로 도구' : 'New Workflow Tool'}</p>
+        <h2 className="mt-2 text-2xl font-semibold text-slate-900">Genome Metadata Cleaner</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
+          {locale === 'ko'
+            ? 'CSV, TSV, XLSX, FASTA 헤더를 업로드하고, 스키마 문제를 탐지한 뒤, 필드별 정규화 규칙을 선택하고, diff를 미리 본 다음, 정리된 파일과 변경 로그를 내보낼 수 있습니다.'
+            : 'Upload CSV, TSV, XLSX, or FASTA headers, detect schema issues, choose normalization rules per field, preview diffs, and export a cleaned file with a change log.'}
+        </p>
+        <Link className="mt-4 inline-block rounded-lg bg-cyan-700 px-4 py-2 text-sm font-medium text-white" href="/genome-metadata-cleaner">
+          {locale === 'ko' ? 'Genome Metadata Cleaner 열기' : 'Open Genome Metadata Cleaner'}
+        </Link>
+      </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {sortedTools.map((tool) => {
           const title = locale === 'ko' ? tool.nameKo : tool.nameEn;

@@ -69,7 +69,15 @@ export function SearchClient() {
       haystack: [example.title, example.summary, example.audience, example.slug].join(' '),
     }));
 
-    return [...tools, ...guides, ...workflows, ...examples];
+    const cleaner = {
+      kind: 'workflow' as const,
+      title: 'Genome Metadata Cleaner',
+      summary: locale === 'ko' ? '게놈 메타데이터 파일을 분석하고, 미리보기·검토·내보내기 제어와 함께 정규화합니다.' : 'Analyze and normalize genome metadata files with preview, review, and export controls.',
+      href: '/genome-metadata-cleaner',
+      haystack: 'genome metadata cleaner csv tsv xlsx fasta normalization cleaning schema duplicate date country host subtype segment',
+    };
+
+    return [...tools, ...guides, ...workflows, ...examples, cleaner];
   }, [locale]);
 
   const filtered = useMemo(() => {

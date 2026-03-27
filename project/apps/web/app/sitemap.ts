@@ -6,7 +6,7 @@ import { workflowMetas } from '../lib/data/workflows';
 import { SITE_URL } from '../lib/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticRoutes = ['', '/tools', '/examples', '/guides', '/workflows', '/about', '/privacy', '/terms', '/editorial', '/search'];
+  const staticRoutes = ['', '/tools', '/examples', '/guides', '/workflows', '/genome-metadata-cleaner', '/about', '/privacy', '/terms', '/editorial', '/search'];
   const staticEntries = staticRoutes.map((path) => ({
     url: `${SITE_URL}${path}`,
     lastModified: new Date(),
