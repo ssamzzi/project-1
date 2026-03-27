@@ -122,6 +122,21 @@ export function GenomeMetadataCleanerClient() {
     setPolicy((current) => current ? { ...current, fieldPolicies: { ...current.fieldPolicies, [header]: { ...current.fieldPolicies[header], ...patch } } } : current);
   }
 
+  function setStrategy(header: string, strategy: FieldPolicy['strategy']) {
+    const patch: Partial<FieldPolicy> = { strategy, enabled: strategy !== 'skip' };
+    if (strategy === 'canonicalize-safe') {
+      patch.applyControlledVocabulary = 'safe-only';
+      patch.normalizeDates = 'normalize-unambiguous';
+    } else if (strategy === 'canonicalize-with-review' || strategy === 'review-only') {
+      patch.applyControlledVocabulary = 'with-review';
+      patch.normalizeDates = 'review-ambiguous';
+    } else {
+      patch.applyControlledVocabulary = 'off';
+      patch.normalizeDates = 'preserve';
+    }
+    updateFieldPolicy(header, patch);
+  }
+
   function applyNow(mode: 'safe' | 'selected') {
     if (!analysis) return;
     const chosen = proposals.map((proposal) => ({ ...proposal, apply: mode === 'safe' ? proposal.status === 'safe' : proposal.apply }));
@@ -139,6 +154,11 @@ export function GenomeMetadataCleanerClient() {
     setPresets(next);
     window.localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(next));
     setPresetName('');
+  }
+
+  function applyPreset(name: string) {
+    const preset = presets.find((item) => item.name === name);
+    if (preset) setPolicy(preset.policy);
   }
 
   function addMapping() {
@@ -247,7 +267,7 @@ export function GenomeMetadataCleanerClient() {
               {analysis && appliedRows ? <div className="grid gap-2 sm:grid-cols-3"><button type="button" className="rounded-lg bg-cyan-700 px-3 py-2 text-sm font-medium text-white" onClick={() => downloadText(`cleaned-${analysis.dataset.fileName}`, exportCleanedContent(analysis.dataset, appliedRows))}>{isKo ? '정리된 파일' : 'Cleaned file'}</button><button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium" onClick={() => downloadText('change-log.json', changeLogToJson(appliedLog), 'application/json;charset=utf-8')}>JSON</button><button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium" onClick={() => downloadText('change-log.csv', changeLogToCsv(appliedLog), 'text/csv;charset=utf-8')}>CSV</button></div> : <p className="text-sm text-slate-600">{isKo ? '변경 적용 후 내보내기를 사용할 수 있습니다.' : 'Apply changes before exporting.'}</p>}
             </div>
           </SectionCard>
-          <SectionCard title={text.resultsSnapshot}>
+          <SectionCard title={isKo ? '결과 스냅샷' : 'Result Snapshot'}>
             {analysis && rows.length ? <div className="overflow-x-auto rounded-lg border border-slate-200"><table className="min-w-full divide-y divide-slate-200 text-sm"><thead className="bg-slate-50"><tr>{analysis.dataset.headers.slice(0, 8).map((header) => <th key={header} className="px-3 py-2 text-left">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-200 bg-white">{rows.slice(0, 10).map((row) => <tr key={row.__rowIndex}>{analysis.dataset.headers.slice(0, 8).map((header) => <td key={`${row.__rowIndex}-${header}`} className="px-3 py-2">{String(row[header] ?? '')}</td>)}</tr>)}</tbody></table></div> : <p className="text-sm text-slate-600">{isKo ? '적용 결과가 여기에 표시됩니다.' : 'Applied rows appear here.'}</p>}
           </SectionCard>
         </div>
