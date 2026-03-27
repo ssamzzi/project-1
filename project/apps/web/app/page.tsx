@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useLocale } from '../lib/context/LocaleContext';
+import { exampleMetas } from '../lib/data/examples';
 import { guideMetas } from '../lib/data/guides';
 import { toolMetas } from '../lib/data/tools';
 import { workflowMetas } from '../lib/data/workflows';
@@ -14,7 +15,8 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const collator = locale === 'ko' ? 'ko-KR' : 'en-US';
   const sortedTools = [...toolMetas].sort((a, b) => (locale === 'ko' ? a.nameKo : a.nameEn).localeCompare(locale === 'ko' ? b.nameKo : b.nameEn, collator));
-  const topTools = sortedTools.slice(0, 12);
+  const topTools = sortedTools.slice(0, 9);
+  const featuredExamples = exampleMetas.slice(0, 3);
   const featuredGuides = guideMetas.slice(0, 3);
   const featuredWorkflows = workflowMetas.slice(0, 3);
   const contactHref = t('about.placeholder');
@@ -23,14 +25,14 @@ export default function HomePage() {
   const valueCards =
     locale === 'ko'
       ? [
-          { title: '실용 계산', body: '희석, 농도, 세포수, 클로닝 세팅처럼 실험 전에 자주 확인하는 값을 빠르게 계산합니다.' },
-          { title: '설명형 콘텐츠', body: '가이드와 워크플로 페이지에서 계산의 맥락과 실수 포인트를 함께 설명합니다.' },
-          { title: '정책 공개', body: 'About, Privacy, Terms, Editorial 페이지를 통해 운영 기준과 문의 방법을 공개합니다.' },
+          { title: '실전 계산', body: 'PCR, qPCR, 세포 시딩, 희석, 클로닝처럼 실제 실험 준비에서 반복되는 계산에 집중합니다.' },
+          { title: '예제 중심', body: '공식만 나열하지 않고 실제 실험 상황을 기준으로 worked example과 워크플로를 함께 제공합니다.' },
+          { title: '검증 지향', body: '가정, 경고, 자주 틀리는 지점, 정책 페이지를 함께 공개해 결과를 다시 확인하기 쉽게 했습니다.' },
         ]
       : [
-          { title: 'Practical calculations', body: 'Quick checks for dilution, concentration, cell counts, and cloning setup.' },
-          { title: 'Explanatory content', body: 'Guide and workflow pages add context, caveats, and interpretation notes.' },
-          { title: 'Policy transparency', body: 'About, Privacy, Terms, and Editorial pages are visible from every page.' },
+          { title: 'Bench-ready calculations', body: 'Focused on PCR, qPCR, cell seeding, dilution, and cloning tasks that recur in real wet-lab work.' },
+          { title: 'Worked examples', body: 'Each core area is paired with worked examples and workflows instead of relying on calculators alone.' },
+          { title: 'Validation-first', body: 'Assumptions, warnings, error-prone steps, and policy pages are all exposed for review.' },
         ];
 
   return (
@@ -38,15 +40,19 @@ export default function HomePage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-8 lg:col-span-2">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
-            {locale === 'ko' ? '실험 준비 워크스페이스' : 'Lab Prep Workspace'}
+            {locale === 'ko' ? '연구자 실전 계산 허브' : 'Bench Calculation Hub'}
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">{t('home.title')}</h1>
           <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-700 sm:text-lg">
             {locale === 'ko'
-              ? '계산기, 가이드, 워크플로를 한곳에 모아 실험 준비와 검증을 돕습니다.'
-              : 'Access calculators, guides, and workflow references from one streamlined interface.'}
+              ? 'BioLT는 연구자가 실제로 반복해서 찾는 계산, worked example, 워크플로를 모아 실험 준비를 돕습니다.'
+              : 'BioLT combines practical calculators, worked examples, and workflow notes that researchers can reuse during experiment preparation.'}
           </p>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">{t('home.subtitle')}</p>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+            {locale === 'ko'
+              ? '단순 계산기 목록이 아니라 실험 전 검토와 재현성 확보를 위한 참고 사이트를 목표로 합니다.'
+              : 'The goal is not a generic calculator list, but a reusable reference site for pre-bench checks and reproducibility.'}
+          </p>
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-700">
             <p>
               {locale === 'ko' ? '제작자' : 'Creator'}:{' '}
@@ -65,8 +71,8 @@ export default function HomePage() {
             <Link href="/tools" className="rounded-md bg-sky-600 px-6 py-3 text-base font-semibold text-white shadow-sm">
               {t('home.cta.tools')}
             </Link>
-            <Link href="/guides" className="rounded-md bg-slate-900 px-6 py-3 text-base font-semibold text-white shadow-sm">
-              {locale === 'ko' ? '가이드' : 'Guides'}
+            <Link href="/examples" className="rounded-md bg-slate-900 px-6 py-3 text-base font-semibold text-white shadow-sm">
+              {locale === 'ko' ? '예제 보기' : 'Worked examples'}
             </Link>
             <Link href="/search" className="rounded-md border border-slate-300 bg-white px-6 py-3 text-base font-semibold text-slate-900 shadow-sm">
               {t('nav.search')}
@@ -93,7 +99,7 @@ export default function HomePage() {
         </div>
         <aside className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            {locale === 'ko' ? '사이트 가치' : 'Site Value'}
+            {locale === 'ko' ? '핵심 가치' : 'Core Value'}
           </p>
           <ul className="mt-3 space-y-3">
             {valueCards.map((item) => (
@@ -107,33 +113,21 @@ export default function HomePage() {
       </div>
 
       <div className="mt-6">
-        <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '빠른 시작' : 'Quick Start'}</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '가장 많이 찾는 계산' : 'Most useful calculators'}</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <Link href="/tools/pcr-master-mix" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-300">
-            <p className="text-sm font-semibold text-slate-900">PCR/qPCR</p>
-            <p className="mt-1 text-sm text-slate-600">
-              {locale === 'ko' ? '마스터 믹스, 카피 넘버, 희석 계획' : 'Master mix, copy number, and dilution planning'}
-            </p>
-          </Link>
-          <Link href="/tools/cell-seeding" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-300">
-            <p className="text-sm font-semibold text-slate-900">Cell Seeding</p>
-            <p className="mt-1 text-sm text-slate-600">
-              {locale === 'ko' ? '세포 밀도, plate 면적, 배양 부피 설정' : 'Cell density, plate area, and volume setup'}
-            </p>
-          </Link>
-          <Link href="/workflows/cell-culture" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-300">
-            <p className="text-sm font-semibold text-slate-900">{locale === 'ko' ? '워크플로' : 'Workflow'}</p>
-            <p className="mt-1 text-sm text-slate-600">
-              {locale === 'ko' ? '카운팅, 시딩, 일상 배양 흐름을 한 번에 정리' : 'Connect counting, seeding, and daily handling into one flow'}
-            </p>
-          </Link>
+          {topTools.slice(0, 3).map((tool) => (
+            <Link key={tool.slug} href={`/tools/${tool.slug}`} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-300">
+              <p className="text-sm font-semibold text-slate-900">{locale === 'ko' ? tool.nameKo : tool.nameEn}</p>
+              <p className="mt-1 text-sm text-slate-600">{locale === 'ko' ? tool.shortKo : tool.shortEn}</p>
+            </Link>
+          ))}
         </div>
       </div>
 
       <div className="mt-8">
-        <section className="rounded-xl border border-slate-200 bg-white p-4">
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold">{t('home.tools')}</h2>
+            <h2 className="text-base font-semibold">{locale === 'ko' ? '핵심 도구 라이브러리' : 'Core tool library'}</h2>
             <Link href="/tools" className="text-xs text-indigo-700 underline">
               {t('global.open')}
             </Link>
@@ -151,13 +145,32 @@ export default function HomePage() {
         </section>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
         <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '설명형 가이드' : 'Guides with original context'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '실전 예제' : 'Worked examples'}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {locale === 'ko'
-              ? '가이드 페이지는 계산기만으로 부족한 가정, 실수 포인트, 해석 한계를 설명합니다.'
-              : 'Standalone guide pages explain assumptions, common mistakes, and interpretation limits so the site offers value beyond raw calculators.'}
+              ? '실제 연구 상황을 기준으로 계산 결과를 어떻게 해석하고 적용하는지 보여줍니다.'
+              : 'Shows how a researcher would interpret and apply calculator outputs in realistic lab situations.'}
+          </p>
+          <ul className="mt-4 space-y-3 text-sm">
+            {featuredExamples.map((example) => (
+              <li key={example.slug} className="rounded-lg border border-slate-100 p-3">
+                <Link href={`/examples/${example.slug}`} className="font-medium text-indigo-700 underline">
+                  {example.title}
+                </Link>
+                <p className="mt-1 text-slate-600">{example.summary}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '설명형 가이드' : 'Guides with context'}</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            {locale === 'ko'
+              ? '가이드는 계산식만이 아니라 해석 한계, 흔한 실수, 선택 기준까지 설명합니다.'
+              : 'Guides explain context, interpretation limits, common mistakes, and method choice.'}
           </p>
           <ul className="mt-4 space-y-3 text-sm">
             {featuredGuides.map((guide) => (
@@ -169,17 +182,14 @@ export default function HomePage() {
               </li>
             ))}
           </ul>
-          <Link href="/guides" className="mt-4 inline-flex text-sm font-medium text-sky-700 underline">
-            {locale === 'ko' ? '가이드 전체 보기' : 'Browse all guides'}
-          </Link>
         </section>
 
         <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '실험 워크플로' : 'Workflow pages for real lab tasks'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '실험 워크플로' : 'Workflows for experiments'}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {locale === 'ko'
-              ? '워크플로 페이지는 여러 도구를 하나의 실험 흐름으로 연결해 준비 순서와 검증 포인트를 보여 줍니다.'
-              : 'Workflow pages connect multiple tools into experiment sequences so readers can see preparation order, controls, and validation checkpoints in one place.'}
+              ? '워크플로는 여러 도구를 하나의 실험 흐름으로 연결해 준비 순서와 검증 포인트를 보여줍니다.'
+              : 'Workflows connect several tools into one experimental sequence and expose validation checkpoints.'}
           </p>
           <ul className="mt-4 space-y-3 text-sm">
             {featuredWorkflows.map((workflow) => (
@@ -190,48 +200,6 @@ export default function HomePage() {
                 <p className="mt-1 text-slate-600">{locale === 'ko' ? workflow.shortKo : workflow.shortEn}</p>
               </li>
             ))}
-          </ul>
-          <Link href="/workflows" className="mt-4 inline-flex text-sm font-medium text-sky-700 underline">
-            {locale === 'ko' ? '워크플로 전체 보기' : 'Browse all workflows'}
-          </Link>
-        </section>
-      </div>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        <section className="rounded-xl border border-slate-200 bg-white p-5 lg:col-span-2">
-          <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? 'BioLT 사용 원칙' : 'How BioLT is intended to be used'}</h2>
-          <div className="mt-3 space-y-3 text-sm leading-6 text-slate-700">
-            {locale === 'ko' ? (
-              <>
-                <p>각 계산기 페이지는 입력값, 계산식, 가정, 경고 조건을 함께 보여 주도록 설계되어 있습니다.</p>
-                <p>가이드와 워크플로 페이지는 계산 결과를 실제 실험 맥락에서 이해할 수 있도록 독립적인 설명 가치를 제공합니다.</p>
-                <p>최종 의사결정은 반드시 실험실 SOP, 키트 매뉴얼, 장비 조건, 지도자 검토로 다시 확인해야 합니다.</p>
-              </>
-            ) : (
-              <>
-                <p>Each calculator page is meant to document inputs, formulas, assumptions, and warnings that matter during experiment setup.</p>
-                <p>Guide and workflow pages provide original educational value so visitors can understand the lab context before using a result.</p>
-                <p>Final decisions should still be validated against local SOPs, kit manuals, instrument constraints, and supervisor review.</p>
-              </>
-            )}
-          </div>
-        </section>
-        <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '신뢰 신호' : 'Trust signals'}</h2>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-700">
-            {locale === 'ko' ? (
-              <>
-                <li>About, Privacy, Terms, Editorial 페이지 공개</li>
-                <li>검색 가능한 도구, 가이드, 워크플로 라이브러리</li>
-                <li>푸터의 문의 이메일과 정책 링크</li>
-              </>
-            ) : (
-              <>
-                <li>Clear About, Privacy, Terms, and Editorial pages</li>
-                <li>Searchable tool, guide, and workflow library</li>
-                <li>Contact email and policy links in the footer</li>
-              </>
-            )}
           </ul>
         </section>
       </div>

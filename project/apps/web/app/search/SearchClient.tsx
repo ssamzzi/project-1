@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocale } from '../../lib/context/LocaleContext';
+import { exampleMetas } from '../../lib/data/examples';
 import { guideMetas } from '../../lib/data/guides';
 import { toolMetas } from '../../lib/data/tools';
 import { workflowMetas } from '../../lib/data/workflows';
 
-type SearchKind = 'tool' | 'module' | 'guide' | 'workflow';
+type SearchKind = 'tool' | 'guide' | 'workflow' | 'example';
 
 interface SearchItem {
   kind: SearchKind;
@@ -32,8 +33,8 @@ export function SearchClient() {
 
   const sectionLabels =
     locale === 'ko'
-      ? { modules: '모듈', guides: '가이드', workflows: '워크플로' }
-      : { modules: 'Modules', guides: 'Guides', workflows: 'Workflows' };
+      ? { guides: '가이드', workflows: '워크플로', examples: '예제' }
+      : { guides: 'Guides', workflows: 'Workflows', examples: 'Examples' };
 
   const allItems = useMemo<SearchItem[]>(() => {
     const tools = toolMetas.map((tool) => ({
@@ -60,15 +61,15 @@ export function SearchClient() {
       haystack: [workflow.titleEn, workflow.titleKo, workflow.shortEn, workflow.shortKo, workflow.slug, workflow.tools.join(' ')].join(' '),
     }));
 
-    const moduleItem: SearchItem = {
-      kind: 'module',
-      title: 'LabOps AI',
-      summary: locale === 'ko' ? 'AI 분석 모듈과 실무 도우미' : 'Integrated AI analysis and lab utility modules',
-      href: '/labops-ai',
-      haystack: 'labops ai omniparse visionlab protocolguard inventory parser blot colony barcode freezer',
-    };
+    const examples = exampleMetas.map((example) => ({
+      kind: 'example' as const,
+      title: example.title,
+      summary: example.summary,
+      href: `/examples/${example.slug}`,
+      haystack: [example.title, example.summary, example.audience, example.slug].join(' '),
+    }));
 
-    return [moduleItem, ...tools, ...guides, ...workflows];
+    return [...tools, ...guides, ...workflows, ...examples];
   }, [locale]);
 
   const filtered = useMemo(() => {
@@ -81,14 +82,14 @@ export function SearchClient() {
     const collator = locale === 'ko' ? 'ko-KR' : 'en-US';
     const sortByTitle = (a: SearchItem, b: SearchItem) => a.title.localeCompare(b.title, collator);
     return {
-      modules: filtered.filter((item) => item.kind === 'module').sort(sortByTitle),
       tools: filtered.filter((item) => item.kind === 'tool').sort(sortByTitle),
       guides: filtered.filter((item) => item.kind === 'guide').sort(sortByTitle),
       workflows: filtered.filter((item) => item.kind === 'workflow').sort(sortByTitle),
+      examples: filtered.filter((item) => item.kind === 'example').sort(sortByTitle),
     };
   }, [filtered, locale]);
 
-  const hasAny = grouped.modules.length > 0 || grouped.tools.length > 0 || grouped.guides.length > 0 || grouped.workflows.length > 0;
+  const hasAny = grouped.tools.length > 0 || grouped.guides.length > 0 || grouped.workflows.length > 0 || grouped.examples.length > 0;
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
@@ -106,9 +107,9 @@ export function SearchClient() {
       {hasAny ? (
         <div className="mt-6 space-y-6">
           <section>
-            <h2 className="text-lg font-semibold">{sectionLabels.modules}</h2>
+            <h2 className="text-lg font-semibold">{t('search.tools')}</h2>
             <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
-              {grouped.modules.map((item) => (
+              {grouped.tools.map((item) => (
                 <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
                   <Link href={item.href} className="font-medium text-indigo-700 underline">
                     {item.title}
@@ -119,9 +120,9 @@ export function SearchClient() {
             </ul>
           </section>
           <section>
-            <h2 className="text-lg font-semibold">{t('search.tools')}</h2>
+            <h2 className="text-lg font-semibold">{sectionLabels.examples}</h2>
             <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-3">
-              {grouped.tools.map((item) => (
+              {grouped.examples.map((item) => (
                 <li key={item.href} className="rounded-lg border border-slate-200 bg-white p-3">
                   <Link href={item.href} className="font-medium text-indigo-700 underline">
                     {item.title}

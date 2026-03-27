@@ -1,11 +1,12 @@
 import type { MetadataRoute } from 'next';
+import { exampleMetas } from '../lib/data/examples';
 import { guideMetas } from '../lib/data/guides';
 import { toolMetas } from '../lib/data/tools';
 import { workflowMetas } from '../lib/data/workflows';
 import { SITE_URL } from '../lib/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticRoutes = ['', '/tools', '/guides', '/workflows', '/labops-ai', '/about', '/privacy', '/terms', '/editorial', '/search'];
+  const staticRoutes = ['', '/tools', '/examples', '/guides', '/workflows', '/about', '/privacy', '/terms', '/editorial', '/search'];
   const staticEntries = staticRoutes.map((path) => ({
     url: `${SITE_URL}${path}`,
     lastModified: new Date(),
@@ -15,6 +16,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const toolEntries = toolMetas.map((tool) => ({
     url: `${SITE_URL}/tools/${tool.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.8,
+  }));
+
+  const exampleEntries = exampleMetas.map((example) => ({
+    url: `${SITE_URL}/examples/${example.slug}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.8,
@@ -34,5 +42,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.75,
   }));
 
-  return [...staticEntries, ...toolEntries, ...guideEntries, ...workflowEntries];
+  return [...staticEntries, ...toolEntries, ...exampleEntries, ...guideEntries, ...workflowEntries];
 }

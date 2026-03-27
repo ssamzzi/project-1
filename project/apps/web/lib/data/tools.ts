@@ -21,8 +21,6 @@ export const toolMetas: ToolMeta[] = [
   { id: 'gel-loading', slug: 'gel-loading', nameEn: 'Gel Loading Calculator', nameKo: '겔 로딩 계산기', shortEn: 'Volume needed for target DNA mass', shortKo: '목표 DNA 질량에 필요한 로딩 부피 계산' },
   { id: 'qpcr-relative-quant', slug: 'qpcr-relative-quant', nameEn: 'qPCR Relative Quantification (ddCt)', nameKo: 'qPCR 상대 정량 (ddCt)', shortEn: 'Compute ddCt and fold change', shortKo: 'ddCt와 발현 변화량 계산' },
   { id: 'cell-doubling-time', slug: 'cell-doubling-time', nameEn: 'Cell Doubling Time', nameKo: '세포 doubling time', shortEn: 'Growth rate and doubling time from counts', shortKo: '세포 수로 성장률과 doubling time 계산' },
-  { id: 'cloning-helper', slug: 'cloning-helper', nameEn: 'Protein <-> DNA Length Converter', nameKo: '단백질 <-> DNA 길이 변환', shortEn: 'Convert bp and kDa estimates', shortKo: 'bp와 kDa 추정값 변환' },
-  { id: 'acid-dilution', slug: 'acid-dilution', nameEn: 'Acid/Base Molarity from % Solution', nameKo: '% 용액 몰농도 변환기', shortEn: 'Convert % solution to molarity and dilution volume', shortKo: '%와 밀도 기준 몰농도 및 희석 부피 계산' },
   { id: 'transformation-efficiency', slug: 'transformation-efficiency', nameEn: 'Bacterial Transformation Efficiency', nameKo: '형질전환 효율', shortEn: 'Calculate CFU/ug and log efficiency', shortKo: 'CFU/ug와 로그 효율 계산' },
 ];
 
@@ -33,16 +31,14 @@ export const relatedToolMap: Record<string, string[]> = {
   'copy-number': ['a260', 'ligation', 'pcr-master-mix'],
   'ligation': ['pcr-master-mix', 'multi-stock-mix', 'copy-number'],
   'a260': ['copy-number', 'cell-seeding'],
-  'cell-seeding': ['serial-dilution', 'hemocytometer'],
-  'hemocytometer': ['cell-seeding', 'serial-dilution'],
+  'cell-seeding': ['serial-dilution', 'hemocytometer', 'cell-doubling-time'],
+  'hemocytometer': ['cell-seeding', 'serial-dilution', 'cell-doubling-time'],
   'rcf-rpm': ['cell-seeding', 'a260'],
   'reconstitution': ['multi-stock-mix', 'copy-number'],
   'gel-loading': ['copy-number', 'cell-seeding'],
-  'qpcr-relative-quant': ['a260', 'copy-number'],
+  'qpcr-relative-quant': ['a260', 'copy-number', 'pcr-master-mix'],
   'cell-doubling-time': ['cell-seeding', 'hemocytometer'],
-  'cloning-helper': ['ligation', 'copy-number'],
-  'acid-dilution': ['reconstitution', 'multi-stock-mix'],
-  'transformation-efficiency': ['cell-seeding', 'hemocytometer'],
+  'transformation-efficiency': ['ligation', 'cell-seeding'],
 };
 
 export function labelFor(locale: 'en' | 'ko', tool: ToolMeta) {
