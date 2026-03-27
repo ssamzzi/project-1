@@ -10,7 +10,7 @@ const countryAliases: Record<string, string> = {
   'republic of korea': 'South Korea',
   'south korea': 'South Korea',
   'north korea': 'North Korea',
-  viet nam: 'Vietnam',
+  'viet nam': 'Vietnam',
 };
 
 const hostAliases: Record<string, string> = {
