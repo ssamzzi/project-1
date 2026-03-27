@@ -88,6 +88,17 @@ function getText(isKo: boolean) {
         originalValue: '원래 값',
         mappedValue: '변환 값',
         addMapping: '매핑 추가',
+        selectedFieldActions: '필드 작업',
+        includeField: '이 필드 포함',
+        excludeField: '이 필드 제외',
+        previousField: '이전 필드',
+        nextField: '다음 필드',
+        goToReview: '검토 단계로 이동',
+        backToColumns: '컬럼 선택으로 돌아가기',
+        previewCount: '미리보기 제안 수',
+        activeMappings: '활성 매핑',
+        noMappings: '아직 사용자 매핑이 없습니다.',
+        remove: '삭제',
         noColumnsSelected: '선택된 컬럼이 없습니다.',
         linkageSummary: '메타데이터 이름과 FASTA 헤더 이름을 함께 보여줍니다.',
         noFasta: 'FASTA 파일이 없어서 name linkage view는 비어 있습니다.',
@@ -154,6 +165,7 @@ function getText(isKo: boolean) {
         outliers: 'Outliers',
         chooseColumns: 'Choose which columns to clean.',
         selectedField: 'Selected field',
+        selectedFieldActions: 'Field actions',
         recommendedAction: 'Recommended strategy',
         consensusSummary: 'Column consensus',
         strategy: 'Strategy',
@@ -169,6 +181,16 @@ function getText(isKo: boolean) {
         originalValue: 'Original value',
         mappedValue: 'Mapped value',
         addMapping: 'Add mapping',
+        includeField: 'Include this field',
+        excludeField: 'Exclude this field',
+        previousField: 'Previous field',
+        nextField: 'Next field',
+        goToReview: 'Go to review',
+        backToColumns: 'Back to column selection',
+        previewCount: 'Preview suggestions',
+        activeMappings: 'Active mappings',
+        noMappings: 'No custom mappings yet.',
+        remove: 'Remove',
         noColumnsSelected: 'No columns selected.',
         linkageSummary: 'Compare metadata names and FASTA header names side by side.',
         noFasta: 'No FASTA file was uploaded, so the name linkage view is empty.',
@@ -315,6 +337,8 @@ export function GenomeMetadataCleanerClient() {
   const currentRecommendation = selectedAnalysis?.recommendations.find((item) => item.header === selectedHeader) ?? null;
   const currentConsensus = selectedAnalysis?.columnConsensus.find((item) => item.header === selectedHeader) ?? null;
   const currentPolicy = selectedHeader && policy ? policy.fieldPolicies[selectedHeader] ?? null : null;
+  const currentHeaderIndex = selectedHeaders.findIndex((header) => header === selectedHeader);
+  const currentFieldProposalCount = visible.filter((proposal) => proposal.header === selectedHeader).length;
 
   async function handleAnalyze() {
     if (!metadataFile) return;
@@ -413,6 +437,13 @@ export function GenomeMetadataCleanerClient() {
     setMappingTarget('');
   }
 
+  function removeMapping(source: string) {
+    if (!selectedHeader || !currentPolicy) return;
+    const nextMappings = { ...currentPolicy.customMappings };
+    delete nextMappings[source];
+    updateFieldPolicy(selectedHeader, { customMappings: nextMappings });
+  }
+
   function toggleProposal(id: string, checked: boolean) {
     setOverrides((current) => ({ ...current, [id]: checked }));
   }
@@ -453,6 +484,14 @@ export function GenomeMetadataCleanerClient() {
     const preset = presets.find((item) => item.name === name);
     if (!preset) return;
     setWorkflow((current) => (current ? { ...current, policy: preset.policy } : current));
+  }
+
+  function moveSelectedHeader(offset: -1 | 1) {
+    if (!selectedHeaders.length) return;
+    const baseIndex = currentHeaderIndex >= 0 ? currentHeaderIndex : 0;
+    const nextIndex = baseIndex + offset;
+    if (nextIndex < 0 || nextIndex >= selectedHeaders.length) return;
+    setSelectedHeader(selectedHeaders[nextIndex]);
   }
 
   const steps: Array<{ key: StepKey; label: string }> = [
@@ -673,6 +712,24 @@ export function GenomeMetadataCleanerClient() {
                     </tbody>
                   </table>
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    onClick={() => setStep('selected')}
+                    disabled={!selectedHeaders.length}
+                  >
+                    {text.selected}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white"
+                    onClick={() => setStep('review')}
+                    disabled={!selectedHeaders.length}
+                  >
+                    {text.goToReview}
+                  </button>
+                </div>
               </div>
             ) : (
               <p className="text-sm text-slate-600">{text.reviewFirst}</p>
@@ -721,6 +778,50 @@ export function GenomeMetadataCleanerClient() {
                   <p className="mt-2 text-sm text-slate-700">
                     {text.recommendedAction}: {currentRecommendation?.recommendedReason ?? '-'}
                   </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    {text.previewCount}: {currentFieldProposalCount}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <button
+                    type="button"
+                    className={`rounded-lg px-3 py-2 text-sm font-medium ${selectedHeaders.includes(selectedHeader) ? 'bg-emerald-700 text-white' : 'border border-slate-300 bg-white'}`}
+                    onClick={() => {
+                      if (!selectedHeaders.includes(selectedHeader)) {
+                        toggleHeader(selectedHeader);
+                      }
+                    }}
+                  >
+                    {text.includeField}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    onClick={() => {
+                      if (selectedHeaders.includes(selectedHeader)) {
+                        toggleHeader(selectedHeader);
+                      }
+                    }}
+                  >
+                    {text.excludeField}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    onClick={() => moveSelectedHeader(-1)}
+                    disabled={currentHeaderIndex <= 0}
+                  >
+                    {text.previousField}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    onClick={() => moveSelectedHeader(1)}
+                    disabled={currentHeaderIndex < 0 || currentHeaderIndex >= selectedHeaders.length - 1}
+                  >
+                    {text.nextField}
+                  </button>
                 </div>
 
                 {currentConsensus ? (
@@ -809,7 +910,41 @@ export function GenomeMetadataCleanerClient() {
                         {text.addMapping}
                       </button>
                     </div>
+                    <div className="mt-4">
+                      <p className="mb-2 font-medium">{text.activeMappings}</p>
+                      {Object.entries(currentPolicy.customMappings ?? {}).length ? (
+                        <div className="space-y-2">
+                          {Object.entries(currentPolicy.customMappings ?? {}).map(([source, target]) => (
+                            <div key={source} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                              <div className="min-w-0">
+                                <p className="truncate font-medium text-slate-900">{source}</p>
+                                <p className="truncate text-slate-600">{target}</p>
+                              </div>
+                              <button type="button" className="rounded-lg border border-slate-300 px-2 py-1 text-xs" onClick={() => removeMapping(source)}>
+                                {text.remove}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-slate-600">{text.noMappings}</p>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => setStep('columns')}>
+                    {text.backToColumns}
+                  </button>
+                  {linkageReport ? (
+                    <button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => setStep('linkage')}>
+                      {text.linkage}
+                    </button>
+                  ) : null}
+                  <button type="button" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white" onClick={() => setStep('review')}>
+                    {text.goToReview}
+                  </button>
                 </div>
               </div>
             ) : (
