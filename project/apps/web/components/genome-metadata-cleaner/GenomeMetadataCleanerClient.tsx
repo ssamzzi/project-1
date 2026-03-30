@@ -70,6 +70,7 @@ function getText(isKo: boolean) {
         field: '컬럼',
         originalValue: '원본값',
         suggestedValue: '제안값',
+        manualEdit: '수동 수정',
         issue: '이슈',
         reason: '이유',
         noProposals: '선택한 컬럼에 대한 제안이 없습니다. 다른 컬럼을 선택하거나 그대로 내보낼 수 있습니다.',
@@ -127,6 +128,7 @@ function getText(isKo: boolean) {
         field: 'Column',
         originalValue: 'Original value',
         suggestedValue: 'Suggested value',
+        manualEdit: 'Manual edit',
         issue: 'Issue',
         reason: 'Reason',
         noProposals: 'No suggestions were generated for the selected columns. You can choose different columns or export the current dataset.',
@@ -267,6 +269,7 @@ export function GenomeMetadataCleanerClient() {
   const [selectedHeaders, setSelectedHeaders] = useState<string[]>([]);
   const [filter, setFilter] = useState<FilterMode>('all');
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
   const [appliedRows, setAppliedRows] = useState<ParsedRow[] | null>(null);
   const [appliedLog, setAppliedLog] = useState<ReturnType<typeof buildChangeLog>>([]);
   const [loading, setLoading] = useState(false);
@@ -297,20 +300,30 @@ export function GenomeMetadataCleanerClient() {
       linkageReport: linkageReport || undefined,
     });
     const fallback = buildFallbackReviewProposals(analysis, selectedAnalysis, generated);
-    return dedupeProposals([...generated, ...fallback]).map((proposal) => ({
-      ...proposal,
-      apply: overrides[proposal.id] ?? proposal.apply,
-    }));
-  }, [analysis, policy, selectedAnalysis, schemaByHeader, selectedHeaders, linkageReport, overrides]);
+    return dedupeProposals([...generated, ...fallback]).map((proposal) => {
+      const manualValue = manualEdits[proposal.id];
+      const nextSuggested = manualValue && manualValue.trim() ? manualValue : proposal.suggestedValue;
+      return {
+        ...proposal,
+        suggestedValue: nextSuggested,
+        apply: overrides[proposal.id] ?? proposal.apply,
+      };
+    });
+  }, [analysis, policy, selectedAnalysis, schemaByHeader, selectedHeaders, linkageReport, overrides, manualEdits]);
 
   const displayProposals = useMemo(() => {
     if (generatedProposals.length) return generatedProposals;
     if (!analysis || !selectedAnalysis) return [];
-    return buildFallbackReviewProposals(analysis, selectedAnalysis, []).map((proposal) => ({
-      ...proposal,
-      apply: overrides[proposal.id] ?? proposal.apply,
-    }));
-  }, [analysis, selectedAnalysis, generatedProposals, overrides]);
+    return buildFallbackReviewProposals(analysis, selectedAnalysis, []).map((proposal) => {
+      const manualValue = manualEdits[proposal.id];
+      const nextSuggested = manualValue && manualValue.trim() ? manualValue : proposal.suggestedValue;
+      return {
+        ...proposal,
+        suggestedValue: nextSuggested,
+        apply: overrides[proposal.id] ?? proposal.apply,
+      };
+    });
+  }, [analysis, selectedAnalysis, generatedProposals, overrides, manualEdits]);
 
   const visible = useMemo(() => filterDiffProposals(displayProposals, filter), [displayProposals, filter]);
   const currentRows = appliedRows ?? analysis?.dataset.rows ?? [];
@@ -335,6 +348,7 @@ export function GenomeMetadataCleanerClient() {
     setAppliedRows(null);
     setAppliedLog([]);
     setOverrides({});
+    setManualEdits({});
     try {
       const metadataDataset = await parseInputFile(metadataFile);
       const fastaDataset = fastaFile ? await parseInputFile(fastaFile) : null;
@@ -356,6 +370,7 @@ export function GenomeMetadataCleanerClient() {
     setAppliedRows(null);
     setAppliedLog([]);
     setOverrides({});
+    setManualEdits({});
     setStep('upload');
   }
 
@@ -398,6 +413,10 @@ export function GenomeMetadataCleanerClient() {
 
   function toggleProposal(id: string, checked: boolean) {
     setOverrides((current) => ({ ...current, [id]: checked }));
+  }
+
+  function setManualEdit(id: string, value: string) {
+    setManualEdits((current) => ({ ...current, [id]: value }));
   }
 
   function clearVisibleSelection() {
@@ -655,6 +674,7 @@ export function GenomeMetadataCleanerClient() {
                         <th className="px-3 py-2 text-left">{text.field}</th>
                         <th className="px-3 py-2 text-left">{text.originalValue}</th>
                         <th className="px-3 py-2 text-left">{text.suggestedValue}</th>
+                        <th className="px-3 py-2 text-left">{text.manualEdit}</th>
                         <th className="px-3 py-2 text-left">{text.issue}</th>
                         <th className="px-3 py-2 text-left">{text.reason}</th>
                       </tr>
@@ -674,6 +694,14 @@ export function GenomeMetadataCleanerClient() {
                           <td className="px-3 py-2 align-top">{proposal.header}</td>
                           <td className="px-3 py-2 align-top">{proposal.originalValue || '-'}</td>
                           <td className="px-3 py-2 align-top">{suggestedDisplay(proposal, isKo)}</td>
+                          <td className="px-3 py-2 align-top">
+                            <input
+                              value={manualEdits[proposal.id] ?? ''}
+                              onChange={(event) => setManualEdit(proposal.id, event.target.value)}
+                              className="min-w-[180px] rounded-lg border border-slate-300 px-2 py-1"
+                              placeholder={proposal.originalValue || '-'}
+                            />
+                          </td>
                           <td className="px-3 py-2 align-top">
                             <div>{proposal.issueType}</div>
                             <div className="mt-1 text-xs text-slate-500">{proposal.status}</div>
