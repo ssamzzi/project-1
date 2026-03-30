@@ -50,6 +50,30 @@ function normalizeLookupKey(value: string) {
   return value.toLowerCase().replace(/[_\-./]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function compactLookupKey(value: string) {
+  return normalizeLookupKey(value).replace(/\s+/g, '');
+}
+
+function levenshteinDistance(left: string, right: string) {
+  if (left === right) return 0;
+  if (!left.length) return right.length;
+  if (!right.length) return left.length;
+  const matrix = Array.from({ length: left.length + 1 }, () => new Array<number>(right.length + 1).fill(0));
+  for (let i = 0; i <= left.length; i += 1) matrix[i][0] = i;
+  for (let j = 0; j <= right.length; j += 1) matrix[0][j] = j;
+  for (let i = 1; i <= left.length; i += 1) {
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost,
+      );
+    }
+  }
+  return matrix[left.length][right.length];
+}
+
 function titleCase(value: string) {
   return value
     .toLowerCase()
@@ -77,14 +101,38 @@ function normalizeSubtype(value: string): ControlledSuggestion[] {
 function suggestFromAliasMap(value: string, aliases: Record<string, string>, reasonLabel: string): ControlledSuggestion[] {
   const key = normalizeLookupKey(value);
   const canonical = aliases[key];
-  if (!canonical) return [];
+  if (canonical) {
+    return [
+      {
+        value,
+        canonical,
+        confidence: 0.99,
+        reason: `${reasonLabel} alias matched known controlled vocabulary.`,
+        safe: canonical.toLowerCase() !== value.toLowerCase(),
+      },
+    ];
+  }
+
+  const compactKey = compactLookupKey(value);
+  let bestCandidate: { alias: string; canonical: string; distance: number } | null = null;
+  Object.entries(aliases).forEach(([alias, nextCanonical]) => {
+    const aliasCompact = compactLookupKey(alias);
+    const distance = levenshteinDistance(compactKey, aliasCompact);
+    const maxDistance = compactKey.length >= 8 ? 2 : 1;
+    if (distance > maxDistance) return;
+    if (!bestCandidate || distance < bestCandidate.distance) {
+      bestCandidate = { alias, canonical: nextCanonical, distance };
+    }
+  });
+
+  if (!bestCandidate) return [];
   return [
     {
       value,
-      canonical,
-      confidence: 0.99,
-      reason: `${reasonLabel} alias matched known controlled vocabulary.`,
-      safe: canonical.toLowerCase() !== value.toLowerCase(),
+      canonical: bestCandidate.canonical,
+      confidence: bestCandidate.distance === 1 ? 0.78 : 0.66,
+      reason: `${reasonLabel} value is close to the known term "${bestCandidate.alias}" and may be a typo.`,
+      safe: false,
     },
   ];
 }
