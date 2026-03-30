@@ -73,6 +73,18 @@ function levenshteinDistance(left: string, right: string) {
   return matrix[left.length][right.length];
 }
 
+function isSingleAdjacentTransposition(left: string, right: string) {
+  if (left.length !== right.length || left.length < 2) return false;
+  const mismatches: number[] = [];
+  for (let i = 0; i < left.length; i += 1) {
+    if (left[i] !== right[i]) mismatches.push(i);
+    if (mismatches.length > 2) return false;
+  }
+  if (mismatches.length !== 2) return false;
+  const [first, second] = mismatches;
+  return second === first + 1 && left[first] === right[second] && left[second] === right[first];
+}
+
 function titleCase(value: string) {
   return value
     .toLowerCase()
@@ -117,10 +129,14 @@ function suggestFromAliasMap(value: string, aliases: Record<string, string>, rea
   Object.entries(aliases).forEach(([alias, nextCanonical]) => {
     const aliasCompact = compactLookupKey(alias);
     const distance = levenshteinDistance(compactKey, aliasCompact);
-    const maxDistance = compactKey.length >= 8 ? 2 : 1;
+    const transposed = isSingleAdjacentTransposition(compactKey, aliasCompact);
+    const maxDistance = compactKey.length >= 8 ? 2 : compactKey.length >= 5 ? 2 : 1;
     if (distance > maxDistance) return;
     if (!bestCandidate || distance < bestCandidate.distance) {
       bestCandidate = { alias, canonical: nextCanonical, distance };
+    }
+    if (transposed && (!bestCandidate || bestCandidate.distance > 1)) {
+      bestCandidate = { alias, canonical: nextCanonical, distance: 1 };
     }
   });
 

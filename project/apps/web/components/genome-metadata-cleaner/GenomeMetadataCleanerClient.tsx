@@ -275,7 +275,7 @@ function buildGenericConsensusReviewProposals(
 }
 
 function buildFallbackReviewProposals(analysis: AnalysisResult, selectedAnalysis: SelectedColumnAnalysis, existing: DiffProposal[]) {
-  const existingKeys = new Set(existing.map((proposal) => `${proposal.rowIndex}:${proposal.header}:${proposal.issueType}`));
+  const existingKeys = new Set(existing.map((proposal) => `${proposal.rowIndex}:${proposal.header}`));
   const fallback: DiffProposal[] = [];
   selectedAnalysis.profiles.forEach((profile) => {
     const consensus = selectedAnalysis.columnConsensus.find((item) => item.header === profile.header);
@@ -293,7 +293,7 @@ function buildFallbackReviewProposals(analysis: AnalysisResult, selectedAnalysis
         rows = findMatchingRows(analysis, profile.header, issue.type, consensus, profile.field);
       }
       rows.slice(0, 12).forEach((row, rowOffset) => {
-        const key = `${row.__rowIndex}:${profile.header}:${issue.type}`;
+        const key = `${row.__rowIndex}:${profile.header}`;
         if (existingKeys.has(key)) return;
         existingKeys.add(key);
         fallback.push({
