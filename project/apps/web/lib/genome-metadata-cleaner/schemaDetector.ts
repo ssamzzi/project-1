@@ -2,7 +2,7 @@ import { suggestControlledVocabulary } from './controlledVocab';
 import type { ParsedDataset, ParsedRow, SchemaMatch, SupportedField } from './types';
 
 const fieldPatterns: Record<SupportedField, RegExp[]> = {
-  sample_id: [/^sample[\s_-]?id$/i, /^sample$/i, /^specimen[\s_-]?id$/i, /^sample[\s_-]?name$/i],
+  sample_id: [/^sample[\s_-]?id$/i, /^sample$/i, /^specimen[\s_-]?id$/i, /^sample[\s_-]?name$/i, /^originating[\s_-]?sample[\s_-]?id$/i, /^submitting[\s_-]?sample[\s_-]?id$/i],
   isolate_name: [/^isolate[\s_-]?name$/i, /^isolate$/i, /^isolate[\s_-]?id$/i],
   collection_date: [/^collection[\s_-]?date$/i, /^date$/i, /^ymd$/i, /^collection[\s_-]?ymd$/i, /^sampling[\s_-]?date$/i],
   host: [/^host$/i, /^host[\s_-]?species$/i],
@@ -29,11 +29,13 @@ function scoreHeader(header: string, field: SupportedField) {
 }
 
 function looksLikeDate(value: string) {
+  const yearInRange = (year: number) => year >= 1900 && year <= 2105;
+  if (/^\d{4}$/.test(value)) return yearInRange(Number(value));
+  if (/^\d{4}[-/]\d{1,2}$/.test(value)) return yearInRange(Number(value.split(/[-/]/)[0]));
+  if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(value)) return yearInRange(Number(value.split(/[-/]/)[0]));
+  if (/^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(value)) return yearInRange(Number(value.split(/[-/]/).at(-1)));
   return (
-    /^\d{4}$/.test(value) ||
-    /^\d{4}[-/]\d{1,2}$/.test(value) ||
-    /^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(value) ||
-    /^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(value)
+    false
   );
 }
 

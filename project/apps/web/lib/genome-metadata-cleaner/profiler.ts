@@ -30,6 +30,10 @@ function isIdentityLikeColumn(header: string, field: SupportedField | undefined)
   return /(?:^|[\s_])(id|segment[\s_]?id|accession)(?:$|[\s_])/i.test(header);
 }
 
+function shouldPreserveSeparators(header: string) {
+  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code)/i.test(header);
+}
+
 function normalizedLooseKey(value: string) {
   return value.toLowerCase().replace(/[_\-.\/]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -215,6 +219,7 @@ function detectFieldIssues(
   const nonEmpty = values.filter((value) => value.trim().length > 0);
   const duplicates = new Map<string, { rowIndices: number[]; values: string[] }>();
   const identityLikeColumn = isIdentityLikeColumn(header, field);
+  const preserveSeparatorColumn = shouldPreserveSeparators(header);
 
   values.forEach((value, index) => {
     const trimmed = value.trim();
@@ -224,6 +229,7 @@ function detectFieldIssues(
     }
     if (value !== trimmed || /\s{2,}/.test(value)) collectIssue(issueCounts, 'whitespace', value);
     const hasExplicitSeparatorIssue =
+      !preserveSeparatorColumn &&
       !identityLikeColumn &&
       (/__+/.test(trimmed) || /--+/.test(trimmed) || /\s[/_-]\s/.test(trimmed) || /\/\//.test(trimmed));
     if (hasExplicitSeparatorIssue) collectIssue(issueCounts, 'separator', value);
@@ -246,6 +252,7 @@ function detectFieldIssues(
       !hasExplicitSeparatorIssue &&
       field &&
       !identityLikeColumn &&
+      !preserveSeparatorColumn &&
       ['country', 'host', 'region', 'subtype', 'segment'].includes(field) &&
       consensus?.dominantSeparator &&
       !['mixed', 'none'].includes(consensus.dominantSeparator) &&
