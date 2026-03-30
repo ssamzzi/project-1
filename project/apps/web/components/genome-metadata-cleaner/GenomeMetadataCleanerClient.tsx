@@ -175,6 +175,7 @@ function isLikelyOutlierValue(
   value: string,
   issueType: DiffProposal['issueType'],
   consensus?: SelectedColumnAnalysis['columnConsensus'][number],
+  field?: SupportedField,
 ) {
   const trimmed = value.trim();
   if (issueType === 'missing-value') return !trimmed;
@@ -197,7 +198,14 @@ function isLikelyOutlierValue(
   if (issueType === 'mixed-date-format') return /[\/]/.test(trimmed);
   if (issueType === 'ambiguous-date') return parseCollectionDate(trimmed).kind === 'ambiguous';
   if (issueType === 'impossible-date') return parseCollectionDate(trimmed).kind === 'impossible';
-  if (issueType === 'invalid-value') return parseCollectionDate(trimmed).kind === 'invalid';
+  if (issueType === 'invalid-value') {
+    if (field === 'collection_date') return parseCollectionDate(trimmed).kind === 'invalid';
+    if (field && ['country', 'host', 'region', 'subtype', 'segment'].includes(field)) {
+      if (!consensus?.canonicalValue) return true;
+      return normalizedLooseTextForMatch(trimmed) !== normalizedLooseTextForMatch(consensus.canonicalValue);
+    }
+    return false;
+  }
   if (issueType === 'controlled-vocab') {
     if (!consensus?.canonicalValue) return true;
     return normalizedLooseTextForMatch(trimmed) !== normalizedLooseTextForMatch(consensus.canonicalValue);
@@ -210,8 +218,9 @@ function findRepresentativeRow(
   header: string,
   issueType: DiffProposal['issueType'],
   consensus?: SelectedColumnAnalysis['columnConsensus'][number],
+  field?: SupportedField,
 ) {
-  return analysis.dataset.rows.find((row) => isLikelyOutlierValue(String(row[header] ?? ''), issueType, consensus));
+  return analysis.dataset.rows.find((row) => isLikelyOutlierValue(String(row[header] ?? ''), issueType, consensus, field));
 }
 
 function findMatchingRows(
@@ -219,8 +228,9 @@ function findMatchingRows(
   header: string,
   issueType: DiffProposal['issueType'],
   consensus?: SelectedColumnAnalysis['columnConsensus'][number],
+  field?: SupportedField,
 ) {
-  return analysis.dataset.rows.filter((row) => isLikelyOutlierValue(String(row[header] ?? ''), issueType, consensus));
+  return analysis.dataset.rows.filter((row) => isLikelyOutlierValue(String(row[header] ?? ''), issueType, consensus, field));
 }
 
 function buildGenericConsensusReviewProposals(
@@ -270,8 +280,19 @@ function buildFallbackReviewProposals(analysis: AnalysisResult, selectedAnalysis
   selectedAnalysis.profiles.forEach((profile) => {
     const consensus = selectedAnalysis.columnConsensus.find((item) => item.header === profile.header);
     profile.issueCounts.forEach((issue, index) => {
-      const rows = findMatchingRows(analysis, profile.header, issue.type, consensus).slice(0, 12);
-      rows.forEach((row, rowOffset) => {
+      let rows: ParsedRow[] = [];
+      if (issue.type === 'duplicate' || issue.type === 'likely-duplicate') {
+        rows = profile.duplicateGroups.flatMap((group) => group.rowIndices.map((rowIndex) => analysis.dataset.rows[rowIndex]).filter(Boolean) as ParsedRow[]);
+      } else if (issue.type === 'missing-value') {
+        rows = analysis.dataset.rows.filter((row) => !String(row[profile.header] ?? '').trim());
+      } else if (issue.examples.length) {
+        const examples = new Set(issue.examples.map((example) => example.trim()));
+        rows = analysis.dataset.rows.filter((row) => examples.has(String(row[profile.header] ?? '').trim()));
+      }
+      if (!rows.length) {
+        rows = findMatchingRows(analysis, profile.header, issue.type, consensus, profile.field);
+      }
+      rows.slice(0, 12).forEach((row, rowOffset) => {
         const key = `${row.__rowIndex}:${profile.header}:${issue.type}`;
         if (existingKeys.has(key)) return;
         existingKeys.add(key);
@@ -297,7 +318,7 @@ function buildFallbackReviewProposals(analysis: AnalysisResult, selectedAnalysis
 function dedupeProposals(proposals: DiffProposal[]) {
   const seen = new Set<string>();
   return proposals.filter((proposal) => {
-    const key = `${proposal.rowIndex}:${proposal.header}:${proposal.issueType}:${proposal.suggestedValue}`;
+    const key = `${proposal.rowIndex}:${proposal.header}:${proposal.suggestedValue}:${proposal.status}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
