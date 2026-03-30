@@ -344,6 +344,33 @@ function actionLabel(proposal: DiffProposal, _isKo: boolean) {
   return 'Review the issue and decide the next value.';
 }
 
+function buildOutlierSummaryItems(
+  analysis: AnalysisResult | null,
+  selectedHeaders: string[],
+  schemaByHeader: Record<string, SupportedField | undefined>,
+): DiffProposal[] {
+  if (!analysis) return [];
+  return analysis.columnConsensus
+    .filter((item) => selectedHeaders.includes(item.header) && item.outlierCount > 0)
+    .map((item, index) => {
+      const row = analysis.dataset.rows.find((entry) => String(entry[item.header] ?? '').trim()) ?? analysis.dataset.rows[0];
+      const original = row ? String(row[item.header] ?? '') : '';
+      return {
+        id: `outlier-summary-${item.header}-${index}`,
+        rowIndex: row?.__rowIndex ?? index,
+        header: item.header,
+        field: schemaByHeader[item.header],
+        originalValue: original,
+        suggestedValue: original,
+        issueType: 'controlled-vocab',
+        reason: `The selected column has ${item.outlierCount} outlier values against the dominant pattern "${item.dominantPattern}".`,
+        confidence: 0.3,
+        status: 'review',
+        apply: false,
+      };
+    });
+}
+
 export function GenomeMetadataCleanerClient() {
   const { locale } = useLocale();
   const isKo = locale === 'ko';
@@ -394,12 +421,17 @@ export function GenomeMetadataCleanerClient() {
     });
   }, [analysis, policy, selectedAnalysis, schemaByHeader, selectedHeaders, linkageReport, manualEdits, overrides]);
 
-  const safeItems = useMemo(() => proposals.filter((proposal) => proposal.status === 'safe' && proposal.originalValue !== proposal.suggestedValue), [proposals]);
-  const reviewItems = useMemo(() => proposals.filter((proposal) => proposal.status === 'review'), [proposals]);
-  const manualItems = useMemo(() => proposals.filter((proposal) => proposal.status === 'invalid'), [proposals]);
+  const resolverItems = useMemo(() => {
+    if (proposals.length) return proposals;
+    return buildOutlierSummaryItems(analysis, selectedHeaders, schemaByHeader);
+  }, [analysis, proposals, schemaByHeader, selectedHeaders]);
+
+  const safeItems = useMemo(() => resolverItems.filter((proposal) => proposal.status === 'safe' && proposal.originalValue !== proposal.suggestedValue), [resolverItems]);
+  const reviewItems = useMemo(() => resolverItems.filter((proposal) => proposal.status === 'review'), [resolverItems]);
+  const manualItems = useMemo(() => resolverItems.filter((proposal) => proposal.status === 'invalid'), [resolverItems]);
   const activeItems = useMemo(() => (resolveTab === 'safe' ? safeItems : resolveTab === 'review' ? reviewItems : manualItems), [manualItems, resolveTab, reviewItems, safeItems]);
   const currentRows = appliedRows ?? analysis?.dataset.rows ?? [];
-  const actionableCount = useMemo(() => proposals.filter((proposal) => proposal.originalValue !== proposal.suggestedValue).length, [proposals]);
+  const actionableCount = useMemo(() => resolverItems.filter((proposal) => proposal.originalValue !== proposal.suggestedValue).length, [resolverItems]);
 
   async function handleAnalyze() {
     if (!metadataFile) return;
@@ -470,7 +502,7 @@ export function GenomeMetadataCleanerClient() {
 
   function applyChanges(mode: 'safe' | 'selected') {
     if (!analysis) return;
-    const chosen = proposals.map((proposal) => ({ ...proposal, apply: mode === 'safe' ? proposal.status === 'safe' && proposal.originalValue !== proposal.suggestedValue : proposal.apply }));
+    const chosen = resolverItems.map((proposal) => ({ ...proposal, apply: mode === 'safe' ? proposal.status === 'safe' && proposal.originalValue !== proposal.suggestedValue : proposal.apply }));
     if (!window.confirm(text.confirmApply)) return;
     const result = applySelectedProposals(analysis.dataset, chosen);
     setAppliedRows(result.rows);
@@ -509,7 +541,7 @@ export function GenomeMetadataCleanerClient() {
           </button>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-4">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="text-xs uppercase tracking-[0.16em] text-slate-500">{text.totalSuggestions}</p><p className="mt-1 text-xl font-semibold">{proposals.length}</p></div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3"><p className="text-xs uppercase tracking-[0.16em] text-slate-500">{text.totalSuggestions}</p><p className="mt-1 text-xl font-semibold">{resolverItems.length}</p></div>
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3"><p className="text-xs uppercase tracking-[0.16em] text-emerald-700">{text.safe}</p><p className="mt-1 text-xl font-semibold text-emerald-900">{safeItems.length}</p></div>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3"><p className="text-xs uppercase tracking-[0.16em] text-amber-700">{text.review}</p><p className="mt-1 text-xl font-semibold text-amber-900">{reviewItems.length}</p></div>
           <div className="rounded-lg border border-rose-200 bg-rose-50 p-3"><p className="text-xs uppercase tracking-[0.16em] text-rose-700">{text.invalid}</p><p className="mt-1 text-xl font-semibold text-rose-900">{manualItems.length}</p></div>
@@ -552,7 +584,7 @@ export function GenomeMetadataCleanerClient() {
             ] as Array<[ResolveTab, string, number, string]>).map(([tabKey, label, count, tone]) => <button key={tabKey} type="button" onClick={() => setResolveTab(tabKey)} className={`w-full rounded-2xl border p-4 text-left ${resolveTab === tabKey ? tone : 'border-slate-200 bg-white'}`}><p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold">{count}</p></button>)}</div>
             {activeItems.length ? <div className="overflow-x-auto rounded-lg border border-slate-200"><table className="min-w-full divide-y divide-slate-200 text-sm"><thead className="bg-slate-50"><tr><th className="px-3 py-2 text-left">{text.apply}</th><th className="px-3 py-2 text-left">{text.row}</th><th className="px-3 py-2 text-left">{text.field}</th><th className="px-3 py-2 text-left">{text.originalValue}</th><th className="px-3 py-2 text-left">{text.suggestedValue}</th><th className="px-3 py-2 text-left">{text.manualEdit}</th><th className="px-3 py-2 text-left">{text.issue}</th><th className="px-3 py-2 text-left">{text.reason}</th><th className="px-3 py-2 text-left">{text.action}</th></tr></thead><tbody className="divide-y divide-slate-200 bg-white">{activeItems.slice(0, 400).map((proposal) => { const canApply = proposal.originalValue !== proposal.suggestedValue; return <tr key={proposal.id}><td className="px-3 py-2 align-top"><input type="checkbox" checked={proposal.apply} disabled={!canApply} onChange={(event) => toggleProposal(proposal.id, event.target.checked)} /></td><td className="px-3 py-2 align-top">{proposal.rowIndex}</td><td className="px-3 py-2 align-top">{proposal.header}</td><td className="px-3 py-2 align-top">{proposal.originalValue || '-'}</td><td className="px-3 py-2 align-top">{suggestionLabel(proposal, isKo)}</td><td className="px-3 py-2 align-top"><div className="space-y-2"><input value={manualEdits[proposal.id] ?? ''} onChange={(event) => { setManualEdit(proposal.id, event.target.value); if (event.target.value.trim() && event.target.value !== proposal.originalValue) toggleProposal(proposal.id, true); }} className="min-w-[180px] rounded-lg border border-slate-300 px-2 py-1" placeholder={proposal.originalValue || '-'} />{proposal.status !== 'safe' ? <div className="flex flex-wrap gap-2">{proposal.originalValue !== proposal.suggestedValue ? <button type="button" className="rounded-full border border-slate-300 px-2 py-1 text-xs" onClick={() => { setManualEdit(proposal.id, proposal.suggestedValue); toggleProposal(proposal.id, true); }}>{text.useSuggested}</button> : null}<button type="button" className="rounded-full border border-slate-300 px-2 py-1 text-xs" onClick={() => { setManualEdit(proposal.id, proposal.originalValue); toggleProposal(proposal.id, false); }}>{text.keepOriginal}</button></div> : null}</div></td><td className="px-3 py-2 align-top"><div>{proposal.issueType}</div><div className="mt-1 text-xs text-slate-500">{proposal.status}</div></td><td className="px-3 py-2 align-top">{proposal.reason}</td><td className="px-3 py-2 align-top">{actionLabel(proposal, isKo)}</td></tr>; })}</tbody></table></div> : <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">{text.noSuggestions}</div>}
           </div>
-          {proposals.length && actionableCount === 0 ? <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{text.reviewOnlyNotice}</p> : null}
+          {resolverItems.length && actionableCount === 0 ? <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{text.reviewOnlyNotice}</p> : null}
           <div className="flex flex-wrap gap-2"><button type="button" className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => applyChanges('safe')} disabled={!safeItems.length}>{text.applySafe}</button><button type="button" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => applyChanges('selected')} disabled={actionableCount === 0}>{text.applySelected}</button><button type="button" className={`rounded-lg px-3 py-2 text-sm font-medium ${actionableCount === 0 ? 'bg-slate-900 text-white' : 'border border-slate-300'}`} onClick={continueWithoutChanges}>{actionableCount === 0 ? text.finishReview : text.exportWithoutChanges}</button></div>
         </div>
       </SectionCard>
