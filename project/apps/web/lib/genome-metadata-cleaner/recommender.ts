@@ -25,18 +25,18 @@ function strategyOptions(field?: string): StrategyOption[] {
 
 function recommendedStrategyForProfile(profile: FieldProfile): Pick<FieldRecommendation, 'recommendedStrategy' | 'recommendedReason' | 'risky'> {
   const types = profile.issueCounts.map((issue) => issue.type);
+  if (profile.field === 'collection_date') {
+    return {
+      recommendedStrategy: 'canonicalize-safe',
+      recommendedReason: 'Collection dates should normalize unambiguous values and keep ambiguous or impossible dates for review.',
+      risky: types.includes('ambiguous-date') || types.includes('impossible-date'),
+    };
+  }
   if (types.includes('ambiguous-date') || types.includes('duplicate') || types.includes('likely-duplicate')) {
     return {
       recommendedStrategy: 'review-only',
       recommendedReason: 'This field contains ambiguous or identity-like changes that should be explicitly reviewed.',
       risky: true,
-    };
-  }
-  if (profile.field === 'collection_date') {
-    return {
-      recommendedStrategy: 'canonicalize-safe',
-      recommendedReason: 'Collection dates can be normalized safely only when the format is unambiguous.',
-      risky: types.includes('ambiguous-date') || types.includes('impossible-date'),
     };
   }
   if (profile.field && ['country', 'host', 'subtype', 'segment', 'region'].includes(profile.field)) {

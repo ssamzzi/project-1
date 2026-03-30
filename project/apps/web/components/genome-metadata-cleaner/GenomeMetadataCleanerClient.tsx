@@ -462,6 +462,7 @@ function suggestionLabel(proposal: DiffProposal, _isKo: boolean) {
 }
 
 function actionLabel(proposal: DiffProposal, _isKo: boolean) {
+  if (proposal.status === 'safe' && proposal.originalValue !== proposal.suggestedValue) return 'Apply the suggested normalization.';
   if (proposal.issueType === 'missing-value') return 'Enter a replacement value.';
   if (proposal.issueType === 'duplicate' || proposal.issueType === 'likely-duplicate') return 'Review the duplicate group and choose the value to keep.';
   if (proposal.issueType === 'ambiguous-date') return 'Choose the intended date format manually.';
