@@ -62,6 +62,10 @@ function normalizedDuplicateKey(value: string) {
   return value.toLowerCase().replace(/[\s._\-]+/g, '');
 }
 
+function humanRowNumbers(indices: number[]) {
+  return indices.map((index) => index + 1).join(', ');
+}
+
 export function generateDiffProposals(
   dataset: ParsedDataset,
   schemaByHeader: Record<string, SupportedField | undefined>,
@@ -306,7 +310,7 @@ export function generateDiffProposals(
             originalValue: original,
             suggestedValue: original,
             issueType: duplicateGroup.every((index) => String(dataset.rows[index]?.[header] ?? '').trim() === trimmedOriginal) ? 'duplicate' : 'likely-duplicate',
-            reason: `This value shares the same normalized identity with rows ${duplicateGroup.join(', ')} and should be reviewed before any merge or rename.`,
+            reason: `This value shares the same normalized identity with rows ${humanRowNumbers(duplicateGroup)} and should be reviewed before any merge or rename.`,
             confidence: 0.35,
             status: 'review',
           }),
