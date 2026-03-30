@@ -381,25 +381,7 @@ function buildConsensusFallbackProposals(
       });
     });
 
-    if (proposals.length === beforeCount && (profile.issueCounts.length > 0 || (consensus?.outlierCount ?? 0) > 0 || profile.uniqueValues > 1)) {
-      const issueType = profile.issueCounts[0]?.type ?? 'controlled-vocab';
-      const row = findRepresentativeRow(analysis, header, issueType, consensus) ?? analysis.dataset.rows[0];
-      if (row) {
-        proposals.push({
-          id: `consensus-${row.__rowIndex}-${header}-summary-review`,
-          rowIndex: row.__rowIndex,
-          header,
-          field,
-          originalValue: String(row[header] ?? ''),
-          suggestedValue: String(row[header] ?? ''),
-          issueType,
-          reason: 'This selected column has inconsistent patterns and needs review before export.',
-          confidence: 0.25,
-          status: 'review',
-          apply: false,
-        });
-      }
-    }
+    void beforeCount;
   });
 
   return proposals;
@@ -432,33 +414,6 @@ function reviewTone(status: DiffProposal['status']) {
   if (status === 'safe') return 'border-emerald-200 bg-emerald-50 text-emerald-900';
   if (status === 'invalid') return 'border-rose-200 bg-rose-50 text-rose-900';
   return 'border-amber-200 bg-amber-50 text-amber-900';
-}
-
-function buildOutlierSummaryItems(
-  analysis: AnalysisResult | null,
-  selectedHeaders: string[],
-  schemaByHeader: Record<string, SupportedField | undefined>,
-): DiffProposal[] {
-  if (!analysis) return [];
-  return analysis.columnConsensus
-    .filter((item) => selectedHeaders.includes(item.header) && item.outlierCount > 0)
-    .map((item, index) => {
-      const row = findRepresentativeRow(analysis, item.header, 'controlled-vocab', item) ?? analysis.dataset.rows[0];
-      const original = row ? String(row[item.header] ?? '') : '';
-      return {
-        id: `outlier-summary-${item.header}-${index}`,
-        rowIndex: row?.__rowIndex ?? index,
-        header: item.header,
-        field: schemaByHeader[item.header],
-        originalValue: original,
-        suggestedValue: original,
-        issueType: 'controlled-vocab',
-        reason: `The selected column has ${item.outlierCount} outlier values against the dominant pattern "${item.dominantPattern}".`,
-        confidence: 0.3,
-        status: 'review',
-        apply: false,
-      };
-    });
 }
 
 export function GenomeMetadataCleanerClient() {
@@ -511,10 +466,7 @@ export function GenomeMetadataCleanerClient() {
     });
   }, [analysis, policy, selectedAnalysis, schemaByHeader, selectedHeaders, linkageReport, manualEdits, overrides]);
 
-  const resolverItems = useMemo(() => {
-    if (proposals.length) return proposals;
-    return buildOutlierSummaryItems(analysis, selectedHeaders, schemaByHeader);
-  }, [analysis, proposals, schemaByHeader, selectedHeaders]);
+  const resolverItems = useMemo(() => proposals, [proposals]);
 
   const safeItems = useMemo(() => resolverItems.filter((proposal) => proposal.status === 'safe' && proposal.originalValue !== proposal.suggestedValue), [resolverItems]);
   const reviewItems = useMemo(() => resolverItems.filter((proposal) => proposal.status === 'review'), [resolverItems]);
