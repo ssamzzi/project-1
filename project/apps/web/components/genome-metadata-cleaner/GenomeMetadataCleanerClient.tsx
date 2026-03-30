@@ -179,6 +179,13 @@ function detectSeparatorStyleForMatch(value: string) {
   return 'underscore';
 }
 
+function isMeaningfulSeparatorMismatch(current: string, dominant?: string) {
+  if (!dominant || current === dominant) return false;
+  if (['mixed', 'none'].includes(current) || ['mixed', 'none'].includes(dominant)) return false;
+  if (current === 'underscore' || dominant === 'underscore') return false;
+  return true;
+}
+
 function isLikelyOutlierValue(
   value: string,
   issueType: DiffProposal['issueType'],
@@ -190,12 +197,11 @@ function isLikelyOutlierValue(
   if (!trimmed) return false;
   if (issueType === 'whitespace') return value !== trimmed || /\s{2,}/.test(value);
   if (issueType === 'separator') {
-    return /[_/]+/.test(trimmed) ||
-      /\s-\s/.test(trimmed) ||
+    return /\s[/-]\s/.test(trimmed) ||
+      /\/\//.test(trimmed) ||
+      /--+/.test(trimmed) ||
       (!!consensus?.dominantSeparator &&
-        !['mixed', 'none'].includes(consensus.dominantSeparator) &&
-        !['mixed', 'none'].includes(detectSeparatorStyleForMatch(trimmed)) &&
-        detectSeparatorStyleForMatch(trimmed) !== consensus.dominantSeparator);
+        isMeaningfulSeparatorMismatch(detectSeparatorStyleForMatch(trimmed), consensus.dominantSeparator));
   }
   if (issueType === 'casing') {
     return !!consensus?.dominantCase &&

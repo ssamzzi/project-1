@@ -12,7 +12,7 @@ function normalizeWhitespace(value: string, policy: FieldPolicy) {
 function normalizeSeparators(value: string, field: SupportedField | undefined, policy: FieldPolicy) {
   if (!policy.normalizeSeparators) return value;
   if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return value;
-  return value.replace(/[_]+/g, ' ').replace(/\s*\/\s*/g, '/').replace(/\s*-\s*/g, '-');
+  return value.replace(/\s*\/\s*/g, '/').replace(/\s*-\s*/g, '-');
 }
 
 function toTitleCase(value: string) {

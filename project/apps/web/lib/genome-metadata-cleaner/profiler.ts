@@ -137,6 +137,13 @@ function detectSeparatorStyle(value: string): SeparatorStyle {
   return 'underscore';
 }
 
+function isMeaningfulSeparatorMismatch(current: SeparatorStyle, dominant: SeparatorStyle) {
+  if (current === dominant) return false;
+  if (dominant === 'mixed' || dominant === 'none' || current === 'mixed' || current === 'none') return false;
+  if (current === 'underscore' || dominant === 'underscore') return false;
+  return true;
+}
+
 function patternSignature(value: string, field: SupportedField | undefined) {
   const trimmed = value.trim();
   if (!trimmed) return 'empty';
@@ -184,7 +191,7 @@ function buildConsensusProfile(header: string, field: SupportedField | undefined
   const outlierCount = nonEmpty.filter((value) => {
     const patternOutlier = patternSignature(value, field) !== dominantPattern;
     const caseOutlier = detectCaseStyle(value) !== dominantCase && dominantCase !== 'mixed';
-    const separatorOutlier = detectSeparatorStyle(value) !== dominantSeparator && dominantSeparator !== 'mixed';
+    const separatorOutlier = isMeaningfulSeparatorMismatch(detectSeparatorStyle(value), dominantSeparator);
     const canonicalOutlier =
       !!canonicalValue &&
       !!field &&
@@ -279,7 +286,7 @@ function detectFieldIssues(
     const hasExplicitSeparatorIssue =
       !preserveSeparatorColumn &&
       !identityLikeColumn &&
-      (/__+/.test(trimmed) || /--+/.test(trimmed) || /\s[/_-]\s/.test(trimmed) || /\/\//.test(trimmed));
+      (/\s[/-]\s/.test(trimmed) || /\/\//.test(trimmed) || /--+/.test(trimmed));
     if (hasExplicitSeparatorIssue) collectIssue(issueCounts, 'separator', value);
 
     const caseStyle = detectCaseStyle(trimmed);
@@ -303,9 +310,7 @@ function detectFieldIssues(
       !preserveSeparatorColumn &&
       ['country', 'host', 'region', 'subtype', 'segment'].includes(field) &&
       consensus?.dominantSeparator &&
-      !['mixed', 'none'].includes(consensus.dominantSeparator) &&
-      !['mixed', 'none'].includes(separatorStyle) &&
-      separatorStyle !== consensus.dominantSeparator
+      isMeaningfulSeparatorMismatch(separatorStyle, consensus.dominantSeparator)
     ) {
       collectIssue(issueCounts, 'separator', value);
     }

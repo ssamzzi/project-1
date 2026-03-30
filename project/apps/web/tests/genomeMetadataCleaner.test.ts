@@ -164,6 +164,19 @@ describe('genome metadata cleaner normalization', () => {
     expect(recommendations.find((item) => item.header === 'Submitting_Sample_Id')?.recommendedStrategy).toBe('skip');
     expect(recommendations.find((item) => item.header === 'Collection_Date')?.recommendedStrategy).toBe('canonicalize-safe');
   });
+
+  it('does not treat underscore-only differences as separator cleanup targets by default', () => {
+    const analysis = buildAnalysis('sample_name\nA_B_C\nA_B_D\n');
+    const workflow = analyzeWorkflow(analysis.dataset);
+    const selected = analyzeSelectedWorkflowColumns(workflow.analysis, ['sample_name']);
+    const proposals = generateDiffProposals(
+      workflow.analysis.dataset,
+      { sample_name: undefined } as const,
+      workflow.defaultPolicy,
+      { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
+    );
+    expect(proposals.some((proposal) => proposal.issueType === 'separator')).toBe(false);
+  });
 });
 
 describe('genome metadata cleaner duplicate detection', () => {
