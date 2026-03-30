@@ -44,6 +44,12 @@ describe('genome metadata cleaner consensus profiling', () => {
     expect(consensus?.outlierCount).toBeGreaterThan(0);
   });
 
+  it('flags casing issues against the dominant column pattern', () => {
+    const analysis = buildAnalysis('subtype\nH1N1\nH3N2\nh5n1\n');
+    const profile = analysis.profiles.find((item) => item.header === 'subtype');
+    expect(profile?.issueCounts.some((issue) => issue.type === 'casing')).toBe(true);
+  });
+
   it('tracks dominant date pattern for collection dates', () => {
     const analysis = buildAnalysis('collection_date\n2024-01-03\n2024-02-07\n2024/03/09\n');
     const consensus = analysis.columnConsensus.find((item) => item.header === 'collection_date');
@@ -104,6 +110,19 @@ describe('genome metadata cleaner normalization', () => {
   it('suggests controlled vocabulary canonicalization for countries', () => {
     const suggestions = suggestControlledVocabulary('country', 'USA');
     expect(suggestions[0].canonical).toBe('United States');
+  });
+
+  it('surfaces typo-like outliers using the dominant column canonical value', () => {
+    const analysis = buildAnalysis('host\nHuman\nHuman\nhumna\n');
+    const workflow = analyzeWorkflow(analysis.dataset);
+    const selected = analyzeSelectedWorkflowColumns(workflow.analysis, ['host']);
+    const proposals = generateDiffProposals(
+      workflow.analysis.dataset,
+      { host: 'host' as const },
+      workflow.defaultPolicy,
+      { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
+    );
+    expect(proposals.some((proposal) => proposal.originalValue === 'humna' && proposal.issueType === 'controlled-vocab')).toBe(true);
   });
 });
 

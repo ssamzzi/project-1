@@ -25,6 +25,30 @@ function normalizedDuplicateKey(value: string) {
   return value.toLowerCase().replace(/[\s._\-]+/g, '');
 }
 
+function normalizedLooseKey(value: string) {
+  return value.toLowerCase().replace(/[_\-.\/]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function compactLooseKey(value: string) {
+  return normalizedLooseKey(value).replace(/\s+/g, '');
+}
+
+function levenshteinDistance(left: string, right: string) {
+  if (left === right) return 0;
+  if (!left.length) return right.length;
+  if (!right.length) return left.length;
+  const matrix = Array.from({ length: left.length + 1 }, () => new Array<number>(right.length + 1).fill(0));
+  for (let i = 0; i <= left.length; i += 1) matrix[i][0] = i;
+  for (let j = 0; j <= right.length; j += 1) matrix[0][j] = j;
+  for (let i = 1; i <= left.length; i += 1) {
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+    }
+  }
+  return matrix[left.length][right.length];
+}
+
 function uniqueExamples(values: string[]) {
   return Array.from(new Set(values.filter(Boolean))).slice(0, 5);
 }
@@ -168,7 +192,12 @@ function collectIssue(issueCounts: Map<IssueType, string[]>, type: IssueType, ex
   issueCounts.set(type, current);
 }
 
-function detectFieldIssues(header: string, field: SupportedField | undefined, rows: ParsedRow[]): FieldProfile {
+function detectFieldIssues(
+  header: string,
+  field: SupportedField | undefined,
+  rows: ParsedRow[],
+  consensus?: ColumnConsensusProfile,
+): FieldProfile {
   const values = rows.map((row) => valueAt(row, header));
   const issueCounts = new Map<IssueType, string[]>();
   const nonEmpty = values.filter((value) => value.trim().length > 0);
@@ -181,11 +210,32 @@ function detectFieldIssues(header: string, field: SupportedField | undefined, ro
       return;
     }
     if (value !== trimmed || /\s{2,}/.test(value)) collectIssue(issueCounts, 'whitespace', value);
-    if (/[_/]+/.test(trimmed) || /\s-\s/.test(trimmed)) collectIssue(issueCounts, 'separator', value);
+    const hasExplicitSeparatorIssue = /[_/]+/.test(trimmed) || /\s-\s/.test(trimmed);
+    if (hasExplicitSeparatorIssue) collectIssue(issueCounts, 'separator', value);
 
-    const lowered = trimmed.toLowerCase();
-    if (field && ['country', 'host', 'region', 'subtype', 'segment'].includes(field) && trimmed !== lowered && trimmed !== trimmed.toUpperCase()) {
+    const caseStyle = detectCaseStyle(trimmed);
+    if (
+      field &&
+      ['country', 'host', 'region', 'subtype', 'segment'].includes(field) &&
+      consensus?.dominantCase &&
+      !['mixed', 'other', 'numeric'].includes(consensus.dominantCase) &&
+      !['other', 'numeric'].includes(caseStyle) &&
+      caseStyle !== consensus.dominantCase
+    ) {
       collectIssue(issueCounts, 'casing', value);
+    }
+
+    const separatorStyle = detectSeparatorStyle(trimmed);
+    if (
+      !hasExplicitSeparatorIssue &&
+      field &&
+      ['country', 'host', 'region', 'subtype', 'segment'].includes(field) &&
+      consensus?.dominantSeparator &&
+      !['mixed', 'none'].includes(consensus.dominantSeparator) &&
+      !['mixed', 'none'].includes(separatorStyle) &&
+      separatorStyle !== consensus.dominantSeparator
+    ) {
+      collectIssue(issueCounts, 'separator', value);
     }
 
     if (field === 'collection_date') {
@@ -199,8 +249,29 @@ function detectFieldIssues(header: string, field: SupportedField | undefined, ro
     const suggestions = suggestControlledVocabulary(field, trimmed);
     if (suggestions.length) {
       if (suggestions.some((suggestion) => suggestion.canonical !== trimmed)) collectIssue(issueCounts, 'controlled-vocab', value);
-    } else if (field && ['country', 'host', 'subtype', 'segment'].includes(field)) {
-      collectIssue(issueCounts, 'invalid-value', value);
+    } else if (field && ['country', 'host', 'region', 'subtype', 'segment'].includes(field)) {
+      const consensusCanonical = consensus?.canonicalValue;
+      if (consensusCanonical) {
+        const compactValue = compactLooseKey(trimmed);
+        const compactCanonical = compactLooseKey(consensusCanonical);
+        const distance = levenshteinDistance(compactValue, compactCanonical);
+        if (compactValue && compactCanonical && compactValue !== compactCanonical && distance <= (compactCanonical.length >= 8 ? 2 : 1)) {
+          collectIssue(issueCounts, 'controlled-vocab', value);
+        } else {
+          collectIssue(issueCounts, 'invalid-value', value);
+        }
+      } else {
+        collectIssue(issueCounts, 'invalid-value', value);
+      }
+    } else if (consensus?.canonicalValue && field && ['country', 'host', 'region', 'subtype', 'segment'].includes(field)) {
+      const normalizedValue = normalizedLooseKey(trimmed);
+      const normalizedCanonical = normalizedLooseKey(consensus.canonicalValue);
+      if (normalizedValue !== normalizedCanonical) {
+        const distance = levenshteinDistance(compactLooseKey(trimmed), compactLooseKey(consensus.canonicalValue));
+        if (distance <= (compactLooseKey(consensus.canonicalValue).length >= 8 ? 2 : 1)) {
+          collectIssue(issueCounts, 'controlled-vocab', value);
+        }
+      }
     }
 
     if (field && ['sample_id', 'isolate_name', 'strain_name', 'sequence_id'].includes(field)) {
@@ -263,13 +334,14 @@ function summarizeDashboard(profiles: FieldProfile[]): DashboardSummary {
 
 export function profileDataset(dataset: ParsedDataset): AnalysisResult {
   const schema = detectSchema(dataset);
+  const columnConsensus = dataset.headers.map((header) => buildConsensusProfile(header, fieldForHeader(schema, header), dataset.rows));
   const profiles = dataset.headers.map((header) => {
     const match = schema.find((item) => item.header === header);
-    const profile = detectFieldIssues(header, fieldForHeader(schema, header), dataset.rows);
+    const consensus = columnConsensus.find((item) => item.header === header);
+    const profile = detectFieldIssues(header, fieldForHeader(schema, header), dataset.rows, consensus);
     if (match) profile.confidence = match.confidence;
     return profile;
   });
-  const columnConsensus = dataset.headers.map((header) => buildConsensusProfile(header, fieldForHeader(schema, header), dataset.rows));
   return {
     dataset,
     schema,

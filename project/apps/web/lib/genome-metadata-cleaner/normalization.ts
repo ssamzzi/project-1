@@ -62,8 +62,63 @@ function normalizedDuplicateKey(value: string) {
   return value.toLowerCase().replace(/[\s._\-]+/g, '');
 }
 
+function normalizeLooseText(value: string) {
+  return value.trim().replace(/[_\-.\/]+/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+}
+
+function compactLooseText(value: string) {
+  return normalizeLooseText(value).replace(/\s+/g, '');
+}
+
+function levenshteinDistance(left: string, right: string) {
+  if (left === right) return 0;
+  if (!left.length) return right.length;
+  if (!right.length) return left.length;
+  const matrix = Array.from({ length: left.length + 1 }, () => new Array<number>(right.length + 1).fill(0));
+  for (let i = 0; i <= left.length; i += 1) matrix[i][0] = i;
+  for (let j = 0; j <= right.length; j += 1) matrix[0][j] = j;
+  for (let i = 1; i <= left.length; i += 1) {
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+    }
+  }
+  return matrix[left.length][right.length];
+}
+
 function humanRowNumbers(indices: number[]) {
   return indices.map((index) => index + 1).join(', ');
+}
+
+function consensusSuggestion(field: SupportedField | undefined, value: string, consensus?: ColumnConsensusProfile) {
+  if (!field || !consensus?.canonicalValue) return null;
+  if (!['country', 'host', 'region', 'subtype', 'segment'].includes(field)) return null;
+  const normalizedValue = normalizeLooseText(value);
+  const normalizedCanonical = normalizeLooseText(consensus.canonicalValue);
+  if (!normalizedValue || !normalizedCanonical || normalizedValue === normalizedCanonical) {
+    if (value !== consensus.canonicalValue && normalizedValue === normalizedCanonical) {
+      return {
+        canonical: consensus.canonicalValue,
+        confidence: field === 'subtype' || field === 'segment' ? 0.98 : 0.96,
+        reason: 'This value matches the dominant canonical form in the selected column but uses a different presentation.',
+        safe: !['country', 'host', 'region'].includes(field),
+      };
+    }
+    return null;
+  }
+
+  const compactValue = compactLooseText(value);
+  const compactCanonical = compactLooseText(consensus.canonicalValue);
+  const distance = levenshteinDistance(compactValue, compactCanonical);
+  const maxDistance = compactCanonical.length >= 8 ? 2 : 1;
+  if (distance > maxDistance) return null;
+
+  return {
+    canonical: consensus.canonicalValue,
+    confidence: distance === 1 ? 0.78 : 0.66,
+    reason: 'This value is close to the dominant canonical form in the selected column and may be a typo.',
+    safe: false,
+  };
 }
 
 export function generateDiffProposals(
@@ -248,7 +303,7 @@ export function generateDiffProposals(
 
       if (fieldPolicy.applyControlledVocabulary !== 'off') {
         const suggestions = suggestControlledVocabulary(field, next);
-        const best = suggestions[0];
+        const best = suggestions[0] || consensusSuggestion(field, next, consensus);
         if (best && best.canonical !== next) {
           const consensusCanonical = consensus?.canonicalValue;
           const consensusBoost = consensusCanonical && best.canonical === consensusCanonical ? 0.02 : 0;
@@ -263,7 +318,7 @@ export function generateDiffProposals(
           });
           next = consensusCanonical && best.canonical !== consensusCanonical && best.safe ? consensusCanonical : best.canonical;
         }
-        if (!suggestions.length && field && ['country', 'host', 'subtype', 'segment', 'region'].includes(field) && trimmedOriginal) {
+        if (!best && field && ['country', 'host', 'subtype', 'segment', 'region'].includes(field) && trimmedOriginal) {
           proposals.push(
             buildProposal({
               rowIndex: row.__rowIndex,
