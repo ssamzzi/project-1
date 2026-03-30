@@ -212,17 +212,40 @@ function findRepresentativeRow(
   return analysis.dataset.rows.find((row) => isLikelyOutlierValue(String(row[header] ?? ''), issueType, consensus));
 }
 
+function findMatchingRows(
+  analysis: AnalysisResult,
+  header: string,
+  issueType: DiffProposal['issueType'],
+  consensus?: SelectedColumnAnalysis['columnConsensus'][number],
+) {
+  return analysis.dataset.rows.filter((row) => isLikelyOutlierValue(String(row[header] ?? ''), issueType, consensus));
+}
+
 function buildFallbackReviewProposals(analysis: AnalysisResult, selectedAnalysis: SelectedColumnAnalysis, existing: DiffProposal[]) {
-  const existingKeys = new Set(existing.map((proposal) => `${proposal.header}:${proposal.issueType}`));
+  const existingKeys = new Set(existing.map((proposal) => `${proposal.rowIndex}:${proposal.header}:${proposal.issueType}`));
   const fallback: DiffProposal[] = [];
   selectedAnalysis.profiles.forEach((profile) => {
     const consensus = selectedAnalysis.columnConsensus.find((item) => item.header === profile.header);
     profile.issueCounts.forEach((issue, index) => {
-      const key = `${profile.header}:${issue.type}`;
-      if (existingKeys.has(key)) return;
-      const row = findRepresentativeRow(analysis, profile.header, issue.type, consensus) ?? analysis.dataset.rows[0];
-      if (!row) return;
-      fallback.push({ id: `fallback-${profile.header}-${issue.type}-${index}`, rowIndex: row.__rowIndex, header: profile.header, field: profile.field, originalValue: String(row[profile.header] ?? ''), suggestedValue: String(row[profile.header] ?? ''), issueType: issue.type, reason: `Detected ${issue.type} in the selected column. Review is needed.`, confidence: fallbackStatus(issue.type) === 'safe' ? 0.8 : fallbackStatus(issue.type) === 'review' ? 0.4 : 0.1, status: fallbackStatus(issue.type), apply: false });
+      const rows = findMatchingRows(analysis, profile.header, issue.type, consensus).slice(0, 12);
+      rows.forEach((row, rowOffset) => {
+        const key = `${row.__rowIndex}:${profile.header}:${issue.type}`;
+        if (existingKeys.has(key)) return;
+        existingKeys.add(key);
+        fallback.push({
+          id: `fallback-${profile.header}-${issue.type}-${index}-${rowOffset}`,
+          rowIndex: row.__rowIndex,
+          header: profile.header,
+          field: profile.field,
+          originalValue: String(row[profile.header] ?? ''),
+          suggestedValue: String(row[profile.header] ?? ''),
+          issueType: issue.type,
+          reason: `Detected ${issue.type} in the selected column. Review is needed.`,
+          confidence: fallbackStatus(issue.type) === 'safe' ? 0.8 : fallbackStatus(issue.type) === 'review' ? 0.4 : 0.1,
+          status: fallbackStatus(issue.type),
+          apply: false,
+        });
+      });
     });
   });
   return fallback;
@@ -253,7 +276,6 @@ function buildConsensusFallbackProposals(
     const field = schemaByHeader[header];
     const profile = selectedAnalysis.profiles.find((item) => item.header === header);
     const consensus = selectedAnalysis.columnConsensus.find((item) => item.header === header);
-    const beforeCount = proposals.length;
     if (!profile) return;
 
     analysis.dataset.rows.forEach((row) => {
@@ -381,7 +403,6 @@ function buildConsensusFallbackProposals(
       });
     });
 
-    void beforeCount;
   });
 
   return proposals;
