@@ -272,7 +272,7 @@ export function GenomeMetadataCleanerClient() {
     return analyzeSelectedWorkflowColumns(analysis, selectedHeaders);
   }, [analysis, selectedHeaders]);
 
-  const proposals = useMemo(() => {
+  const generatedProposals = useMemo(() => {
     if (!analysis || !policy || !selectedAnalysis) return [];
     const generated = generateDiffProposals(analysis.dataset, schemaByHeader, policy, {
       selectedHeaders,
@@ -286,16 +286,25 @@ export function GenomeMetadataCleanerClient() {
     }));
   }, [analysis, policy, selectedAnalysis, schemaByHeader, selectedHeaders, linkageReport, overrides]);
 
-  const visible = useMemo(() => filterDiffProposals(proposals, filter), [proposals, filter]);
+  const displayProposals = useMemo(() => {
+    if (generatedProposals.length) return generatedProposals;
+    if (!analysis || !selectedAnalysis) return [];
+    return buildFallbackReviewProposals(analysis, selectedAnalysis, []).map((proposal) => ({
+      ...proposal,
+      apply: overrides[proposal.id] ?? proposal.apply,
+    }));
+  }, [analysis, selectedAnalysis, generatedProposals, overrides]);
+
+  const visible = useMemo(() => filterDiffProposals(displayProposals, filter), [displayProposals, filter]);
   const currentRows = appliedRows ?? analysis?.dataset.rows ?? [];
 
   const counts = useMemo(
     () => ({
-      safe: proposals.filter((proposal) => proposal.status === 'safe').length,
-      review: proposals.filter((proposal) => proposal.status === 'review').length,
-      invalid: proposals.filter((proposal) => proposal.status === 'invalid').length,
+      safe: displayProposals.filter((proposal) => proposal.status === 'safe').length,
+      review: displayProposals.filter((proposal) => proposal.status === 'review').length,
+      invalid: displayProposals.filter((proposal) => proposal.status === 'invalid').length,
     }),
-    [proposals],
+    [displayProposals],
   );
 
   async function handleAnalyze() {
@@ -382,7 +391,7 @@ export function GenomeMetadataCleanerClient() {
 
   function applyChanges(mode: 'safe' | 'selected') {
     if (!analysis) return;
-    const chosen = proposals.map((proposal) => ({
+    const chosen = displayProposals.map((proposal) => ({
       ...proposal,
       apply: mode === 'safe' ? proposal.status === 'safe' : proposal.apply,
     }));
