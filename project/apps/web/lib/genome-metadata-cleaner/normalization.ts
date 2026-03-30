@@ -62,6 +62,11 @@ function normalizedDuplicateKey(value: string) {
   return value.toLowerCase().replace(/[\s._\-]+/g, '');
 }
 
+function shouldRequireValue(header: string, field: SupportedField | undefined) {
+  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
+  return /(?:^|[\s_])(sample|isolate|sequence|accession)[_\s-]*id(?:$|[\s_])/i.test(header);
+}
+
 function normalizeLooseText(value: string) {
   return value.trim().replace(/[_\-.\/]+/g, ' ').replace(/\s+/g, ' ').toLowerCase();
 }
@@ -155,21 +160,24 @@ export function generateDiffProposals(
       const linkage = linkageFor(row.__rowIndex, options?.linkageReport);
       const trimmedOriginal = original.trim();
       const duplicateGroup = duplicateIndexByHeader.get(header)?.get(normalizedDuplicateKey(trimmedOriginal)) || [];
+      const requireValue = shouldRequireValue(header, field);
 
       if (!trimmedOriginal) {
-        proposals.push(
-          buildProposal({
-            rowIndex: row.__rowIndex,
-            header,
-            field,
-            originalValue: original,
-            suggestedValue: original,
-            issueType: 'missing-value',
-            reason: 'This selected field is empty for this row and needs review before export.',
-            confidence: 0.1,
-            status: 'invalid',
-          }),
-        );
+        if (requireValue) {
+          proposals.push(
+            buildProposal({
+              rowIndex: row.__rowIndex,
+              header,
+              field,
+              originalValue: original,
+              suggestedValue: original,
+              issueType: 'missing-value',
+              reason: 'This selected field is empty for this row and needs review before export.',
+              confidence: 0.1,
+              status: 'invalid',
+            }),
+          );
+        }
         return;
       }
 

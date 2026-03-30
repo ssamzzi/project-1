@@ -34,6 +34,11 @@ function shouldPreserveSeparators(header: string) {
   return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code)/i.test(header);
 }
 
+function shouldFlagMissingValue(header: string, field: SupportedField | undefined) {
+  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
+  return /(?:^|[\s_])(sample|isolate|sequence|accession)[_\s-]*id(?:$|[\s_])/i.test(header);
+}
+
 function normalizedLooseKey(value: string) {
   return value.toLowerCase().replace(/[_\-.\/]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -220,11 +225,12 @@ function detectFieldIssues(
   const duplicates = new Map<string, { rowIndices: number[]; values: string[] }>();
   const identityLikeColumn = isIdentityLikeColumn(header, field);
   const preserveSeparatorColumn = shouldPreserveSeparators(header);
+  const flagMissingValue = shouldFlagMissingValue(header, field);
 
   values.forEach((value, index) => {
     const trimmed = value.trim();
     if (!trimmed) {
-      collectIssue(issueCounts, 'missing-value', value);
+      if (flagMissingValue) collectIssue(issueCounts, 'missing-value', value);
       return;
     }
     if (value !== trimmed || /\s{2,}/.test(value)) collectIssue(issueCounts, 'whitespace', value);

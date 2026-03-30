@@ -58,7 +58,7 @@ function controlledScore(field: SupportedField, values: string[]) {
 
 function idLikeScore(values: string[]) {
   if (!values.length) return 0;
-  const tokenish = values.filter((value) => /^[A-Za-z0-9._/-]+$/.test(value)).length / values.length;
+  const tokenish = values.filter((value) => /^(?=.*[A-Za-z])[A-Za-z0-9._/-]+$/.test(value)).length / values.length;
   const unique = new Set(values).size / values.length;
   return tokenish * 0.6 + unique * 0.4;
 }

@@ -241,6 +241,11 @@ function findMatchingRows(
   return analysis.dataset.rows.filter((row) => isLikelyOutlierValue(String(row[header] ?? ''), issueType, consensus, field));
 }
 
+function shouldRequireValue(header: string, field: SupportedField | undefined) {
+  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
+  return /(?:^|[\s_])(sample|isolate|sequence|accession)[_\s-]*id(?:$|[\s_])/i.test(header);
+}
+
 function buildGenericConsensusReviewProposals(
   analysis: AnalysisResult,
   selectedAnalysis: SelectedColumnAnalysis,
@@ -286,16 +291,17 @@ function buildFallbackReviewProposals(analysis: AnalysisResult, selectedAnalysis
   const existingKeys = new Set(existing.map((proposal) => `${proposal.rowIndex}:${proposal.header}`));
   const fallback: DiffProposal[] = [];
   selectedAnalysis.profiles.forEach((profile) => {
-    const consensus = selectedAnalysis.columnConsensus.find((item) => item.header === profile.header);
-    profile.issueCounts.forEach((issue, index) => {
-      let rows: ParsedRow[] = [];
-      if (issue.type === 'duplicate' || issue.type === 'likely-duplicate') {
-        rows = profile.duplicateGroups.flatMap((group) => group.rowIndices.map((rowIndex) => analysis.dataset.rows[rowIndex]).filter(Boolean) as ParsedRow[]);
-      } else if (issue.type === 'missing-value') {
-        rows = analysis.dataset.rows.filter((row) => !String(row[profile.header] ?? '').trim());
-      } else if (issue.examples.length) {
-        const examples = new Set(issue.examples.map((example) => example.trim()));
-        rows = analysis.dataset.rows.filter((row) => examples.has(String(row[profile.header] ?? '').trim()));
+      const consensus = selectedAnalysis.columnConsensus.find((item) => item.header === profile.header);
+      profile.issueCounts.forEach((issue, index) => {
+        let rows: ParsedRow[] = [];
+        if (issue.type === 'duplicate' || issue.type === 'likely-duplicate') {
+          rows = profile.duplicateGroups.flatMap((group) => group.rowIndices.map((rowIndex) => analysis.dataset.rows[rowIndex]).filter(Boolean) as ParsedRow[]);
+        } else if (issue.type === 'missing-value') {
+          if (!shouldRequireValue(profile.header, profile.field)) return;
+          rows = analysis.dataset.rows.filter((row) => !String(row[profile.header] ?? '').trim());
+        } else if (issue.examples.length) {
+          const examples = new Set(issue.examples.map((example) => example.trim()));
+          rows = analysis.dataset.rows.filter((row) => examples.has(String(row[profile.header] ?? '').trim()));
       }
       if (!rows.length) {
         rows = findMatchingRows(analysis, profile.header, issue.type, consensus, profile.field);
@@ -354,19 +360,21 @@ function buildConsensusFallbackProposals(
       const original = String(row[header] ?? '');
       const trimmed = original.trim();
       if (!trimmed) {
-        proposals.push({
-          id: `consensus-${row.__rowIndex}-${header}-missing`,
-          rowIndex: row.__rowIndex,
-          header,
-          field,
-          originalValue: original,
-          suggestedValue: '',
-          issueType: 'missing-value',
-          reason: 'This selected cell is empty and needs a direct value.',
-          confidence: 0.2,
-          status: 'invalid',
-          apply: false,
-        });
+        if (shouldRequireValue(header, field)) {
+          proposals.push({
+            id: `consensus-${row.__rowIndex}-${header}-missing`,
+            rowIndex: row.__rowIndex,
+            header,
+            field,
+            originalValue: original,
+            suggestedValue: '',
+            issueType: 'missing-value',
+            reason: 'This selected cell is empty and needs a direct value.',
+            confidence: 0.2,
+            status: 'invalid',
+            apply: false,
+          });
+        }
         return;
       }
 
