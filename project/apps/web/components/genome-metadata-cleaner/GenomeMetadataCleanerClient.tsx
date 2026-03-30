@@ -14,6 +14,7 @@ import {
   generateDiffProposals,
   linkageReportToJson,
   linkageRowsToCsv,
+  parseCollectionDate,
   parseInputFile,
   type AnalysisResult,
   type DiffProposal,
@@ -158,6 +159,172 @@ function dedupeProposals(proposals: DiffProposal[]) {
   });
 }
 
+function normalizeLooseText(value: string) {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+function buildConsensusFallbackProposals(
+  analysis: AnalysisResult,
+  selectedAnalysis: SelectedColumnAnalysis,
+  schemaByHeader: Record<string, SupportedField | undefined>,
+): DiffProposal[] {
+  const proposals: DiffProposal[] = [];
+
+  selectedAnalysis.headers.forEach((header) => {
+    const field = schemaByHeader[header];
+    const profile = selectedAnalysis.profiles.find((item) => item.header === header);
+    const consensus = selectedAnalysis.columnConsensus.find((item) => item.header === header);
+    const beforeCount = proposals.length;
+    if (!profile) return;
+
+    analysis.dataset.rows.forEach((row) => {
+      const original = String(row[header] ?? '');
+      const trimmed = original.trim();
+      if (!trimmed) {
+        proposals.push({
+          id: `consensus-${row.__rowIndex}-${header}-missing`,
+          rowIndex: row.__rowIndex,
+          header,
+          field,
+          originalValue: original,
+          suggestedValue: '',
+          issueType: 'missing-value',
+          reason: 'This selected cell is empty and needs a direct value.',
+          confidence: 0.2,
+          status: 'invalid',
+          apply: false,
+        });
+        return;
+      }
+
+      const loose = normalizeLooseText(original);
+      if (loose !== original) {
+        proposals.push({
+          id: `consensus-${row.__rowIndex}-${header}-whitespace`,
+          rowIndex: row.__rowIndex,
+          header,
+          field,
+          originalValue: original,
+          suggestedValue: loose,
+          issueType: 'whitespace',
+          reason: 'Whitespace differs from the normalized column style.',
+          confidence: 0.98,
+          status: 'safe',
+          apply: true,
+        });
+      }
+
+      if (field === 'collection_date') {
+        const parsed = parseCollectionDate(trimmed);
+        if (parsed.kind === 'ambiguous') {
+          proposals.push({
+            id: `consensus-${row.__rowIndex}-${header}-ambiguous-date`,
+            rowIndex: row.__rowIndex,
+            header,
+            field,
+            originalValue: original,
+            suggestedValue: original,
+            issueType: 'ambiguous-date',
+            reason: parsed.reason,
+            confidence: 0.2,
+            status: 'review',
+            apply: false,
+          });
+        } else if (parsed.kind === 'impossible' || parsed.kind === 'invalid') {
+          proposals.push({
+            id: `consensus-${row.__rowIndex}-${header}-invalid-date`,
+            rowIndex: row.__rowIndex,
+            header,
+            field,
+            originalValue: original,
+            suggestedValue: original,
+            issueType: parsed.kind === 'impossible' ? 'impossible-date' : 'invalid-value',
+            reason: parsed.reason,
+            confidence: 0.1,
+            status: 'invalid',
+            apply: false,
+          });
+        } else if (parsed.normalized && parsed.normalized !== trimmed) {
+          proposals.push({
+            id: `consensus-${row.__rowIndex}-${header}-normalized-date`,
+            rowIndex: row.__rowIndex,
+            header,
+            field,
+            originalValue: original,
+            suggestedValue: parsed.normalized,
+            issueType: 'mixed-date-format',
+            reason: 'This date can be normalized to the dominant format safely.',
+            confidence: 0.98,
+            status: 'safe',
+            apply: true,
+          });
+        }
+      }
+
+      if (consensus?.canonicalValue) {
+        const left = normalizeLooseText(trimmed).toLowerCase();
+        const right = normalizeLooseText(consensus.canonicalValue).toLowerCase();
+        if (left === right && trimmed !== consensus.canonicalValue) {
+          proposals.push({
+            id: `consensus-${row.__rowIndex}-${header}-canonical-case`,
+            rowIndex: row.__rowIndex,
+            header,
+            field,
+            originalValue: original,
+            suggestedValue: consensus.canonicalValue,
+            issueType: 'controlled-vocab',
+            reason: 'This value matches the dominant canonical form but uses a different presentation.',
+            confidence: 0.96,
+            status: field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field) ? 'review' : 'safe',
+            apply: !(field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)),
+          });
+        }
+      }
+    });
+
+    profile.duplicateGroups.forEach((group, groupIndex) => {
+      group.rowIndices.forEach((rowIndex) => {
+        const row = analysis.dataset.rows[rowIndex];
+        if (!row) return;
+        proposals.push({
+          id: `consensus-${row.__rowIndex}-${header}-duplicate-${groupIndex}`,
+          rowIndex: row.__rowIndex,
+          header,
+          field,
+          originalValue: String(row[header] ?? ''),
+          suggestedValue: String(row[header] ?? ''),
+          issueType: group.values.length === 1 ? 'duplicate' : 'likely-duplicate',
+          reason: `This value belongs to a duplicate group in the selected column: ${group.values.join(' / ')}.`,
+          confidence: 0.3,
+          status: 'review',
+          apply: false,
+        });
+      });
+    });
+
+    if (proposals.length === beforeCount && (profile.issueCounts.length > 0 || (consensus?.outlierCount ?? 0) > 0 || profile.uniqueValues > 1)) {
+      const row = analysis.dataset.rows.find((item) => String(item[header] ?? '').trim()) ?? analysis.dataset.rows[0];
+      if (row) {
+        proposals.push({
+          id: `consensus-${row.__rowIndex}-${header}-summary-review`,
+          rowIndex: row.__rowIndex,
+          header,
+          field,
+          originalValue: String(row[header] ?? ''),
+          suggestedValue: String(row[header] ?? ''),
+          issueType: profile.issueCounts[0]?.type ?? 'controlled-vocab',
+          reason: 'This selected column has inconsistent patterns and needs review before export.',
+          confidence: 0.25,
+          status: 'review',
+          apply: false,
+        });
+      }
+    }
+  });
+
+  return proposals;
+}
+
 function suggestionLabel(proposal: DiffProposal, _isKo: boolean) {
   if (proposal.originalValue !== proposal.suggestedValue) return proposal.suggestedValue || '-';
   if (proposal.issueType === 'missing-value') return 'Manual value needed';
@@ -219,7 +386,8 @@ export function GenomeMetadataCleanerClient() {
       linkageReport: linkageReport || undefined,
     });
     const fallback = buildFallbackReviewProposals(analysis, selectedAnalysis, generated);
-    return dedupeProposals([...generated, ...fallback]).map((proposal) => {
+    const consensusFallback = buildConsensusFallbackProposals(analysis, selectedAnalysis, schemaByHeader);
+    return dedupeProposals([...generated, ...fallback, ...consensusFallback]).map((proposal) => {
       const manualValue = manualEdits[proposal.id];
       const nextSuggested = manualValue && manualValue.trim() ? manualValue : proposal.suggestedValue;
       return { ...proposal, suggestedValue: nextSuggested, apply: overrides[proposal.id] ?? proposal.apply };
