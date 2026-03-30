@@ -136,18 +136,91 @@ function fallbackStatus(issueType: DiffProposal['issueType']): DiffProposal['sta
   return 'safe';
 }
 
+function normalizedLooseTextForMatch(value: string) {
+  return value.trim().replace(/[_\-.\/]+/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+}
+
+function detectCaseStyleForMatch(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return 'other';
+  if (/^[0-9._\-\/\s]+$/.test(trimmed)) return 'numeric';
+  if (trimmed === trimmed.toUpperCase() && /[A-Z]/i.test(trimmed)) return 'upper';
+  if (trimmed === trimmed.toLowerCase() && /[A-Z]/i.test(trimmed)) return 'lower';
+  const title = trimmed
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+  if (title === trimmed) return 'title';
+  return 'mixed';
+}
+
+function detectSeparatorStyleForMatch(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return 'none';
+  const flags = [trimmed.includes(' '), trimmed.includes('-'), trimmed.includes('/'), trimmed.includes('_')];
+  const count = flags.filter(Boolean).length;
+  if (count === 0) return 'none';
+  if (count > 1) return 'mixed';
+  if (trimmed.includes(' ')) return 'space';
+  if (trimmed.includes('-')) return 'hyphen';
+  if (trimmed.includes('/')) return 'slash';
+  return 'underscore';
+}
+
+function isLikelyOutlierValue(
+  value: string,
+  issueType: DiffProposal['issueType'],
+  consensus?: SelectedColumnAnalysis['columnConsensus'][number],
+) {
+  const trimmed = value.trim();
+  if (issueType === 'missing-value') return !trimmed;
+  if (!trimmed) return false;
+  if (issueType === 'whitespace') return value !== trimmed || /\s{2,}/.test(value);
+  if (issueType === 'separator') {
+    return /[_/]+/.test(trimmed) ||
+      /\s-\s/.test(trimmed) ||
+      (!!consensus?.dominantSeparator &&
+        !['mixed', 'none'].includes(consensus.dominantSeparator) &&
+        !['mixed', 'none'].includes(detectSeparatorStyleForMatch(trimmed)) &&
+        detectSeparatorStyleForMatch(trimmed) !== consensus.dominantSeparator);
+  }
+  if (issueType === 'casing') {
+    return !!consensus?.dominantCase &&
+      !['mixed', 'other', 'numeric'].includes(consensus.dominantCase) &&
+      !['other', 'numeric'].includes(detectCaseStyleForMatch(trimmed)) &&
+      detectCaseStyleForMatch(trimmed) !== consensus.dominantCase;
+  }
+  if (issueType === 'mixed-date-format') return /[\/]/.test(trimmed);
+  if (issueType === 'ambiguous-date') return parseCollectionDate(trimmed).kind === 'ambiguous';
+  if (issueType === 'impossible-date') return parseCollectionDate(trimmed).kind === 'impossible';
+  if (issueType === 'invalid-value') return parseCollectionDate(trimmed).kind === 'invalid';
+  if (issueType === 'controlled-vocab') {
+    if (!consensus?.canonicalValue) return true;
+    return normalizedLooseTextForMatch(trimmed) !== normalizedLooseTextForMatch(consensus.canonicalValue);
+  }
+  return true;
+}
+
+function findRepresentativeRow(
+  analysis: AnalysisResult,
+  header: string,
+  issueType: DiffProposal['issueType'],
+  consensus?: SelectedColumnAnalysis['columnConsensus'][number],
+) {
+  return analysis.dataset.rows.find((row) => isLikelyOutlierValue(String(row[header] ?? ''), issueType, consensus));
+}
+
 function buildFallbackReviewProposals(analysis: AnalysisResult, selectedAnalysis: SelectedColumnAnalysis, existing: DiffProposal[]) {
   const existingKeys = new Set(existing.map((proposal) => `${proposal.header}:${proposal.issueType}`));
   const fallback: DiffProposal[] = [];
   selectedAnalysis.profiles.forEach((profile) => {
+    const consensus = selectedAnalysis.columnConsensus.find((item) => item.header === profile.header);
     profile.issueCounts.forEach((issue, index) => {
       const key = `${profile.header}:${issue.type}`;
       if (existingKeys.has(key)) return;
-      const example = issue.examples[0] ?? '';
-      const row = analysis.dataset.rows.find((item) => {
-        const value = String(item[profile.header] ?? '');
-        return issue.type === 'missing-value' ? !value.trim() : value === example || value.trim() === example.trim();
-      }) ?? analysis.dataset.rows[0];
+      const row = findRepresentativeRow(analysis, profile.header, issue.type, consensus) ?? analysis.dataset.rows[0];
       if (!row) return;
       fallback.push({ id: `fallback-${profile.header}-${issue.type}-${index}`, rowIndex: row.__rowIndex, header: profile.header, field: profile.field, originalValue: String(row[profile.header] ?? ''), suggestedValue: String(row[profile.header] ?? ''), issueType: issue.type, reason: `Detected ${issue.type} in the selected column. Review is needed.`, confidence: fallbackStatus(issue.type) === 'safe' ? 0.8 : fallbackStatus(issue.type) === 'review' ? 0.4 : 0.1, status: fallbackStatus(issue.type), apply: false });
     });
@@ -309,7 +382,8 @@ function buildConsensusFallbackProposals(
     });
 
     if (proposals.length === beforeCount && (profile.issueCounts.length > 0 || (consensus?.outlierCount ?? 0) > 0 || profile.uniqueValues > 1)) {
-      const row = analysis.dataset.rows.find((item) => String(item[header] ?? '').trim()) ?? analysis.dataset.rows[0];
+      const issueType = profile.issueCounts[0]?.type ?? 'controlled-vocab';
+      const row = findRepresentativeRow(analysis, header, issueType, consensus) ?? analysis.dataset.rows[0];
       if (row) {
         proposals.push({
           id: `consensus-${row.__rowIndex}-${header}-summary-review`,
@@ -318,7 +392,7 @@ function buildConsensusFallbackProposals(
           field,
           originalValue: String(row[header] ?? ''),
           suggestedValue: String(row[header] ?? ''),
-          issueType: profile.issueCounts[0]?.type ?? 'controlled-vocab',
+          issueType,
           reason: 'This selected column has inconsistent patterns and needs review before export.',
           confidence: 0.25,
           status: 'review',
@@ -369,7 +443,7 @@ function buildOutlierSummaryItems(
   return analysis.columnConsensus
     .filter((item) => selectedHeaders.includes(item.header) && item.outlierCount > 0)
     .map((item, index) => {
-      const row = analysis.dataset.rows.find((entry) => String(entry[item.header] ?? '').trim()) ?? analysis.dataset.rows[0];
+      const row = findRepresentativeRow(analysis, item.header, 'controlled-vocab', item) ?? analysis.dataset.rows[0];
       const original = row ? String(row[item.header] ?? '') : '';
       return {
         id: `outlier-summary-${item.header}-${index}`,
