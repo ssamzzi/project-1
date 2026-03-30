@@ -75,6 +75,29 @@ function compactLooseText(value: string) {
   return normalizeLooseText(value).replace(/\s+/g, '');
 }
 
+function looksPlausibleControlledValue(field: SupportedField | undefined, value: string, consensus?: ColumnConsensusProfile) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (field === 'country' && /^[A-Za-z][A-Za-z\s.'()-]+$/.test(trimmed)) return true;
+  if (field === 'subtype' && (/^[AB]\s*\/\s*H\d{1,2}N\d{1,2}$/i.test(trimmed) || /^H\d{1,2}N\d{1,2}$/i.test(trimmed))) return true;
+  if (field === 'host' && /^[A-Za-z][A-Za-z\s.'()-]+$/.test(trimmed)) return true;
+  if (consensus?.canonicalValue && normalizeLooseText(trimmed) === normalizeLooseText(consensus.canonicalValue)) return true;
+  return false;
+}
+
+function shouldTreatControlledValueAsInvalid(field: SupportedField | undefined, value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || !field) return false;
+  if (field === 'segment') return true;
+  if (field === 'subtype') {
+    return /[0-9]/.test(trimmed) && !/^[AB]?\s*\/?\s*H\d{1,2}N\d{1,2}$/i.test(trimmed.replace(/\s+/g, ''));
+  }
+  if (field === 'country' || field === 'host' || field === 'region') {
+    return /[0-9]/.test(trimmed) || /[^A-Za-z\s.'()\/-]/.test(trimmed);
+  }
+  return false;
+}
+
 function levenshteinDistance(left: string, right: string) {
   if (left === right) return 0;
   if (!left.length) return right.length;
@@ -327,7 +350,14 @@ export function generateDiffProposals(
           });
           next = consensusCanonical && best.canonical !== consensusCanonical && best.safe ? consensusCanonical : best.canonical;
         }
-        if (!best && field && ['country', 'host', 'subtype', 'segment', 'region'].includes(field) && trimmedOriginal) {
+        if (
+          !best &&
+          field &&
+          ['country', 'host', 'subtype', 'segment', 'region'].includes(field) &&
+          trimmedOriginal &&
+          !looksPlausibleControlledValue(field, next, consensus) &&
+          shouldTreatControlledValueAsInvalid(field, next)
+        ) {
           proposals.push(
             buildProposal({
               rowIndex: row.__rowIndex,

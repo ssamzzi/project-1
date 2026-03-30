@@ -1,6 +1,14 @@
 import type { ControlledSuggestion, SupportedField } from './types';
 
 const countryAliases: Record<string, string> = {
+  australia: 'Australia',
+  japan: 'Japan',
+  china: 'China',
+  canada: 'Canada',
+  france: 'France',
+  germany: 'Germany',
+  thailand: 'Thailand',
+  vietnam: 'Vietnam',
   usa: 'United States',
   us: 'United States',
   'u s a': 'United States',
@@ -95,8 +103,21 @@ function titleCase(value: string) {
 }
 
 function normalizeSubtype(value: string): ControlledSuggestion[] {
-  const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const match = compact.match(/^H(\d{1,2})N(\d{1,2})$/);
+  const compact = value.toUpperCase().replace(/\s+/g, '');
+  const prefixed = compact.match(/^([AB])\/?H(\d{1,2})N(\d{1,2})$/);
+  if (prefixed) {
+    return [
+      {
+        value,
+        canonical: `${prefixed[1]}/H${prefixed[2]}N${prefixed[3]}`,
+        confidence: 0.99,
+        reason: 'Recognized influenza subtype pattern with virus type prefix.',
+        safe: value !== `${prefixed[1]}/H${prefixed[2]}N${prefixed[3]}`,
+      },
+    ];
+  }
+  const plain = compact.replace(/[^A-Z0-9]/g, '');
+  const match = plain.match(/^H(\d{1,2})N(\d{1,2})$/);
   if (!match) return [];
   return [
     {

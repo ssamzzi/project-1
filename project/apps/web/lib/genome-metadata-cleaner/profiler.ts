@@ -53,6 +53,35 @@ function compactLooseKey(value: string) {
   return normalizedLooseKey(value).replace(/\s+/g, '');
 }
 
+function looksPlausibleControlledValue(field: SupportedField | undefined, value: string, consensus?: ColumnConsensusProfile) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (field === 'country') {
+    if (/^[A-Za-z][A-Za-z\s.'()-]+$/.test(trimmed)) return true;
+  }
+  if (field === 'subtype') {
+    if (/^[AB]\s*\/\s*H\d{1,2}N\d{1,2}$/i.test(trimmed) || /^H\d{1,2}N\d{1,2}$/i.test(trimmed)) return true;
+  }
+  if (field === 'host') {
+    if (/^[A-Za-z][A-Za-z\s.'()-]+$/.test(trimmed)) return true;
+  }
+  if (consensus?.canonicalValue && normalizedLooseKey(trimmed) === normalizedLooseKey(consensus.canonicalValue)) return true;
+  return false;
+}
+
+function shouldTreatControlledValueAsInvalid(field: SupportedField | undefined, value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || !field) return false;
+  if (field === 'segment') return true;
+  if (field === 'subtype') {
+    return /[0-9]/.test(trimmed) && !/^[AB]?\s*\/?\s*H\d{1,2}N\d{1,2}$/i.test(trimmed.replace(/\s+/g, ''));
+  }
+  if (field === 'country' || field === 'host' || field === 'region') {
+    return /[0-9]/.test(trimmed) || /[^A-Za-z\s.'()\/-]/.test(trimmed);
+  }
+  return false;
+}
+
 function levenshteinDistance(left: string, right: string) {
   if (left === right) return 0;
   if (!left.length) return right.length;
@@ -287,6 +316,7 @@ function detectFieldIssues(
     if (suggestions.length) {
       if (suggestions.some((suggestion) => suggestion.canonical !== trimmed)) collectIssue(issueCounts, 'controlled-vocab', value);
     } else if (field && ['country', 'host', 'region', 'subtype', 'segment'].includes(field)) {
+      if (looksPlausibleControlledValue(field, trimmed, consensus)) return;
       const consensusCanonical = consensus?.canonicalValue;
       if (consensusCanonical) {
         const compactValue = compactLooseKey(trimmed);
@@ -294,10 +324,10 @@ function detectFieldIssues(
         const distance = levenshteinDistance(compactValue, compactCanonical);
         if (compactValue && compactCanonical && compactValue !== compactCanonical && distance <= (compactCanonical.length >= 8 ? 2 : 1)) {
           collectIssue(issueCounts, 'controlled-vocab', value);
-        } else {
+        } else if (shouldTreatControlledValueAsInvalid(field, trimmed)) {
           collectIssue(issueCounts, 'invalid-value', value);
         }
-      } else {
+      } else if (shouldTreatControlledValueAsInvalid(field, trimmed)) {
         collectIssue(issueCounts, 'invalid-value', value);
       }
     } else if (consensus?.canonicalValue && field && ['country', 'host', 'region', 'subtype', 'segment'].includes(field)) {

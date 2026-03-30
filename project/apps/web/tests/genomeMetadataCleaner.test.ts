@@ -112,6 +112,20 @@ describe('genome metadata cleaner normalization', () => {
     expect(suggestions[0].canonical).toBe('United States');
   });
 
+  it('accepts common country names and influenza subtype prefixes without marking them invalid', () => {
+    const analysis = buildAnalysis('country,subtype\nAustralia,A/H3N2\n');
+    const workflow = analyzeWorkflow(analysis.dataset);
+    const selected = analyzeSelectedWorkflowColumns(workflow.analysis, ['country', 'subtype']);
+    const proposals = generateDiffProposals(
+      workflow.analysis.dataset,
+      { country: 'country', subtype: 'subtype' } as const,
+      workflow.defaultPolicy,
+      { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
+    );
+    expect(proposals.some((proposal) => proposal.header === 'country' && proposal.issueType === 'invalid-value')).toBe(false);
+    expect(proposals.some((proposal) => proposal.header === 'subtype' && proposal.issueType === 'invalid-value')).toBe(false);
+  });
+
   it('surfaces typo-like outliers using the dominant column canonical value', () => {
     const analysis = buildAnalysis('host\nHuman\nHuman\nhumna\n');
     const workflow = analyzeWorkflow(analysis.dataset);
