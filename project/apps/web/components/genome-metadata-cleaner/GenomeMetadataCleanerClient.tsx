@@ -76,6 +76,7 @@ function getText(isKo: boolean) {
         applySafe: '안전한 항목만 적용',
         applySelected: '선택 항목 적용',
         continueWithoutChanges: '변경 없이 내보내기',
+        finishReview: '검토 완료 후 내보내기',
         reviewOnlyNotice: '현재 보이는 항목은 검토용입니다. 자동으로 바뀌는 값은 없지만, 그대로 내보내거나 다른 컬럼을 선택할 수 있습니다.',
         clearVisible: '보이는 항목 해제',
         backToColumns: '컬럼 선택으로 돌아가기',
@@ -132,6 +133,7 @@ function getText(isKo: boolean) {
         applySafe: 'Apply all safe',
         applySelected: 'Apply selected',
         continueWithoutChanges: 'Export without changes',
+        finishReview: 'Finish review and export',
         reviewOnlyNotice: 'The current items are review-only. There are no direct value changes to apply, but you can export the current dataset or choose different columns.',
         clearVisible: 'Uncheck visible',
         backToColumns: 'Back to columns',
@@ -707,8 +709,12 @@ export function GenomeMetadataCleanerClient() {
                 >
                   {text.applySelected}
                 </button>
-                <button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium" onClick={continueWithoutChanges}>
-                  {text.continueWithoutChanges}
+                <button
+                  type="button"
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${actionableCount === 0 ? 'bg-slate-900 text-white' : 'border border-slate-300'}`}
+                  onClick={continueWithoutChanges}
+                >
+                  {actionableCount === 0 ? text.finishReview : text.continueWithoutChanges}
                 </button>
               </div>
             </div>
