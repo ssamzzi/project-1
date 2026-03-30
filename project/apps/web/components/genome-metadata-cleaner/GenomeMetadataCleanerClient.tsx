@@ -75,6 +75,8 @@ function getText(isKo: boolean) {
         noProposals: '선택한 컬럼에 대한 제안이 없습니다. 다른 컬럼을 선택하거나 그대로 내보낼 수 있습니다.',
         applySafe: '안전한 항목만 적용',
         applySelected: '선택 항목 적용',
+        continueWithoutChanges: '변경 없이 내보내기',
+        reviewOnlyNotice: '현재 보이는 항목은 검토용입니다. 자동으로 바뀌는 값은 없지만, 그대로 내보내거나 다른 컬럼을 선택할 수 있습니다.',
         clearVisible: '보이는 항목 해제',
         backToColumns: '컬럼 선택으로 돌아가기',
         confirmApply: '선택한 변경사항을 적용할까요? 원본 데이터는 그대로 유지됩니다.',
@@ -129,6 +131,8 @@ function getText(isKo: boolean) {
         noProposals: 'No suggestions were generated for the selected columns. You can choose different columns or export the current dataset.',
         applySafe: 'Apply all safe',
         applySelected: 'Apply selected',
+        continueWithoutChanges: 'Export without changes',
+        reviewOnlyNotice: 'The current items are review-only. There are no direct value changes to apply, but you can export the current dataset or choose different columns.',
         clearVisible: 'Uncheck visible',
         backToColumns: 'Back to columns',
         confirmApply: 'Apply the selected changes? Raw data will stay preserved.',
@@ -317,6 +321,10 @@ export function GenomeMetadataCleanerClient() {
     }),
     [displayProposals],
   );
+  const actionableCount = useMemo(
+    () => displayProposals.filter((proposal) => proposal.originalValue !== proposal.suggestedValue).length,
+    [displayProposals],
+  );
 
   async function handleAnalyze() {
     if (!metadataFile) return;
@@ -410,6 +418,12 @@ export function GenomeMetadataCleanerClient() {
     const result = applySelectedProposals(analysis.dataset, chosen);
     setAppliedRows(result.rows);
     setAppliedLog(buildChangeLog(chosen));
+    setStep('export');
+  }
+
+  function continueWithoutChanges() {
+    setAppliedRows(null);
+    setAppliedLog([]);
     setStep('export');
   }
 
@@ -672,12 +686,29 @@ export function GenomeMetadataCleanerClient() {
                 <p className="text-sm text-slate-600">{text.noProposals}</p>
               )}
 
+              {visible.length && actionableCount === 0 ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{text.reviewOnlyNotice}</p>
+              ) : null}
+
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white" onClick={() => applyChanges('safe')}>
+                <button
+                  type="button"
+                  className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => applyChanges('safe')}
+                  disabled={actionableCount === 0}
+                >
                   {text.applySafe}
                 </button>
-                <button type="button" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white" onClick={() => applyChanges('selected')}>
+                <button
+                  type="button"
+                  className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => applyChanges('selected')}
+                  disabled={actionableCount === 0}
+                >
                   {text.applySelected}
+                </button>
+                <button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium" onClick={continueWithoutChanges}>
+                  {text.continueWithoutChanges}
                 </button>
               </div>
             </div>
