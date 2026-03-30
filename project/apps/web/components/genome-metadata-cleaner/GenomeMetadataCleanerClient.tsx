@@ -221,6 +221,47 @@ function findMatchingRows(
   return analysis.dataset.rows.filter((row) => isLikelyOutlierValue(String(row[header] ?? ''), issueType, consensus));
 }
 
+function buildGenericConsensusReviewProposals(
+  analysis: AnalysisResult,
+  selectedAnalysis: SelectedColumnAnalysis,
+  existing: DiffProposal[],
+  schemaByHeader: Record<string, SupportedField | undefined>,
+) {
+  const existingKeys = new Set(existing.map((proposal) => `${proposal.rowIndex}:${proposal.header}`));
+  const fallback: DiffProposal[] = [];
+
+  selectedAnalysis.columnConsensus.forEach((consensus) => {
+    if (schemaByHeader[consensus.header]) return;
+    if (!consensus.canonicalValue || (consensus.canonicalFrequency ?? 0) < 2) return;
+
+    analysis.dataset.rows.forEach((row, index) => {
+      const value = String(row[consensus.header] ?? '');
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      const key = `${row.__rowIndex}:${consensus.header}`;
+      if (existingKeys.has(key)) return;
+      if (!isLikelyOutlierValue(value, 'controlled-vocab', consensus) && !isLikelyOutlierValue(value, 'casing', consensus)) return;
+
+      fallback.push({
+        id: `generic-${consensus.header}-${row.__rowIndex}-${index}`,
+        rowIndex: row.__rowIndex,
+        header: consensus.header,
+        field: undefined,
+        originalValue: value,
+        suggestedValue: consensus.canonicalValue,
+        issueType: normalizedLooseTextForMatch(trimmed) === normalizedLooseTextForMatch(consensus.canonicalValue) ? 'casing' : 'controlled-vocab',
+        reason: `This value differs from the dominant repeated value "${consensus.canonicalValue}" in the selected column and should be reviewed.`,
+        confidence: normalizedLooseTextForMatch(trimmed) === normalizedLooseTextForMatch(consensus.canonicalValue) ? 0.94 : 0.7,
+        status: 'review',
+        apply: false,
+      });
+      existingKeys.add(key);
+    });
+  });
+
+  return fallback;
+}
+
 function buildFallbackReviewProposals(analysis: AnalysisResult, selectedAnalysis: SelectedColumnAnalysis, existing: DiffProposal[]) {
   const existingKeys = new Set(existing.map((proposal) => `${proposal.rowIndex}:${proposal.header}:${proposal.issueType}`));
   const fallback: DiffProposal[] = [];
@@ -480,7 +521,8 @@ export function GenomeMetadataCleanerClient() {
     });
     const fallback = buildFallbackReviewProposals(analysis, selectedAnalysis, generated);
     const consensusFallback = buildConsensusFallbackProposals(analysis, selectedAnalysis, schemaByHeader);
-    return dedupeProposals([...generated, ...fallback, ...consensusFallback]).map((proposal) => {
+    const genericFallback = buildGenericConsensusReviewProposals(analysis, selectedAnalysis, [...generated, ...fallback, ...consensusFallback], schemaByHeader);
+    return dedupeProposals([...generated, ...fallback, ...consensusFallback, ...genericFallback]).map((proposal) => {
       const manualValue = manualEdits[proposal.id];
       const nextSuggested = manualValue && manualValue.trim() ? manualValue : proposal.suggestedValue;
       return { ...proposal, suggestedValue: nextSuggested, apply: overrides[proposal.id] ?? proposal.apply };

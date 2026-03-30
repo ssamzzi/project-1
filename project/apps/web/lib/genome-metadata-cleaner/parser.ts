@@ -45,10 +45,14 @@ export function parseDelimitedText(text: string, fileName: string, delimiter?: '
 }
 
 export function parseXlsxBuffer(buffer: ArrayBuffer, fileName: string): ParsedDataset {
-  const workbook = XLSX.read(buffer, { type: 'array' });
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: false, cellText: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-  const matrix = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: '' }) as string[][];
+  const matrix = XLSX.utils.sheet_to_json<string[]>(sheet, {
+    header: 1,
+    defval: '',
+    raw: false,
+  }) as string[][];
   const headers = (matrix.shift() || []).map((value, index) => String(value || `column_${index + 1}`).trim() || `column_${index + 1}`);
   return {
     fileName,
