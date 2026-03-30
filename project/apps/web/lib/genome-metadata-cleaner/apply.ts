@@ -22,7 +22,7 @@ export function buildChangeLog(proposals: DiffProposal[]): ChangeLogEntry[] {
   return proposals
     .filter((proposal) => proposal.apply && proposal.originalValue !== proposal.suggestedValue)
     .map((proposal) => ({
-      rowIndex: proposal.rowIndex,
+      rowIndex: proposal.rowIndex + 1,
       header: proposal.header,
       field: proposal.field,
       originalValue: proposal.originalValue,

@@ -6,7 +6,6 @@ const countryAliases: Record<string, string> = {
   'u s a': 'United States',
   'united states of america': 'United States',
   uk: 'United Kingdom',
-  korea: 'South Korea',
   'republic of korea': 'South Korea',
   'south korea': 'South Korea',
   'north korea': 'North Korea',
@@ -153,8 +152,8 @@ function suggestGenericTitleCase(value: string, reasonLabel: string): Controlled
 
 export function suggestControlledVocabulary(field: SupportedField | undefined, value: string): ControlledSuggestion[] {
   if (!field || !value.trim()) return [];
-  if (field === 'country') return [...suggestFromAliasMap(value, countryAliases, 'Country'), ...suggestGenericTitleCase(value, 'Country')];
-  if (field === 'host') return [...suggestFromAliasMap(value, hostAliases, 'Host'), ...suggestGenericTitleCase(value, 'Host')];
+  if (field === 'country') return suggestFromAliasMap(value, countryAliases, 'Country');
+  if (field === 'host') return suggestFromAliasMap(value, hostAliases, 'Host');
   if (field === 'segment') {
     const canonical = segmentAliases[normalizeLookupKey(value)];
     return canonical
