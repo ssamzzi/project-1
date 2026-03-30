@@ -7,6 +7,8 @@ import {
   analyzeSelectedWorkflowColumns,
   analyzeWorkflow,
   applySelectedProposals,
+  buildDefaultPolicy,
+  buildRecommendations,
   buildChangeLog,
   changeLogToCsv,
   changeLogToJson,
@@ -496,7 +498,17 @@ export function GenomeMetadataCleanerClient() {
   const [error, setError] = useState('');
 
   const analysis = workflow?.analysis ?? null;
-  const policy = workflow?.policy ?? null;
+  const fallbackRecommendations = useMemo(() => (analysis ? buildRecommendations(analysis) : []), [analysis]);
+  const recommendations = useMemo(() => {
+    if (!analysis) return [];
+    return analysis.recommendations.length ? analysis.recommendations : fallbackRecommendations;
+  }, [analysis, fallbackRecommendations]);
+  const policy = useMemo(() => {
+    if (!analysis) return null;
+    const existing = workflow?.policy;
+    if (existing && Object.keys(existing.fieldPolicies || {}).length > 0) return existing;
+    return buildDefaultPolicy({ ...analysis, recommendations });
+  }, [analysis, recommendations, workflow?.policy]);
   const linkageReport = workflow?.linkageReport ?? null;
 
   const schemaByHeader = useMemo<Record<string, SupportedField | undefined>>(() => {
@@ -509,8 +521,8 @@ export function GenomeMetadataCleanerClient() {
 
   const selectedAnalysis = useMemo(() => {
     if (!analysis || !selectedHeaders.length) return null;
-    return analyzeSelectedWorkflowColumns(analysis, selectedHeaders);
-  }, [analysis, selectedHeaders]);
+    return analyzeSelectedWorkflowColumns({ ...analysis, recommendations }, selectedHeaders);
+  }, [analysis, recommendations, selectedHeaders]);
 
   const proposals = useMemo(() => {
     if (!analysis || !policy || !selectedAnalysis) return [];
@@ -687,7 +699,7 @@ export function GenomeMetadataCleanerClient() {
       </div> : null}
 
       {step === 'columns' ? <div className="mt-6"><SectionCard title={text.columns}>
-        {analysis ? <div className="space-y-4"><p className="text-sm text-slate-600">{text.chooseColumns}</p><div className="overflow-x-auto rounded-lg border border-slate-200"><table className="min-w-full divide-y divide-slate-200 text-sm"><thead className="bg-slate-50"><tr><th className="px-3 py-2 text-left">{text.apply}</th><th className="px-3 py-2 text-left">{text.field}</th><th className="px-3 py-2 text-left">{text.inferredMeaning}</th><th className="px-3 py-2 text-left">{text.confidence}</th><th className="px-3 py-2 text-left">{text.issues}</th><th className="px-3 py-2 text-left">{text.outliers}</th><th className="px-3 py-2 text-left">{text.strategy}</th></tr></thead><tbody className="divide-y divide-slate-200 bg-white">{analysis.dataset.headers.map((header) => { const profile = analysis.profiles.find((item) => item.header === header); const schema = analysis.schema.find((item) => item.header === header); const consensus = analysis.columnConsensus.find((item) => item.header === header); const recommendation = analysis.recommendations.find((item) => item.header === header); const fieldPolicy = policy?.fieldPolicies[header]; return <tr key={header}><td className="px-3 py-2 align-top"><input type="checkbox" checked={selectedHeaders.includes(header)} onChange={() => toggleHeader(header)} /></td><td className="px-3 py-2 align-top font-medium">{header}</td><td className="px-3 py-2 align-top">{schema?.field ?? '-'}</td><td className="px-3 py-2 align-top">{schema ? schema.confidence.toFixed(2) : '-'}</td><td className="px-3 py-2 align-top">{profile ? issueTotal(profile) : 0}</td><td className="px-3 py-2 align-top">{consensus?.outlierCount ?? 0}</td><td className="px-3 py-2 align-top">{fieldPolicy && recommendation ? <select value={fieldPolicy.strategy} onChange={(event) => setStrategy(header, event.target.value as FieldPolicy['strategy'])} className="min-w-[220px] rounded-lg border border-slate-300 px-3 py-2">{recommendation.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : '-'}</td></tr>; })}</tbody></table></div><button type="button" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={goToResolve} disabled={!selectedHeaders.length}>{text.continueToResolve}</button></div> : <p className="text-sm text-slate-600">{text.noSuggestions}</p>}
+        {analysis ? <div className="space-y-4"><p className="text-sm text-slate-600">{text.chooseColumns}</p><div className="overflow-x-auto rounded-lg border border-slate-200"><table className="min-w-full divide-y divide-slate-200 text-sm"><thead className="bg-slate-50"><tr><th className="px-3 py-2 text-left">{text.apply}</th><th className="px-3 py-2 text-left">{text.field}</th><th className="px-3 py-2 text-left">{text.inferredMeaning}</th><th className="px-3 py-2 text-left">{text.confidence}</th><th className="px-3 py-2 text-left">{text.issues}</th><th className="px-3 py-2 text-left">{text.outliers}</th><th className="px-3 py-2 text-left">{text.strategy}</th></tr></thead><tbody className="divide-y divide-slate-200 bg-white">{analysis.dataset.headers.map((header) => { const profile = analysis.profiles.find((item) => item.header === header); const schema = analysis.schema.find((item) => item.header === header); const consensus = analysis.columnConsensus.find((item) => item.header === header); const recommendation = recommendations.find((item) => item.header === header); const fieldPolicy = policy?.fieldPolicies[header]; return <tr key={header}><td className="px-3 py-2 align-top"><input type="checkbox" checked={selectedHeaders.includes(header)} onChange={() => toggleHeader(header)} /></td><td className="px-3 py-2 align-top font-medium">{header}</td><td className="px-3 py-2 align-top">{schema?.field ?? '-'}</td><td className="px-3 py-2 align-top">{schema ? schema.confidence.toFixed(2) : '-'}</td><td className="px-3 py-2 align-top">{profile ? issueTotal(profile) : 0}</td><td className="px-3 py-2 align-top">{consensus?.outlierCount ?? 0}</td><td className="px-3 py-2 align-top">{fieldPolicy && recommendation ? <select value={fieldPolicy.strategy} onChange={(event) => setStrategy(header, event.target.value as FieldPolicy['strategy'])} className="min-w-[220px] rounded-lg border border-slate-300 px-3 py-2">{recommendation.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : '-'}</td></tr>; })}</tbody></table></div><button type="button" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={goToResolve} disabled={!selectedHeaders.length}>{text.continueToResolve}</button></div> : <p className="text-sm text-slate-600">{text.noSuggestions}</p>}
       </SectionCard></div> : null}
 
       {step === 'resolve' ? <div className="mt-6 space-y-4"><SectionCard title={text.resolve}>
