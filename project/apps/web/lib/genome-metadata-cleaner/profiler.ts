@@ -25,6 +25,11 @@ function normalizedDuplicateKey(value: string) {
   return value.toLowerCase().replace(/[\s._\-]+/g, '');
 }
 
+function isIdentityLikeColumn(header: string, field: SupportedField | undefined) {
+  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
+  return /(?:^|[\s_])(id|segment[\s_]?id|accession)(?:$|[\s_])/i.test(header);
+}
+
 function normalizedLooseKey(value: string) {
   return value.toLowerCase().replace(/[_\-.\/]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -209,6 +214,7 @@ function detectFieldIssues(
   const issueCounts = new Map<IssueType, string[]>();
   const nonEmpty = values.filter((value) => value.trim().length > 0);
   const duplicates = new Map<string, { rowIndices: number[]; values: string[] }>();
+  const identityLikeColumn = isIdentityLikeColumn(header, field);
 
   values.forEach((value, index) => {
     const trimmed = value.trim();
@@ -217,12 +223,15 @@ function detectFieldIssues(
       return;
     }
     if (value !== trimmed || /\s{2,}/.test(value)) collectIssue(issueCounts, 'whitespace', value);
-    const hasExplicitSeparatorIssue = /[_/]+/.test(trimmed) || /\s-\s/.test(trimmed);
+    const hasExplicitSeparatorIssue =
+      !identityLikeColumn &&
+      (/__+/.test(trimmed) || /--+/.test(trimmed) || /\s[/_-]\s/.test(trimmed) || /\/\//.test(trimmed));
     if (hasExplicitSeparatorIssue) collectIssue(issueCounts, 'separator', value);
 
     const caseStyle = detectCaseStyle(trimmed);
     if (
       field &&
+      !identityLikeColumn &&
       ['country', 'host', 'region', 'subtype', 'segment'].includes(field) &&
       consensus?.dominantCase &&
       !['mixed', 'other', 'numeric'].includes(consensus.dominantCase) &&
@@ -236,6 +245,7 @@ function detectFieldIssues(
     if (
       !hasExplicitSeparatorIssue &&
       field &&
+      !identityLikeColumn &&
       ['country', 'host', 'region', 'subtype', 'segment'].includes(field) &&
       consensus?.dominantSeparator &&
       !['mixed', 'none'].includes(consensus.dominantSeparator) &&
@@ -297,7 +307,7 @@ function detectFieldIssues(
       }
     }
 
-    if (field && ['sample_id', 'isolate_name', 'strain_name', 'sequence_id'].includes(field)) {
+    if (identityLikeColumn) {
       const key = normalizedDuplicateKey(trimmed);
       const existing = duplicates.get(key) || { rowIndices: [], values: [] };
       existing.rowIndices.push(index);

@@ -25,6 +25,15 @@ function strategyOptions(field?: string): StrategyOption[] {
 
 function recommendedStrategyForProfile(profile: FieldProfile): Pick<FieldRecommendation, 'recommendedStrategy' | 'recommendedReason' | 'risky'> {
   const types = profile.issueCounts.map((issue) => issue.type);
+  const mostlyUnique = profile.nonEmptyRows > 0 && profile.uniqueValues / profile.nonEmptyRows > 0.9;
+  const lowSignalUnknown = !profile.field && mostlyUnique && types.every((type) => type === 'missing-value' || type === 'separator' || type === 'whitespace');
+  if (lowSignalUnknown) {
+    return {
+      recommendedStrategy: 'skip',
+      recommendedReason: 'This looks like a mostly unique identifier-style column, so cleanup is skipped by default unless you explicitly need it.',
+      risky: false,
+    };
+  }
   if (profile.field === 'collection_date') {
     return {
       recommendedStrategy: 'canonicalize-safe',

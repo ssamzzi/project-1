@@ -108,6 +108,14 @@ function getText(_isKo: boolean) {
 function issueTotal(profile: FieldProfile) { return profile.issueCounts.reduce((sum, issue) => sum + issue.count, 0); }
 function summarizeField(profile: FieldProfile) { return !profile.issueCounts.length ? 'No issues' : profile.issueCounts.slice(0, 3).map((issue) => `${issue.type} (${issue.count})`).join(', '); }
 
+function shouldAutoSelectProfile(profile: FieldProfile, recommendation?: { recommendedStrategy: string }, outlierCount = 0) {
+  if (!issueTotal(profile)) return false;
+  if (recommendation?.recommendedStrategy === 'skip') return false;
+  if (profile.field) return true;
+  if (outlierCount > 0) return true;
+  return profile.issueCounts.some((issue) => ['ambiguous-date', 'impossible-date', 'invalid-value', 'duplicate', 'likely-duplicate', 'controlled-vocab'].includes(issue.type));
+}
+
 function downloadText(filename: string, data: string, type = 'text/plain;charset=utf-8') {
   const blob = new Blob([data], { type });
   const url = URL.createObjectURL(blob);
@@ -589,7 +597,13 @@ export function GenomeMetadataCleanerClient() {
         policy: next.defaultPolicy,
         linkageReport: next.linkageReport,
       });
-      const defaults = next.analysis.profiles.filter((profile) => issueTotal(profile) > 0).map((profile) => profile.header);
+      const defaults = next.analysis.profiles
+        .filter((profile) => {
+          const recommendation = next.analysis.recommendations.find((item) => item.header === profile.header);
+          const consensus = next.analysis.columnConsensus.find((item) => item.header === profile.header);
+          return shouldAutoSelectProfile(profile, recommendation, consensus?.outlierCount ?? 0);
+        })
+        .map((profile) => profile.header);
       setSelectedHeaders(defaults.length ? defaults : next.analysis.dataset.headers.slice(0, Math.min(4, next.analysis.dataset.headers.length)));
       setResolveTab('safe');
       setStep('columns');
