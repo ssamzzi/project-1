@@ -1,0 +1,9 @@
+sample_id,collection_date,host,country,subtype,site_name,region
+A-001,2024-03-07,Human,South Korea,H1N1,Busan,Gyeonggi-do
+A-002,2024/03/08,human,south korea,h3n2,Busan,GYEONGGI-DO
+A-003,03/04/2024,humna,Souht Korea,H5N1,busna,Gyeonggi do
+A-004,2024-02-31,Human,South Korea,h5n1,Busan,Gyeonggi-do
+A_001,2024-03-07,Human,South Korea,H1N1,Busan,Gyeonggi-do
+A-005, 2024-03-09 ,Human ,South Korea ,H1N1, Busan,Gyeonggi-do
+A-006,2024/3/10,Human,Korea,H1N1,Busan,Gyeonggi-do
+A-007,,Human,South Korea,H1N1,Busna,

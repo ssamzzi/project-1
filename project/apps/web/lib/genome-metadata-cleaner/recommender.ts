@@ -4,6 +4,10 @@ function headerPrefersPreserve(header: string) {
   return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code)/i.test(header);
 }
 
+function headerShouldSkipByDefault(header: string) {
+  return /(host[_\s]?age|age[_\s]?unit|host[_\s]?gender|patient[_\s]?status|vaccinated|outbreak|zip[_\s]?code)/i.test(header);
+}
+
 function strategyOptions(field?: string): StrategyOption[] {
   const base: StrategyOption[] = [
     { id: 'safe-clean', label: 'Safe cleanup only', description: 'Trim whitespace, normalize safe separators, and keep meaning unchanged.' },
@@ -29,6 +33,13 @@ function strategyOptions(field?: string): StrategyOption[] {
 
 function recommendedStrategyForProfile(profile: FieldProfile): Pick<FieldRecommendation, 'recommendedStrategy' | 'recommendedReason' | 'risky'> {
   const types = profile.issueCounts.map((issue) => issue.type);
+  if (headerShouldSkipByDefault(profile.header)) {
+    return {
+      recommendedStrategy: 'skip',
+      recommendedReason: 'This field is descriptive demographic or status metadata, so duplicate values are expected and cleanup is skipped by default.',
+      risky: false,
+    };
+  }
   if (headerPrefersPreserve(profile.header)) {
     return {
       recommendedStrategy: 'skip',

@@ -30,6 +30,12 @@ function isIdentityLikeColumn(header: string, field: SupportedField | undefined)
   return /(?:^|[\s_])(id|segment[\s_]?id|accession)(?:$|[\s_])/i.test(header);
 }
 
+function shouldCheckDuplicates(header: string, field: SupportedField | undefined) {
+  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
+  if (/(host[_\s]?age|age[_\s]?unit|host[_\s]?gender|patient[_\s]?status|vaccinated|zip[_\s]?code|outbreak)/i.test(header)) return false;
+  return /(?:^|[\s_])(id|name|accession)(?:$|[\s_])/i.test(header);
+}
+
 function shouldPreserveSeparators(header: string) {
   return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code)/i.test(header);
 }
@@ -226,6 +232,7 @@ function detectFieldIssues(
   const identityLikeColumn = isIdentityLikeColumn(header, field);
   const preserveSeparatorColumn = shouldPreserveSeparators(header);
   const flagMissingValue = shouldFlagMissingValue(header, field);
+  const duplicateSensitiveColumn = shouldCheckDuplicates(header, field);
 
   values.forEach((value, index) => {
     const trimmed = value.trim();
@@ -320,7 +327,7 @@ function detectFieldIssues(
       }
     }
 
-    if (identityLikeColumn) {
+    if (duplicateSensitiveColumn && /[A-Za-z]/.test(trimmed)) {
       const key = normalizedDuplicateKey(trimmed);
       const existing = duplicates.get(key) || { rowIndices: [], values: [] };
       existing.rowIndices.push(index);
