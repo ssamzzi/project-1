@@ -177,6 +177,19 @@ describe('genome metadata cleaner normalization', () => {
     );
     expect(proposals.some((proposal) => proposal.issueType === 'separator')).toBe(false);
   });
+
+  it('does not surface subtype spacing-only normalization as a suggestion', () => {
+    const analysis = buildAnalysis('Subtype\nA / H3N2\nA / H3N2\n');
+    const workflow = analyzeWorkflow(analysis.dataset);
+    const selected = analyzeSelectedWorkflowColumns(workflow.analysis, ['Subtype']);
+    const proposals = generateDiffProposals(
+      workflow.analysis.dataset,
+      { Subtype: 'subtype' } as const,
+      workflow.defaultPolicy,
+      { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
+    );
+    expect(proposals.length).toBe(0);
+  });
 });
 
 describe('genome metadata cleaner duplicate detection', () => {

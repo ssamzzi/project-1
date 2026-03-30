@@ -11,7 +11,7 @@ function normalizeWhitespace(value: string, policy: FieldPolicy) {
 
 function normalizeSeparators(value: string, field: SupportedField | undefined, policy: FieldPolicy) {
   if (!policy.normalizeSeparators) return value;
-  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return value;
+  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name', 'subtype'].includes(field)) return value;
   return value.replace(/\s*\/\s*/g, '/').replace(/\s*-\s*/g, '-');
 }
 
@@ -27,7 +27,7 @@ function toTitleCase(value: string) {
 function normalizeCase(value: string, field: SupportedField | undefined, policy: FieldPolicy) {
   if (!policy.normalizeCasing) return value;
   if (!field) return value;
-  if (field === 'segment' || field === 'subtype') return value.toUpperCase();
+  if (field === 'segment') return value.toUpperCase();
   if (field === 'country' || field === 'host' || field === 'region') return toTitleCase(value);
   return value;
 }
@@ -342,6 +342,9 @@ export function generateDiffProposals(
         const suggestions = suggestControlledVocabulary(field, next);
         const best = suggestions[0] || consensusSuggestion(field, next, consensus);
         if (best && best.canonical !== next) {
+          if (field === 'subtype' && normalizeLooseText(best.canonical) === normalizeLooseText(next)) {
+            return;
+          }
           const consensusCanonical = consensus?.canonicalValue;
           const consensusBoost = consensusCanonical && best.canonical === consensusCanonical ? 0.02 : 0;
           const unsafe = fieldPolicy.applyControlledVocabulary === 'with-review' && !best.safe;

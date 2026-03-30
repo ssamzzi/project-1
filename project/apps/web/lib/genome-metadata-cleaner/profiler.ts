@@ -293,7 +293,7 @@ function detectFieldIssues(
     if (
       field &&
       !identityLikeColumn &&
-      ['country', 'host', 'region', 'subtype', 'segment'].includes(field) &&
+      ['country', 'host', 'region', 'segment'].includes(field) &&
       consensus?.dominantCase &&
       !['mixed', 'other', 'numeric'].includes(consensus.dominantCase) &&
       !['other', 'numeric'].includes(caseStyle) &&
@@ -308,7 +308,7 @@ function detectFieldIssues(
       field &&
       !identityLikeColumn &&
       !preserveSeparatorColumn &&
-      ['country', 'host', 'region', 'subtype', 'segment'].includes(field) &&
+      ['country', 'host', 'region', 'segment'].includes(field) &&
       consensus?.dominantSeparator &&
       isMeaningfulSeparatorMismatch(separatorStyle, consensus.dominantSeparator)
     ) {
@@ -325,7 +325,12 @@ function detectFieldIssues(
 
     const suggestions = suggestControlledVocabulary(field, trimmed);
     if (suggestions.length) {
-      if (suggestions.some((suggestion) => suggestion.canonical !== trimmed)) collectIssue(issueCounts, 'controlled-vocab', value);
+      if (
+        suggestions.some((suggestion) =>
+          suggestion.canonical !== trimmed &&
+          !(field === 'subtype' && normalizedLooseKey(suggestion.canonical) === normalizedLooseKey(trimmed)),
+        )
+      ) collectIssue(issueCounts, 'controlled-vocab', value);
     } else if (field && ['country', 'host', 'region', 'subtype', 'segment'].includes(field)) {
       if (looksPlausibleControlledValue(field, trimmed, consensus)) return;
       const consensusCanonical = consensus?.canonicalValue;
