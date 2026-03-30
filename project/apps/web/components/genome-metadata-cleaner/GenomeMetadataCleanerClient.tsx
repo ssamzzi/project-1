@@ -240,9 +240,20 @@ function dedupeProposals(proposals: DiffProposal[]) {
   });
 }
 
+function suggestedDisplay(proposal: DiffProposal, isKo: boolean) {
+  if (proposal.originalValue !== proposal.suggestedValue) return proposal.suggestedValue || '-';
+  if (proposal.issueType === 'missing-value') return isKo ? '수동으로 값 입력 필요' : 'Manual value needed';
+  if (proposal.issueType === 'duplicate' || proposal.issueType === 'likely-duplicate') return isKo ? '중복 여부 검토 필요' : 'Review duplicate group';
+  if (proposal.issueType === 'ambiguous-date') return isKo ? '날짜 형식 수동 결정' : 'Resolve date format manually';
+  if (proposal.issueType === 'impossible-date' || proposal.issueType === 'invalid-value') return isKo ? '유효한 값으로 수정 필요' : 'Replace with a valid value';
+  if (proposal.issueType === 'controlled-vocab') return isKo ? '표준 용어 선택 필요' : 'Choose a canonical term';
+  return isKo ? '검토 필요' : 'Review required';
+}
+
 export function GenomeMetadataCleanerClient() {
   const { locale } = useLocale();
-  const text = getText(locale === 'ko');
+  const isKo = locale === 'ko';
+  const text = getText(isKo);
   const [step, setStep] = useState<StepKey>('upload');
   const [metadataFile, setMetadataFile] = useState<File | null>(null);
   const [fastaFile, setFastaFile] = useState<File | null>(null);
@@ -636,12 +647,17 @@ export function GenomeMetadataCleanerClient() {
                       {visible.slice(0, 400).map((proposal) => (
                         <tr key={proposal.id}>
                           <td className="px-3 py-2 align-top">
-                            <input type="checkbox" checked={proposal.apply} onChange={(event) => toggleProposal(proposal.id, event.target.checked)} />
+                            <input
+                              type="checkbox"
+                              checked={proposal.apply}
+                              disabled={proposal.originalValue === proposal.suggestedValue}
+                              onChange={(event) => toggleProposal(proposal.id, event.target.checked)}
+                            />
                           </td>
                           <td className="px-3 py-2 align-top">{proposal.rowIndex}</td>
                           <td className="px-3 py-2 align-top">{proposal.header}</td>
                           <td className="px-3 py-2 align-top">{proposal.originalValue || '-'}</td>
-                          <td className="px-3 py-2 align-top">{proposal.suggestedValue || '-'}</td>
+                          <td className="px-3 py-2 align-top">{suggestedDisplay(proposal, isKo)}</td>
                           <td className="px-3 py-2 align-top">
                             <div>{proposal.issueType}</div>
                             <div className="mt-1 text-xs text-slate-500">{proposal.status}</div>
