@@ -339,6 +339,9 @@ export function GenomeMetadataCleanerClient() {
   const currentPolicy = selectedHeader && policy ? policy.fieldPolicies[selectedHeader] ?? null : null;
   const currentHeaderIndex = selectedHeaders.findIndex((header) => header === selectedHeader);
   const currentFieldProposalCount = proposals.filter((proposal) => proposal.header === selectedHeader).length;
+  const currentFieldSafeCount = proposals.filter((proposal) => proposal.header === selectedHeader && proposal.status === 'safe').length;
+  const currentFieldReviewCount = proposals.filter((proposal) => proposal.header === selectedHeader && proposal.status === 'review').length;
+  const currentFieldInvalidCount = proposals.filter((proposal) => proposal.header === selectedHeader && proposal.status === 'invalid').length;
 
   async function handleAnalyze() {
     if (!metadataFile) return;
@@ -780,6 +783,9 @@ export function GenomeMetadataCleanerClient() {
                   </p>
                   <p className="mt-2 text-sm text-slate-700">
                     {text.previewCount}: {currentFieldProposalCount}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    safe {currentFieldSafeCount} | review {currentFieldReviewCount} | invalid {currentFieldInvalidCount}
                   </p>
                 </div>
 

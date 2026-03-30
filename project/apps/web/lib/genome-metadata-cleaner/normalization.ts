@@ -90,11 +90,28 @@ export function generateDiffProposals(
       const field = schemaByHeader[header];
       const original = String(row[header] ?? '');
       const fieldPolicy = policy.fieldPolicies[header];
-      if (!fieldPolicy || !fieldPolicy.enabled || !original.trim()) return;
+      if (!fieldPolicy || !fieldPolicy.enabled) return;
       const consensus = consensusFor(header, options?.consensusProfiles);
       const linkage = linkageFor(row.__rowIndex, options?.linkageReport);
       const trimmedOriginal = original.trim();
       const duplicateGroup = duplicateIndexByHeader.get(header)?.get(normalizedDuplicateKey(trimmedOriginal)) || [];
+
+      if (!trimmedOriginal) {
+        proposals.push(
+          buildProposal({
+            rowIndex: row.__rowIndex,
+            header,
+            field,
+            originalValue: original,
+            suggestedValue: original,
+            issueType: 'missing-value',
+            reason: 'This selected field is empty for this row and needs review before export.',
+            confidence: 0.1,
+            status: 'invalid',
+          }),
+        );
+        return;
+      }
 
       const custom = customMappingFor(original, fieldPolicy);
       if (custom && custom !== original) {
