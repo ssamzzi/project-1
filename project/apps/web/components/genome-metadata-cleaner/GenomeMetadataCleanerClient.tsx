@@ -246,6 +246,11 @@ function shouldRequireValue(header: string, field: SupportedField | undefined) {
   return /(?:^|[\s_])(sample|isolate|sequence|accession)[_\s-]*id(?:$|[\s_])/i.test(header);
 }
 
+function shouldPreserveDescriptiveHeader(header: string, field?: SupportedField) {
+  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
+  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code)/i.test(header);
+}
+
 function buildGenericConsensusReviewProposals(
   analysis: AnalysisResult,
   selectedAnalysis: SelectedColumnAnalysis,
@@ -257,6 +262,7 @@ function buildGenericConsensusReviewProposals(
 
   selectedAnalysis.columnConsensus.forEach((consensus) => {
     if (schemaByHeader[consensus.header]) return;
+    if (shouldPreserveDescriptiveHeader(consensus.header)) return;
     if (!consensus.canonicalValue || (consensus.canonicalFrequency ?? 0) < 2) return;
 
     analysis.dataset.rows.forEach((row, index) => {
@@ -355,6 +361,7 @@ function buildConsensusFallbackProposals(
     const profile = selectedAnalysis.profiles.find((item) => item.header === header);
     const consensus = selectedAnalysis.columnConsensus.find((item) => item.header === header);
     if (!profile) return;
+    const preserveDescriptive = shouldPreserveDescriptiveHeader(header, field);
 
     analysis.dataset.rows.forEach((row) => {
       const original = String(row[header] ?? '');
@@ -442,7 +449,7 @@ function buildConsensusFallbackProposals(
         }
       }
 
-      if (consensus?.canonicalValue) {
+      if (consensus?.canonicalValue && !preserveDescriptive) {
         const left = normalizeLooseText(trimmed).toLowerCase();
         const right = normalizeLooseText(consensus.canonicalValue).toLowerCase();
         if (left === right && trimmed !== consensus.canonicalValue) {

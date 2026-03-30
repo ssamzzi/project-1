@@ -11,7 +11,7 @@ function normalizeWhitespace(value: string, policy: FieldPolicy) {
 
 function normalizeSeparators(value: string, field: SupportedField | undefined, policy: FieldPolicy) {
   if (!policy.normalizeSeparators) return value;
-  if (field && ['sample_id', 'sequence_id'].includes(field)) return value;
+  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return value;
   return value.replace(/[_]+/g, ' ').replace(/\s*\/\s*/g, '/').replace(/\s*-\s*/g, '-');
 }
 
@@ -65,6 +65,11 @@ function normalizedDuplicateKey(value: string) {
 function shouldRequireValue(header: string, field: SupportedField | undefined) {
   if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
   return /(?:^|[\s_])(sample|isolate|sequence|accession)[_\s-]*id(?:$|[\s_])/i.test(header);
+}
+
+function shouldPreserveDescriptiveColumn(header: string, field: SupportedField | undefined) {
+  if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
+  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code)/i.test(header);
 }
 
 function normalizeLooseText(value: string) {
@@ -375,7 +380,7 @@ export function generateDiffProposals(
         }
       }
 
-      if (!field && consensus?.canonicalValue && (consensus.canonicalFrequency ?? 0) >= 2) {
+      if (!field && !shouldPreserveDescriptiveColumn(header, field) && consensus?.canonicalValue && (consensus.canonicalFrequency ?? 0) >= 2) {
         const consensusBest = consensusSuggestion(undefined, next, consensus);
         if (consensusBest && consensusBest.canonical !== next) {
           changeReasons.push({
