@@ -550,7 +550,11 @@ export function GenomeMetadataCleanerClient() {
       const metadataDataset = await parseInputFile(metadataFile);
       const fastaDataset = fastaFile ? await parseInputFile(fastaFile) : null;
       const next = analyzeWorkflow(metadataDataset, fastaDataset);
-      setWorkflow(next);
+      setWorkflow({
+        analysis: next.analysis,
+        policy: next.defaultPolicy,
+        linkageReport: next.linkageReport,
+      });
       const defaults = next.analysis.profiles.filter((profile) => issueTotal(profile) > 0).map((profile) => profile.header);
       setSelectedHeaders(defaults.length ? defaults : next.analysis.dataset.headers.slice(0, Math.min(4, next.analysis.dataset.headers.length)));
       setResolveTab('safe');
