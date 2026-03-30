@@ -85,6 +85,7 @@ export interface ColumnConsensusProfile {
   dominantSeparator: SeparatorStyle;
   dominantDateKind?: DateParseResult['kind'];
   canonicalValue?: string;
+  canonicalFrequency?: number;
   outlierCount: number;
   examples: string[];
 }

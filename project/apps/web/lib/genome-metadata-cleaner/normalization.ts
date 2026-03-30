@@ -91,17 +91,18 @@ function humanRowNumbers(indices: number[]) {
 }
 
 function consensusSuggestion(field: SupportedField | undefined, value: string, consensus?: ColumnConsensusProfile) {
-  if (!field || !consensus?.canonicalValue) return null;
-  if (!['country', 'host', 'region', 'subtype', 'segment'].includes(field)) return null;
+  if (!consensus?.canonicalValue) return null;
+  if (field && !['country', 'host', 'region', 'subtype', 'segment'].includes(field)) return null;
+  if (!field && (consensus.canonicalFrequency ?? 0) < 2) return null;
   const normalizedValue = normalizeLooseText(value);
   const normalizedCanonical = normalizeLooseText(consensus.canonicalValue);
   if (!normalizedValue || !normalizedCanonical || normalizedValue === normalizedCanonical) {
     if (value !== consensus.canonicalValue && normalizedValue === normalizedCanonical) {
       return {
         canonical: consensus.canonicalValue,
-        confidence: field === 'subtype' || field === 'segment' ? 0.98 : 0.96,
+        confidence: field === 'subtype' || field === 'segment' ? 0.98 : field ? 0.96 : 0.94,
         reason: 'This value matches the dominant canonical form in the selected column but uses a different presentation.',
-        safe: !['country', 'host', 'region'].includes(field),
+        safe: !!field && !['country', 'host', 'region'].includes(field),
       };
     }
     return null;
@@ -333,6 +334,19 @@ export function generateDiffProposals(
             }),
           );
           return;
+        }
+      }
+
+      if (!field && consensus?.canonicalValue && (consensus.canonicalFrequency ?? 0) >= 2) {
+        const consensusBest = consensusSuggestion(undefined, next, consensus);
+        if (consensusBest && consensusBest.canonical !== next) {
+          changeReasons.push({
+            issueType: normalizeLooseText(next) === normalizeLooseText(consensusBest.canonical) ? 'casing' : 'controlled-vocab',
+            reason: consensusBest.reason,
+            confidence: consensusBest.confidence,
+            unsafe: !consensusBest.safe,
+          });
+          next = consensusBest.canonical;
         }
       }
 

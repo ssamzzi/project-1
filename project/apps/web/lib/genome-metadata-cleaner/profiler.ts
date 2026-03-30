@@ -102,6 +102,11 @@ function mostCommonValue(values: string[]) {
   return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
+function countOccurrences(values: string[], target?: string) {
+  if (!target) return 0;
+  return values.filter((value) => value === target).length;
+}
+
 function buildConsensusProfile(header: string, field: SupportedField | undefined, rows: ParsedRow[]): ColumnConsensusProfile {
   const nonEmpty = rows.map((row) => valueAt(row, header).trim()).filter(Boolean);
   const caseValues = nonEmpty.map(detectCaseStyle);
@@ -119,6 +124,7 @@ function buildConsensusProfile(header: string, field: SupportedField | undefined
     })
     .filter(Boolean);
   const canonicalValue = mostCommonValue(canonicalCandidates);
+  const canonicalFrequency = countOccurrences(canonicalCandidates, canonicalValue);
 
   const outlierCount = nonEmpty.filter((value) => {
     const patternOutlier = patternSignature(value, field) !== dominantPattern;
@@ -140,6 +146,7 @@ function buildConsensusProfile(header: string, field: SupportedField | undefined
     dominantSeparator,
     dominantDateKind,
     canonicalValue,
+    canonicalFrequency,
     outlierCount,
     examples: uniqueExamples(nonEmpty),
   };
@@ -267,6 +274,22 @@ function detectFieldIssues(
       const normalizedValue = normalizedLooseKey(trimmed);
       const normalizedCanonical = normalizedLooseKey(consensus.canonicalValue);
       if (normalizedValue !== normalizedCanonical) {
+        const distance = levenshteinDistance(compactLooseKey(trimmed), compactLooseKey(consensus.canonicalValue));
+        if (distance <= (compactLooseKey(consensus.canonicalValue).length >= 8 ? 2 : 1)) {
+          collectIssue(issueCounts, 'controlled-vocab', value);
+        }
+      }
+    } else if (
+      !field &&
+      consensus?.canonicalValue &&
+      (consensus.canonicalFrequency ?? 0) >= 2 &&
+      consensus.canonicalValue !== trimmed
+    ) {
+      const normalizedValue = normalizedLooseKey(trimmed);
+      const normalizedCanonical = normalizedLooseKey(consensus.canonicalValue);
+      if (normalizedValue === normalizedCanonical) {
+        collectIssue(issueCounts, 'casing', value);
+      } else {
         const distance = levenshteinDistance(compactLooseKey(trimmed), compactLooseKey(consensus.canonicalValue));
         if (distance <= (compactLooseKey(consensus.canonicalValue).length >= 8 ? 2 : 1)) {
           collectIssue(issueCounts, 'controlled-vocab', value);

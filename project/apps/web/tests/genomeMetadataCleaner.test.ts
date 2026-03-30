@@ -124,6 +124,19 @@ describe('genome metadata cleaner normalization', () => {
     );
     expect(proposals.some((proposal) => proposal.originalValue === 'humna' && proposal.issueType === 'controlled-vocab')).toBe(true);
   });
+
+  it('surfaces typo-like outliers even when the column header is unknown', () => {
+    const analysis = buildAnalysis('site_name\nBusan\nBusan\nbusna\n');
+    const workflow = analyzeWorkflow(analysis.dataset);
+    const selected = analyzeSelectedWorkflowColumns(workflow.analysis, ['site_name']);
+    const proposals = generateDiffProposals(
+      workflow.analysis.dataset,
+      { site_name: undefined },
+      workflow.defaultPolicy,
+      { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
+    );
+    expect(proposals.some((proposal) => proposal.originalValue === 'busna')).toBe(true);
+  });
 });
 
 describe('genome metadata cleaner duplicate detection', () => {
