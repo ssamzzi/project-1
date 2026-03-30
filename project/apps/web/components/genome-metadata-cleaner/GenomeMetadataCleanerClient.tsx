@@ -17,6 +17,7 @@ import {
   linkageRowsToCsv,
   parseInputFile,
   type AnalysisResult,
+  type DiffProposal,
   type FastaMatchReport,
   type FieldPolicy,
   type FieldProfile,
@@ -271,6 +272,47 @@ function linkageAwareViewCsv(dataset: ParsedDataset, rows: ParsedRow[], linkageR
   return lines.join('\n');
 }
 
+function fallbackStatus(issueType: DiffProposal['issueType']): DiffProposal['status'] {
+  if (['invalid-value', 'impossible-date', 'missing-value'].includes(issueType)) return 'invalid';
+  if (['ambiguous-date', 'duplicate', 'likely-duplicate', 'controlled-vocab'].includes(issueType)) return 'review';
+  return 'safe';
+}
+
+function buildFallbackReviewProposals(analysis: AnalysisResult, selectedAnalysis: NonNullable<ReturnType<typeof analyzeSelectedWorkflowColumns>>, existing: DiffProposal[]) {
+  const existingHeaders = new Set(existing.map((proposal) => proposal.header));
+  const fallback: DiffProposal[] = [];
+
+  selectedAnalysis.profiles.forEach((profile) => {
+    if (existingHeaders.has(profile.header)) return;
+    profile.issueCounts.forEach((issue, issueIndex) => {
+      const example = issue.examples[0] ?? '';
+      const row =
+        analysis.dataset.rows.find((item) => {
+          const value = String(item[profile.header] ?? '');
+          return issue.type === 'missing-value' ? !value.trim() : value === example || value.trim() === example.trim();
+        }) ?? analysis.dataset.rows[0];
+
+      if (!row) return;
+
+      fallback.push({
+        id: `fallback-${profile.header}-${issue.type}-${issueIndex}`,
+        rowIndex: row.__rowIndex,
+        header: profile.header,
+        field: profile.field,
+        originalValue: String(row[profile.header] ?? ''),
+        suggestedValue: String(row[profile.header] ?? ''),
+        issueType: issue.type,
+        reason: `${issue.type} detected in this selected column. Review is needed before export.`,
+        confidence: fallbackStatus(issue.type) === 'safe' ? 0.8 : fallbackStatus(issue.type) === 'review' ? 0.4 : 0.1,
+        status: fallbackStatus(issue.type),
+        apply: false,
+      });
+    });
+  });
+
+  return fallback;
+}
+
 export function GenomeMetadataCleanerClient() {
   const { locale } = useLocale();
   const isKo = locale === 'ko';
@@ -321,11 +363,16 @@ export function GenomeMetadataCleanerClient() {
 
   const proposals = useMemo(() => {
     if (!analysis || !policy || !selectedAnalysis) return [];
-    return generateDiffProposals(analysis.dataset, schemaByHeader, policy, {
+    const generated = generateDiffProposals(analysis.dataset, schemaByHeader, policy, {
       selectedHeaders,
       consensusProfiles: selectedAnalysis.columnConsensus,
       linkageReport: linkageReport || undefined,
-    }).map((proposal) => ({
+    });
+    const supplemented = [
+      ...generated,
+      ...buildFallbackReviewProposals(analysis, selectedAnalysis, generated),
+    ];
+    return supplemented.map((proposal) => ({
       ...proposal,
       apply: overrides[proposal.id] ?? proposal.apply,
     }));
