@@ -248,7 +248,7 @@ function shouldRequireValue(header: string, field: SupportedField | undefined) {
 
 function shouldPreserveDescriptiveHeader(header: string, field?: SupportedField) {
   if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
-  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code)/i.test(header);
+  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|isolate[_\s]?submitter)/i.test(header);
 }
 
 function buildGenericConsensusReviewProposals(

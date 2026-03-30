@@ -1,7 +1,7 @@
 import type { AnalysisResult, FieldRecommendation, FieldProfile, StrategyOption } from './types';
 
 function headerPrefersPreserve(header: string) {
-  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code)/i.test(header);
+  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code|isolate[_\s]?name|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|isolate[_\s]?submitter)/i.test(header);
 }
 
 function headerShouldSkipByDefault(header: string) {
@@ -53,6 +53,13 @@ function recommendedStrategyForProfile(profile: FieldProfile): Pick<FieldRecomme
     return {
       recommendedStrategy: 'skip',
       recommendedReason: 'This looks like a mostly unique identifier-style column, so cleanup is skipped by default unless you explicitly need it.',
+      risky: false,
+    };
+  }
+  if (profile.field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(profile.field) && mostlyUnique) {
+    return {
+      recommendedStrategy: 'skip',
+      recommendedReason: 'This mostly unique identifier-style field is preserved by default because raw isolate and sample naming often carries meaningful lab formatting.',
       risky: false,
     };
   }

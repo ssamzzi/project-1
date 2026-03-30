@@ -151,6 +151,19 @@ describe('genome metadata cleaner normalization', () => {
     );
     expect(proposals.some((proposal) => proposal.originalValue === 'busna')).toBe(true);
   });
+
+  it('skips preserve-heavy GISAID style fields by default', () => {
+    const analysis = buildAnalysis(
+      'Isolate_Name,Location,Submitting_Sample_Id,Collection_Date,Subtype\n' +
+      'A/Japan/001/2025,Asia / Japan / Okinawa,24/25-1065,2025-01-06,A / H3N2\n' +
+      'A/Japan/002/2025,Asia / Japan,24/25-1066,2025-01-07,A / H3N2\n',
+    );
+    const recommendations = buildRecommendations(analysis);
+    expect(recommendations.find((item) => item.header === 'Isolate_Name')?.recommendedStrategy).toBe('skip');
+    expect(recommendations.find((item) => item.header === 'Location')?.recommendedStrategy).toBe('skip');
+    expect(recommendations.find((item) => item.header === 'Submitting_Sample_Id')?.recommendedStrategy).toBe('skip');
+    expect(recommendations.find((item) => item.header === 'Collection_Date')?.recommendedStrategy).toBe('canonicalize-safe');
+  });
 });
 
 describe('genome metadata cleaner duplicate detection', () => {
