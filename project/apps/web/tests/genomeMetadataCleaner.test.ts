@@ -216,6 +216,32 @@ describe('genome metadata cleaner normalization', () => {
     );
     expect(proposals.length).toBe(0);
   });
+
+  it('still surfaces subtype casing mistakes while ignoring spacing-only differences', () => {
+    const analysis = buildAnalysis('Subtype\nA / H3N2\nA / h3n2\n');
+    const workflow = analyzeWorkflow(analysis.dataset);
+    const selected = analyzeSelectedWorkflowColumns(workflow.analysis, ['Subtype']);
+    const proposals = generateDiffProposals(
+      workflow.analysis.dataset,
+      { Subtype: 'subtype' } as const,
+      workflow.defaultPolicy,
+      { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
+    );
+    expect(proposals.some((proposal) => proposal.originalValue === 'A / h3n2')).toBe(true);
+  });
+
+  it('flags missing collection dates for manual review', () => {
+    const analysis = buildAnalysis('Collection_Date\n2026-01-25\n\n');
+    const workflow = analyzeWorkflow(analysis.dataset);
+    const selected = analyzeSelectedWorkflowColumns(workflow.analysis, ['Collection_Date']);
+    const proposals = generateDiffProposals(
+      workflow.analysis.dataset,
+      { Collection_Date: 'collection_date' } as const,
+      workflow.defaultPolicy,
+      { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
+    );
+    expect(proposals.some((proposal) => proposal.issueType === 'missing-value')).toBe(true);
+  });
 });
 
 describe('genome metadata cleaner duplicate detection', () => {
@@ -280,6 +306,12 @@ describe('genome metadata cleaner raw GISAID preset regression', () => {
     const metadata = buildAnalysisFromFixture('raw/gisaid/japan-gisaid-raw.csv');
     const workflow = analyzeWorkflow(metadata.dataset);
     expect(workflow.defaultPolicy.presetName).toBe('gisaid-influenza-raw');
+  });
+
+  it('does not apply the raw preset to smaller GISAID-like cleaning sheets', () => {
+    const metadata = buildAnalysisFromFixture('gisaid-like-with-real-errors.csv');
+    const workflow = analyzeWorkflow(metadata.dataset);
+    expect(workflow.defaultPolicy.presetName).toBeUndefined();
   });
 
   it('skips preserve-heavy columns by default on Japan raw fixture', () => {

@@ -20,7 +20,9 @@ export function isDemographicHeader(header: string) {
 
 export function detectPresetName(analysis: AnalysisResult) {
   const matched = analysis.dataset.headers.filter((header) => isGisaidLikeHeader(header)).length;
-  if (matched >= 8) return GISAID_RAW_PRESET;
+  const preserveHeavy = analysis.dataset.headers.filter((header) => isPreserveHeavyHeader(header)).length;
+  const isWideRawExport = analysis.dataset.headers.length >= 25;
+  if (matched >= 8 && preserveHeavy >= 8 && isWideRawExport) return GISAID_RAW_PRESET;
   return undefined;
 }
 

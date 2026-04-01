@@ -49,8 +49,13 @@ function shouldPreserveSeparators(header: string) {
 
 function shouldFlagMissingValue(header: string, field: SupportedField | undefined) {
   if (shouldPreserveByHeader(header)) return false;
+  if (field === 'collection_date') return true;
   if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
   return /(?:^|[\s_])(sample|isolate|sequence|accession)[_\s-]*id(?:$|[\s_])/i.test(header);
+}
+
+function subtypeFormatKey(value: string) {
+  return value.trim().replace(/\s*\/\s*/g, '/');
 }
 
 function normalizedLooseKey(value: string) {
@@ -330,7 +335,7 @@ function detectFieldIssues(
       if (
         suggestions.some((suggestion) =>
           suggestion.canonical !== trimmed &&
-          !(field === 'subtype' && normalizedLooseKey(suggestion.canonical) === normalizedLooseKey(trimmed)),
+          !(field === 'subtype' && subtypeFormatKey(suggestion.canonical) === subtypeFormatKey(trimmed)),
         )
       ) collectIssue(issueCounts, 'controlled-vocab', value);
     } else if (field && ['country', 'host', 'region', 'subtype', 'segment'].includes(field)) {

@@ -82,6 +82,10 @@ function compactLooseText(value: string) {
   return normalizeLooseText(value).replace(/\s+/g, '');
 }
 
+function subtypeFormatKey(value: string) {
+  return value.trim().replace(/\s*\/\s*/g, '/');
+}
+
 function looksPlausibleControlledValue(field: SupportedField | undefined, value: string, consensus?: ColumnConsensusProfile) {
   const trimmed = value.trim();
   if (!trimmed) return false;
@@ -344,7 +348,7 @@ export function generateDiffProposals(
         const suggestions = suggestControlledVocabulary(field, next);
         const best = suggestions[0] || consensusSuggestion(field, next, consensus);
         if (best && best.canonical !== next) {
-          if (field === 'subtype' && normalizeLooseText(best.canonical) === normalizeLooseText(next)) {
+          if (field === 'subtype' && subtypeFormatKey(best.canonical) === subtypeFormatKey(next)) {
             return;
           }
           const consensusCanonical = consensus?.canonicalValue;
