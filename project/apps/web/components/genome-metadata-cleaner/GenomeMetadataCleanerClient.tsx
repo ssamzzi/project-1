@@ -61,6 +61,8 @@ function getText(_isKo: boolean) {
     outliers: 'Outliers',
     strategy: 'Strategy',
     continueToResolve: 'Review suggestions',
+    activePreset: 'Active preset',
+    hidePreserved: 'Hide preserved columns',
     totalSuggestions: 'Total suggestions',
     safe: 'Auto-fix ready',
     review: 'Needs review',
@@ -114,6 +116,11 @@ function shouldAutoSelectProfile(profile: FieldProfile, recommendation?: { recom
   if (profile.field) return true;
   if (outlierCount > 0) return true;
   return profile.issueCounts.some((issue) => ['ambiguous-date', 'impossible-date', 'invalid-value', 'duplicate', 'likely-duplicate', 'controlled-vocab'].includes(issue.type));
+}
+
+function isPreservedByPreset(header: string, policy?: WorkflowState['policy']) {
+  if (!policy || policy.presetName !== 'gisaid-influenza-raw') return false;
+  return policy.fieldPolicies[header]?.strategy === 'skip';
 }
 
 function downloadText(filename: string, data: string, type = 'text/plain;charset=utf-8') {
@@ -540,6 +547,7 @@ export function GenomeMetadataCleanerClient() {
   const [fastaFile, setFastaFile] = useState<File | null>(null);
   const [workflow, setWorkflow] = useState<WorkflowState | null>(null);
   const [selectedHeaders, setSelectedHeaders] = useState<string[]>([]);
+  const [hidePreservedColumns, setHidePreservedColumns] = useState(false);
   const [resolveTab, setResolveTab] = useState<ResolveTab>('safe');
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
@@ -569,6 +577,11 @@ export function GenomeMetadataCleanerClient() {
       return acc;
     }, {});
   }, [analysis]);
+
+  const visibleHeaders = useMemo(() => {
+    if (!analysis || !policy) return [];
+    return analysis.dataset.headers.filter((header) => !hidePreservedColumns || !isPreservedByPreset(header, policy));
+  }, [analysis, hidePreservedColumns, policy]);
 
   const selectedAnalysis = useMemo(() => {
     if (!analysis || !selectedHeaders.length) return null;
@@ -626,6 +639,7 @@ export function GenomeMetadataCleanerClient() {
         })
         .map((profile) => profile.header);
       setSelectedHeaders(defaults.length ? defaults : next.analysis.dataset.headers.slice(0, Math.min(4, next.analysis.dataset.headers.length)));
+      setHidePreservedColumns(next.defaultPolicy.presetName === 'gisaid-influenza-raw');
       setResolveTab('safe');
       setStep('columns');
     } catch (uploadError) {
@@ -639,6 +653,7 @@ export function GenomeMetadataCleanerClient() {
     setWorkflow(null);
     setSelectedHeaders([]);
     setResolveTab('safe');
+    setHidePreservedColumns(false);
     setOverrides({});
     setManualEdits({});
     setAppliedRows(null);
@@ -756,7 +771,7 @@ export function GenomeMetadataCleanerClient() {
       </div> : null}
 
       {step === 'columns' ? <div className="mt-6"><SectionCard title={text.columns}>
-        {analysis ? <div className="space-y-4"><p className="text-sm text-slate-600">{text.chooseColumns}</p><div className="overflow-x-auto rounded-lg border border-slate-200"><table className="min-w-full divide-y divide-slate-200 text-sm"><thead className="bg-slate-50"><tr><th className="px-3 py-2 text-left">{text.apply}</th><th className="px-3 py-2 text-left">{text.field}</th><th className="px-3 py-2 text-left">{text.inferredMeaning}</th><th className="px-3 py-2 text-left">{text.confidence}</th><th className="px-3 py-2 text-left">{text.issues}</th><th className="px-3 py-2 text-left">{text.outliers}</th><th className="px-3 py-2 text-left">{text.strategy}</th></tr></thead><tbody className="divide-y divide-slate-200 bg-white">{analysis.dataset.headers.map((header) => { const profile = analysis.profiles.find((item) => item.header === header); const schema = analysis.schema.find((item) => item.header === header); const consensus = analysis.columnConsensus.find((item) => item.header === header); const recommendation = recommendations.find((item) => item.header === header); const fieldPolicy = policy?.fieldPolicies[header]; return <tr key={header}><td className="px-3 py-2 align-top"><input type="checkbox" checked={selectedHeaders.includes(header)} onChange={() => toggleHeader(header)} /></td><td className="px-3 py-2 align-top font-medium">{header}</td><td className="px-3 py-2 align-top">{schema?.field ?? '-'}</td><td className="px-3 py-2 align-top">{schema ? schema.confidence.toFixed(2) : '-'}</td><td className="px-3 py-2 align-top">{profile ? issueTotal(profile) : 0}</td><td className="px-3 py-2 align-top">{consensus?.outlierCount ?? 0}</td><td className="px-3 py-2 align-top">{fieldPolicy && recommendation ? <select value={fieldPolicy.strategy} onChange={(event) => setStrategy(header, event.target.value as FieldPolicy['strategy'])} className="min-w-[220px] rounded-lg border border-slate-300 px-3 py-2">{recommendation.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : '-'}</td></tr>; })}</tbody></table></div><button type="button" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={goToResolve} disabled={!selectedHeaders.length}>{text.continueToResolve}</button></div> : <p className="text-sm text-slate-600">{text.noSuggestions}</p>}
+        {analysis ? <div className="space-y-4"><p className="text-sm text-slate-600">{text.chooseColumns}</p><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">{policy?.presetName ? <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-cyan-900">{text.activePreset}: {policy.presetName}</span> : null}</div><label className="inline-flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={hidePreservedColumns} onChange={(event) => setHidePreservedColumns(event.target.checked)} />{text.hidePreserved}</label></div><div className="overflow-x-auto rounded-lg border border-slate-200"><table className="min-w-full divide-y divide-slate-200 text-sm"><thead className="bg-slate-50"><tr><th className="px-3 py-2 text-left">{text.apply}</th><th className="px-3 py-2 text-left">{text.field}</th><th className="px-3 py-2 text-left">{text.inferredMeaning}</th><th className="px-3 py-2 text-left">{text.confidence}</th><th className="px-3 py-2 text-left">{text.issues}</th><th className="px-3 py-2 text-left">{text.outliers}</th><th className="px-3 py-2 text-left">{text.strategy}</th></tr></thead><tbody className="divide-y divide-slate-200 bg-white">{visibleHeaders.map((header) => { const profile = analysis.profiles.find((item) => item.header === header); const schema = analysis.schema.find((item) => item.header === header); const consensus = analysis.columnConsensus.find((item) => item.header === header); const recommendation = recommendations.find((item) => item.header === header); const fieldPolicy = policy?.fieldPolicies[header]; return <tr key={header}><td className="px-3 py-2 align-top"><input type="checkbox" checked={selectedHeaders.includes(header)} onChange={() => toggleHeader(header)} /></td><td className="px-3 py-2 align-top font-medium">{header}</td><td className="px-3 py-2 align-top">{schema?.field ?? '-'}</td><td className="px-3 py-2 align-top">{schema ? schema.confidence.toFixed(2) : '-'}</td><td className="px-3 py-2 align-top">{profile ? issueTotal(profile) : 0}</td><td className="px-3 py-2 align-top">{consensus?.outlierCount ?? 0}</td><td className="px-3 py-2 align-top">{fieldPolicy && recommendation ? <select value={fieldPolicy.strategy} onChange={(event) => setStrategy(header, event.target.value as FieldPolicy['strategy'])} className="min-w-[220px] rounded-lg border border-slate-300 px-3 py-2">{recommendation.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : '-'}</td></tr>; })}</tbody></table></div><button type="button" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={goToResolve} disabled={!selectedHeaders.length}>{text.continueToResolve}</button></div> : <p className="text-sm text-slate-600">{text.noSuggestions}</p>}
       </SectionCard></div> : null}
 
       {step === 'resolve' ? <div className="mt-6 space-y-4"><SectionCard title={text.resolve}>
