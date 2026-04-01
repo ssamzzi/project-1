@@ -580,8 +580,21 @@ export function GenomeMetadataCleanerClient() {
 
   const visibleHeaders = useMemo(() => {
     if (!analysis || !policy) return [];
-    return analysis.dataset.headers.filter((header) => !hidePreservedColumns || !isPreservedByPreset(header, policy));
-  }, [analysis, hidePreservedColumns, policy]);
+    const filtered = analysis.dataset.headers.filter((header) => !hidePreservedColumns || !isPreservedByPreset(header, policy));
+    return filtered.sort((left, right) => {
+      const leftSelected = selectedHeaders.includes(left) ? 1 : 0;
+      const rightSelected = selectedHeaders.includes(right) ? 1 : 0;
+      if (leftSelected !== rightSelected) return rightSelected - leftSelected;
+
+      const leftPolicy = policy.fieldPolicies[left];
+      const rightPolicy = policy.fieldPolicies[right];
+      const leftActionable = leftPolicy && leftPolicy.strategy !== 'skip' ? 1 : 0;
+      const rightActionable = rightPolicy && rightPolicy.strategy !== 'skip' ? 1 : 0;
+      if (leftActionable !== rightActionable) return rightActionable - leftActionable;
+
+      return left.localeCompare(right);
+    });
+  }, [analysis, hidePreservedColumns, policy, selectedHeaders]);
 
   const selectedAnalysis = useMemo(() => {
     if (!analysis || !selectedHeaders.length) return null;
