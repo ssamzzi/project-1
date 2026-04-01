@@ -1,5 +1,6 @@
 import { suggestControlledVocabulary } from './controlledVocab';
 import { parseCollectionDate } from './profiler';
+import { isPreserveHeavyHeader } from './presets';
 import type { ColumnConsensusProfile, DiffProposal, FastaMatchReport, FieldPolicy, NormalizationPolicy, ParsedDataset, SupportedField } from './types';
 
 function normalizeWhitespace(value: string, policy: FieldPolicy) {
@@ -69,7 +70,7 @@ function shouldRequireValue(header: string, field: SupportedField | undefined) {
 
 function shouldPreserveDescriptiveColumn(header: string, field: SupportedField | undefined) {
   if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
-  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code)/i.test(header);
+  return isPreserveHeavyHeader(header);
 }
 
 function normalizeLooseText(value: string) {

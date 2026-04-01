@@ -1,4 +1,5 @@
 import type { AnalysisResult, FieldPolicy, NormalizationPolicy } from './types';
+import { detectPresetName, GISAID_RAW_PRESET, isDemographicHeader, isPreserveHeavyHeader } from './presets';
 
 function defaultFieldPolicy(strategy: FieldPolicy['strategy']): FieldPolicy {
   return {
@@ -14,19 +15,9 @@ function defaultFieldPolicy(strategy: FieldPolicy['strategy']): FieldPolicy {
   };
 }
 
-function isGisaidLikeHeader(header: string) {
-  return /(isolate[_\s]?id|isolate[_\s]?name|subtype|location|host|collection[_\s]?date|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|passage[_\s]?history|lineage|clade|segment[_\s]?id)/i.test(header);
-}
-
-function detectPresetName(analysis: AnalysisResult) {
-  const matched = analysis.dataset.headers.filter((header) => isGisaidLikeHeader(header)).length;
-  if (matched >= 8) return 'gisaid-influenza-raw';
-  return undefined;
-}
-
 function applyPresetAdjustments(header: string, policy: FieldPolicy, presetName?: string): FieldPolicy {
-  if (presetName !== 'gisaid-influenza-raw') return policy;
-  if (/(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code|isolate[_\s]?name|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|isolate[_\s]?submitter|segment[_\s]?id)/i.test(header)) {
+  if (presetName !== GISAID_RAW_PRESET) return policy;
+  if (isPreserveHeavyHeader(header)) {
     return {
       ...policy,
       enabled: false,
@@ -44,7 +35,7 @@ function applyPresetAdjustments(header: string, policy: FieldPolicy, presetName?
       normalizeCasing: false,
     };
   }
-  if (/(host[_\s]?age|age[_\s]?unit|host[_\s]?gender|patient[_\s]?status|vaccinated|outbreak)/i.test(header)) {
+  if (isDemographicHeader(header)) {
     return {
       ...policy,
       enabled: false,

@@ -27,6 +27,7 @@ import {
   type SelectedColumnAnalysis,
   type SupportedField,
 } from '../../lib/genome-metadata-cleaner';
+import { GISAID_RAW_PRESET, isPreserveHeavyHeader } from '../../lib/genome-metadata-cleaner/presets';
 
 type StepKey = 'upload' | 'columns' | 'resolve' | 'export';
 type ResolveTab = 'safe' | 'review' | 'manual';
@@ -124,7 +125,7 @@ function shouldAutoSelectProfile(profile: FieldProfile, recommendation?: { recom
 }
 
 function isPreservedByPreset(header: string, policy?: WorkflowState['policy']) {
-  if (!policy || policy.presetName !== 'gisaid-influenza-raw') return false;
+  if (!policy || policy.presetName !== GISAID_RAW_PRESET) return false;
   return policy.fieldPolicies[header]?.strategy === 'skip';
 }
 
@@ -266,7 +267,7 @@ function shouldRequireValue(header: string, field: SupportedField | undefined) {
 
 function shouldPreserveDescriptiveHeader(header: string, field?: SupportedField) {
   if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
-  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|isolate[_\s]?submitter)/i.test(header);
+  return isPreserveHeavyHeader(header);
 }
 
 function buildGenericConsensusReviewProposals(
@@ -672,7 +673,7 @@ export function GenomeMetadataCleanerClient() {
         })
         .map((profile) => profile.header);
       setSelectedHeaders(defaults.length ? defaults : next.analysis.dataset.headers.slice(0, Math.min(4, next.analysis.dataset.headers.length)));
-      setHidePreservedColumns(next.defaultPolicy.presetName === 'gisaid-influenza-raw');
+      setHidePreservedColumns(next.defaultPolicy.presetName === GISAID_RAW_PRESET);
       setResolveTab('safe');
       setStep('columns');
     } catch (uploadError) {

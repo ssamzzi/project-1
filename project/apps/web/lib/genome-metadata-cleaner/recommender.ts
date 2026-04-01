@@ -1,11 +1,12 @@
 import type { AnalysisResult, FieldRecommendation, FieldProfile, StrategyOption } from './types';
+import { isDemographicHeader, isPreserveHeavyHeader } from './presets';
 
 function headerPrefersPreserve(header: string) {
-  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code|isolate[_\s]?name|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|isolate[_\s]?submitter)/i.test(header);
+  return isPreserveHeavyHeader(header);
 }
 
 function headerShouldSkipByDefault(header: string) {
-  return /(host[_\s]?age|age[_\s]?unit|host[_\s]?gender|patient[_\s]?status|vaccinated|outbreak|zip[_\s]?code)/i.test(header);
+  return isDemographicHeader(header);
 }
 
 function strategyOptions(field?: string): StrategyOption[] {

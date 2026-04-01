@@ -1,5 +1,6 @@
 import { suggestControlledVocabulary } from './controlledVocab';
 import { detectSchema, fieldForHeader } from './schemaDetector';
+import { isDemographicHeader, isPreserveHeavyHeader } from './presets';
 import type {
   AnalysisResult,
   CaseStyle,
@@ -31,13 +32,13 @@ function isIdentityLikeColumn(header: string, field: SupportedField | undefined)
 }
 
 function shouldPreserveByHeader(header: string) {
-  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code|isolate[_\s]?name|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|isolate[_\s]?submitter)/i.test(header);
+  return isPreserveHeavyHeader(header);
 }
 
 function shouldCheckDuplicates(header: string, field: SupportedField | undefined) {
   if (shouldPreserveByHeader(header)) return false;
   if (field && ['sample_id', 'sequence_id', 'isolate_name', 'strain_name'].includes(field)) return true;
-  if (/(host[_\s]?age|age[_\s]?unit|host[_\s]?gender|patient[_\s]?status|vaccinated|zip[_\s]?code|outbreak)/i.test(header)) return false;
+  if (isDemographicHeader(header)) return false;
   return /(?:^|[\s_])(id|name|accession)(?:$|[\s_])/i.test(header);
 }
 
