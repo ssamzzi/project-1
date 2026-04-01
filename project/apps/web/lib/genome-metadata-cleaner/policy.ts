@@ -1,5 +1,5 @@
 import type { AnalysisResult, FieldPolicy, NormalizationPolicy } from './types';
-import { detectPresetName, GISAID_RAW_PRESET, isDemographicHeader, isPreserveHeavyHeader } from './presets';
+import { detectPresetName, GISAID_RAW_PRESET, isDemographicHeader, isImportantIdentifierHeader, isPreserveHeavyHeader } from './presets';
 
 function defaultFieldPolicy(strategy: FieldPolicy['strategy']): FieldPolicy {
   return {
@@ -17,6 +17,17 @@ function defaultFieldPolicy(strategy: FieldPolicy['strategy']): FieldPolicy {
 
 function applyPresetAdjustments(header: string, policy: FieldPolicy, presetName?: string): FieldPolicy {
   if (presetName !== GISAID_RAW_PRESET) return policy;
+  if (isImportantIdentifierHeader(header)) {
+    return {
+      ...policy,
+      enabled: true,
+      strategy: 'review-only',
+      normalizeSeparators: false,
+      normalizeCasing: false,
+      normalizeDates: 'preserve',
+      applyControlledVocabulary: 'off',
+    };
+  }
   if (isPreserveHeavyHeader(header)) {
     return {
       ...policy,

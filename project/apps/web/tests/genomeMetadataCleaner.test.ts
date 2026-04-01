@@ -187,7 +187,7 @@ describe('genome metadata cleaner normalization', () => {
     const recommendations = buildRecommendations(analysis);
     expect(recommendations.find((item) => item.header === 'Isolate_Name')?.recommendedStrategy).toBe('skip');
     expect(recommendations.find((item) => item.header === 'Location')?.recommendedStrategy).toBe('skip');
-    expect(recommendations.find((item) => item.header === 'Submitting_Sample_Id')?.recommendedStrategy).toBe('skip');
+    expect(recommendations.find((item) => item.header === 'Submitting_Sample_Id')?.recommendedStrategy).toBe('review-only');
     expect(recommendations.find((item) => item.header === 'Collection_Date')?.recommendedStrategy).toBe('canonicalize-safe');
   });
 
@@ -287,7 +287,9 @@ describe('genome metadata cleaner raw GISAID preset regression', () => {
     const workflow = analyzeWorkflow(metadata.dataset);
     expect(workflow.defaultPolicy.fieldPolicies.Location?.strategy).toBe('skip');
     expect(workflow.defaultPolicy.fieldPolicies.Isolate_Name?.strategy).toBe('skip');
-    expect(workflow.defaultPolicy.fieldPolicies.Submitting_Sample_Id?.strategy).toBe('skip');
+    expect(workflow.defaultPolicy.fieldPolicies.Isolate_Id?.strategy).toBe('review-only');
+    expect(workflow.defaultPolicy.fieldPolicies.Submitting_Sample_Id?.strategy).toBe('review-only');
+    expect(workflow.defaultPolicy.fieldPolicies.Originating_Sample_Id?.strategy).toBe('review-only');
     expect(workflow.defaultPolicy.fieldPolicies.Pathogenicity?.strategy).toBe('skip');
     expect(workflow.defaultPolicy.fieldPolicies.Antigen_Character?.strategy).toBe('skip');
     expect(workflow.defaultPolicy.fieldPolicies.Pathogen_Test_Info?.strategy).toBe('skip');
@@ -312,7 +314,16 @@ describe('genome metadata cleaner raw GISAID preset regression', () => {
 
     expect(selected).not.toContain('Location');
     expect(selected).not.toContain('Isolate_Name');
-    expect(selected).not.toContain('Submitting_Sample_Id');
+    expect(selected).toContain('Submitting_Sample_Id');
+    expect(selected).toContain('Isolate_Id');
+  });
+
+  it('keeps important identifier columns visible under the GISAID preset', () => {
+    const metadata = buildAnalysisFromFixture('raw/gisaid/japan-gisaid-raw.csv');
+    const workflow = analyzeWorkflow(metadata.dataset);
+    expect(workflow.defaultPolicy.fieldPolicies.Isolate_Id?.enabled).toBe(true);
+    expect(workflow.defaultPolicy.fieldPolicies.Submitting_Sample_Id?.enabled).toBe(true);
+    expect(workflow.defaultPolicy.fieldPolicies.Originating_Sample_Id?.enabled).toBe(true);
   });
 
   it('suppresses subtype formatting-only suggestions on the Australia raw fixture', () => {

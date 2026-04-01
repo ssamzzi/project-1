@@ -1,6 +1,6 @@
 import { suggestControlledVocabulary } from './controlledVocab';
 import { detectSchema, fieldForHeader } from './schemaDetector';
-import { isDemographicHeader, isPreserveHeavyHeader } from './presets';
+import { isDemographicHeader, isImportantIdentifierHeader, isPreserveHeavyHeader } from './presets';
 import type {
   AnalysisResult,
   CaseStyle,
@@ -32,6 +32,7 @@ function isIdentityLikeColumn(header: string, field: SupportedField | undefined)
 }
 
 function shouldPreserveByHeader(header: string) {
+  if (isImportantIdentifierHeader(header)) return false;
   return isPreserveHeavyHeader(header);
 }
 

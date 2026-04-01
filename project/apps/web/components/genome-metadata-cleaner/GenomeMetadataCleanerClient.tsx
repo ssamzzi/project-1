@@ -27,7 +27,7 @@ import {
   type SelectedColumnAnalysis,
   type SupportedField,
 } from '../../lib/genome-metadata-cleaner';
-import { GISAID_RAW_PRESET, isPreserveHeavyHeader } from '../../lib/genome-metadata-cleaner/presets';
+import { GISAID_RAW_PRESET, isImportantIdentifierHeader, isPreserveHeavyHeader } from '../../lib/genome-metadata-cleaner/presets';
 
 type StepKey = 'upload' | 'columns' | 'resolve' | 'export';
 type ResolveTab = 'safe' | 'review' | 'manual';
@@ -597,6 +597,10 @@ export function GenomeMetadataCleanerClient() {
       const leftActionable = leftPolicy && leftPolicy.strategy !== 'skip' ? 1 : 0;
       const rightActionable = rightPolicy && rightPolicy.strategy !== 'skip' ? 1 : 0;
       if (leftActionable !== rightActionable) return rightActionable - leftActionable;
+
+      const leftImportantId = isImportantIdentifierHeader(left) ? 1 : 0;
+      const rightImportantId = isImportantIdentifierHeader(right) ? 1 : 0;
+      if (leftImportantId !== rightImportantId) return rightImportantId - leftImportantId;
 
       return left.localeCompare(right);
     });

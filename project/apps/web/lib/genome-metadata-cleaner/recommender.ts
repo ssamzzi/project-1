@@ -1,5 +1,5 @@
 import type { AnalysisResult, FieldRecommendation, FieldProfile, StrategyOption } from './types';
-import { isDemographicHeader, isPreserveHeavyHeader } from './presets';
+import { isDemographicHeader, isImportantIdentifierHeader, isPreserveHeavyHeader } from './presets';
 
 function headerPrefersPreserve(header: string) {
   return isPreserveHeavyHeader(header);
@@ -39,6 +39,13 @@ function recommendedStrategyForProfile(profile: FieldProfile): Pick<FieldRecomme
       recommendedStrategy: 'skip',
       recommendedReason: 'This field is descriptive demographic or status metadata, so duplicate values are expected and cleanup is skipped by default.',
       risky: false,
+    };
+  }
+  if (isImportantIdentifierHeader(profile.header)) {
+    return {
+      recommendedStrategy: 'review-only',
+      recommendedReason: 'This identifier column is important to inspect, but raw lab formatting should be preserved unless you explicitly review a change.',
+      risky: true,
     };
   }
   if (headerPrefersPreserve(profile.header)) {

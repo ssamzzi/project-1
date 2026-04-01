@@ -10,6 +10,10 @@ export function isPreserveHeavyHeader(header: string) {
   return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code|isolate[_\s]?name|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|isolate[_\s]?submitter|segment[_\s]?id|pathogenicity|antigen[_\s]?character|animal[_\s]?vaccin|human[_\s]?specimen[_\s]?source|animal[_\s]?specimen[_\s]?source|animal[_\s]?health[_\s]?status|domestic[_\s]?status|pathogen[_\s]?test[_\s]?info|pmid)/i.test(header);
 }
 
+export function isImportantIdentifierHeader(header: string) {
+  return /(isolate[_\s]?id|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|sample[_\s]?id|sequence[_\s]?id|accession)/i.test(header);
+}
+
 export function isDemographicHeader(header: string) {
   return /(host[_\s]?age|age[_\s]?unit|host[_\s]?gender|patient[_\s]?status|vaccinated|outbreak|zip[_\s]?code)/i.test(header);
 }
@@ -22,5 +26,6 @@ export function detectPresetName(analysis: AnalysisResult) {
 
 export function isPresetPreservedHeader(header: string, presetName?: string) {
   if (presetName !== GISAID_RAW_PRESET) return false;
+  if (isImportantIdentifierHeader(header)) return false;
   return isPreserveHeavyHeader(header) || isDemographicHeader(header);
 }
