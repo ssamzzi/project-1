@@ -63,6 +63,11 @@ function getText(_isKo: boolean) {
     continueToResolve: 'Review suggestions',
     activePreset: 'Active preset',
     hidePreserved: 'Hide preserved columns',
+    hiddenPreservedCount: 'Hidden preserved columns',
+    selectActionable: 'Select actionable',
+    selectVisible: 'Select visible',
+    clearSelection: 'Clear selection',
+    noActionableSelection: 'Choose at least one actionable column to continue.',
     totalSuggestions: 'Total suggestions',
     safe: 'Auto-fix ready',
     review: 'Needs review',
@@ -596,6 +601,21 @@ export function GenomeMetadataCleanerClient() {
     });
   }, [analysis, hidePreservedColumns, policy, selectedHeaders]);
 
+  const hiddenPreservedCount = useMemo(() => {
+    if (!analysis || !policy || !hidePreservedColumns) return 0;
+    return analysis.dataset.headers.filter((header) => isPreservedByPreset(header, policy)).length;
+  }, [analysis, hidePreservedColumns, policy]);
+
+  const actionableVisibleHeaders = useMemo(() => {
+    if (!policy) return [];
+    return visibleHeaders.filter((header) => policy.fieldPolicies[header]?.strategy !== 'skip');
+  }, [policy, visibleHeaders]);
+
+  const actionableSelectedCount = useMemo(() => {
+    if (!policy) return 0;
+    return selectedHeaders.filter((header) => policy.fieldPolicies[header]?.strategy !== 'skip').length;
+  }, [policy, selectedHeaders]);
+
   const selectedAnalysis = useMemo(() => {
     if (!analysis || !selectedHeaders.length) return null;
     return analyzeSelectedWorkflowColumns({ ...analysis, recommendations }, selectedHeaders);
@@ -676,6 +696,10 @@ export function GenomeMetadataCleanerClient() {
 
   function toggleHeader(header: string) {
     setSelectedHeaders((current) => (current.includes(header) ? current.filter((item) => item !== header) : [...current, header]));
+  }
+
+  function selectHeaders(headers: string[]) {
+    setSelectedHeaders(Array.from(new Set(headers)));
   }
 
   function updateFieldPolicy(header: string, patch: Partial<FieldPolicy>) {
@@ -784,7 +808,7 @@ export function GenomeMetadataCleanerClient() {
       </div> : null}
 
       {step === 'columns' ? <div className="mt-6"><SectionCard title={text.columns}>
-        {analysis ? <div className="space-y-4"><p className="text-sm text-slate-600">{text.chooseColumns}</p><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">{policy?.presetName ? <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-cyan-900">{text.activePreset}: {policy.presetName}</span> : null}</div><label className="inline-flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={hidePreservedColumns} onChange={(event) => setHidePreservedColumns(event.target.checked)} />{text.hidePreserved}</label></div><div className="overflow-x-auto rounded-lg border border-slate-200"><table className="min-w-full divide-y divide-slate-200 text-sm"><thead className="bg-slate-50"><tr><th className="px-3 py-2 text-left">{text.apply}</th><th className="px-3 py-2 text-left">{text.field}</th><th className="px-3 py-2 text-left">{text.inferredMeaning}</th><th className="px-3 py-2 text-left">{text.confidence}</th><th className="px-3 py-2 text-left">{text.issues}</th><th className="px-3 py-2 text-left">{text.outliers}</th><th className="px-3 py-2 text-left">{text.strategy}</th></tr></thead><tbody className="divide-y divide-slate-200 bg-white">{visibleHeaders.map((header) => { const profile = analysis.profiles.find((item) => item.header === header); const schema = analysis.schema.find((item) => item.header === header); const consensus = analysis.columnConsensus.find((item) => item.header === header); const recommendation = recommendations.find((item) => item.header === header); const fieldPolicy = policy?.fieldPolicies[header]; return <tr key={header}><td className="px-3 py-2 align-top"><input type="checkbox" checked={selectedHeaders.includes(header)} onChange={() => toggleHeader(header)} /></td><td className="px-3 py-2 align-top font-medium">{header}</td><td className="px-3 py-2 align-top">{schema?.field ?? '-'}</td><td className="px-3 py-2 align-top">{schema ? schema.confidence.toFixed(2) : '-'}</td><td className="px-3 py-2 align-top">{profile ? issueTotal(profile) : 0}</td><td className="px-3 py-2 align-top">{consensus?.outlierCount ?? 0}</td><td className="px-3 py-2 align-top">{fieldPolicy && recommendation ? <select value={fieldPolicy.strategy} onChange={(event) => setStrategy(header, event.target.value as FieldPolicy['strategy'])} className="min-w-[220px] rounded-lg border border-slate-300 px-3 py-2">{recommendation.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : '-'}</td></tr>; })}</tbody></table></div><button type="button" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={goToResolve} disabled={!selectedHeaders.length}>{text.continueToResolve}</button></div> : <p className="text-sm text-slate-600">{text.noSuggestions}</p>}
+        {analysis ? <div className="space-y-4"><p className="text-sm text-slate-600">{text.chooseColumns}</p><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">{policy?.presetName ? <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-cyan-900">{text.activePreset}: {policy.presetName}</span> : null}{hidePreservedColumns && hiddenPreservedCount > 0 ? <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">{text.hiddenPreservedCount}: {hiddenPreservedCount}</span> : null}</div><label className="inline-flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={hidePreservedColumns} onChange={(event) => setHidePreservedColumns(event.target.checked)} />{text.hidePreserved}</label></div><div className="flex flex-wrap gap-2"><button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => selectHeaders(actionableVisibleHeaders)}>{text.selectActionable}</button><button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => selectHeaders(visibleHeaders)}>{text.selectVisible}</button><button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => setSelectedHeaders([])}>{text.clearSelection}</button></div><div className="overflow-x-auto rounded-lg border border-slate-200"><table className="min-w-full divide-y divide-slate-200 text-sm"><thead className="bg-slate-50"><tr><th className="px-3 py-2 text-left">{text.apply}</th><th className="px-3 py-2 text-left">{text.field}</th><th className="px-3 py-2 text-left">{text.inferredMeaning}</th><th className="px-3 py-2 text-left">{text.confidence}</th><th className="px-3 py-2 text-left">{text.issues}</th><th className="px-3 py-2 text-left">{text.outliers}</th><th className="px-3 py-2 text-left">{text.strategy}</th></tr></thead><tbody className="divide-y divide-slate-200 bg-white">{visibleHeaders.map((header) => { const profile = analysis.profiles.find((item) => item.header === header); const schema = analysis.schema.find((item) => item.header === header); const consensus = analysis.columnConsensus.find((item) => item.header === header); const recommendation = recommendations.find((item) => item.header === header); const fieldPolicy = policy?.fieldPolicies[header]; return <tr key={header}><td className="px-3 py-2 align-top"><input type="checkbox" checked={selectedHeaders.includes(header)} onChange={() => toggleHeader(header)} /></td><td className="px-3 py-2 align-top font-medium">{header}</td><td className="px-3 py-2 align-top">{schema?.field ?? '-'}</td><td className="px-3 py-2 align-top">{schema ? schema.confidence.toFixed(2) : '-'}</td><td className="px-3 py-2 align-top">{profile ? issueTotal(profile) : 0}</td><td className="px-3 py-2 align-top">{consensus?.outlierCount ?? 0}</td><td className="px-3 py-2 align-top">{fieldPolicy && recommendation ? <select value={fieldPolicy.strategy} onChange={(event) => setStrategy(header, event.target.value as FieldPolicy['strategy'])} className="min-w-[220px] rounded-lg border border-slate-300 px-3 py-2">{recommendation.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : '-'}</td></tr>; })}</tbody></table></div>{selectedHeaders.length > 0 && actionableSelectedCount === 0 ? <p className="text-sm text-amber-700">{text.noActionableSelection}</p> : null}<button type="button" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={goToResolve} disabled={actionableSelectedCount === 0}>{text.continueToResolve}</button></div> : <p className="text-sm text-slate-600">{text.noSuggestions}</p>}
       </SectionCard></div> : null}
 
       {step === 'resolve' ? <div className="mt-6 space-y-4"><SectionCard title={text.resolve}>
