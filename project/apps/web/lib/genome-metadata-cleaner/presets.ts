@@ -7,7 +7,7 @@ export function isGisaidLikeHeader(header: string) {
 }
 
 export function isPreserveHeavyHeader(header: string) {
-  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code|isolate[_\s]?name|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|isolate[_\s]?submitter|segment[_\s]?id)/i.test(header);
+  return /(location|lineage|clade|passage|history|source|genotype|publication|note|status|info|resistance|zip[_\s]?code|isolate[_\s]?name|submitting[_\s]?sample[_\s]?id|originating[_\s]?sample[_\s]?id|isolate[_\s]?submitter|segment[_\s]?id|pathogenicity|antigen[_\s]?character|animal[_\s]?vaccin|human[_\s]?specimen[_\s]?source|animal[_\s]?specimen[_\s]?source|animal[_\s]?health[_\s]?status|domestic[_\s]?status|pathogen[_\s]?test[_\s]?info|pmid)/i.test(header);
 }
 
 export function isDemographicHeader(header: string) {

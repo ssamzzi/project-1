@@ -288,6 +288,9 @@ describe('genome metadata cleaner raw GISAID preset regression', () => {
     expect(workflow.defaultPolicy.fieldPolicies.Location?.strategy).toBe('skip');
     expect(workflow.defaultPolicy.fieldPolicies.Isolate_Name?.strategy).toBe('skip');
     expect(workflow.defaultPolicy.fieldPolicies.Submitting_Sample_Id?.strategy).toBe('skip');
+    expect(workflow.defaultPolicy.fieldPolicies.Pathogenicity?.strategy).toBe('skip');
+    expect(workflow.defaultPolicy.fieldPolicies.Antigen_Character?.strategy).toBe('skip');
+    expect(workflow.defaultPolicy.fieldPolicies.Pathogen_Test_Info?.strategy).toBe('skip');
     expect(workflow.defaultPolicy.fieldPolicies.Collection_Date?.strategy).toBe('canonicalize-safe');
   });
 
