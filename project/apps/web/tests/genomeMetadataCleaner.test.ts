@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   analyzeSelectedWorkflowColumns,
@@ -19,6 +22,15 @@ import type { AnalysisResult, NormalizationPolicy } from '../lib/genome-metadata
 
 function buildAnalysis(csv: string): AnalysisResult {
   const dataset = parseDelimitedText(csv, 'metadata.csv', ',');
+  const analysis = profileDataset(dataset);
+  return { ...analysis, recommendations: buildRecommendations(analysis) };
+}
+
+function buildAnalysisFromFixture(relativePath: string): AnalysisResult {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const fixturePath = path.resolve(currentDir, '../../../genome-cleaner-fixtures', relativePath);
+  const csv = readFileSync(fixturePath, 'utf8');
+  const dataset = parseDelimitedText(csv, path.basename(fixturePath), ',');
   const analysis = profileDataset(dataset);
   return { ...analysis, recommendations: buildRecommendations(analysis) };
 }
@@ -246,5 +258,56 @@ describe('genome metadata cleaner workflow integration', () => {
     const workflow = analyzeWorkflow(metadata, fasta);
     expect(workflow.linkageReport?.matchedRows).toBe(2);
     expect(workflow.linkageReport?.rows[1].name_match_status).toBe('normalized_match');
+  });
+});
+
+describe('genome metadata cleaner raw GISAID preset regression', () => {
+  it('detects the GISAID raw preset on raw influenza exports', () => {
+    const metadata = buildAnalysisFromFixture('raw/gisaid/japan-gisaid-raw.csv');
+    const workflow = analyzeWorkflow(metadata.dataset);
+    expect(workflow.defaultPolicy.presetName).toBe('gisaid-influenza-raw');
+  });
+
+  it('skips preserve-heavy columns by default on Japan raw fixture', () => {
+    const metadata = buildAnalysisFromFixture('raw/gisaid/japan-gisaid-raw.csv');
+    const workflow = analyzeWorkflow(metadata.dataset);
+    expect(workflow.defaultPolicy.fieldPolicies.Location?.strategy).toBe('skip');
+    expect(workflow.defaultPolicy.fieldPolicies.Isolate_Name?.strategy).toBe('skip');
+    expect(workflow.defaultPolicy.fieldPolicies.Submitting_Sample_Id?.strategy).toBe('skip');
+    expect(workflow.defaultPolicy.fieldPolicies.Collection_Date?.strategy).toBe('canonicalize-safe');
+  });
+
+  it('does not auto-select preserve-heavy columns from the Japan raw fixture', () => {
+    const metadata = buildAnalysisFromFixture('raw/gisaid/japan-gisaid-raw.csv');
+    const workflow = analyzeWorkflow(metadata.dataset);
+    const selected = workflow.analysis.profiles
+      .filter((profile) => {
+        const recommendation = workflow.analysis.recommendations.find((item) => item.header === profile.header);
+        const consensus = workflow.analysis.columnConsensus.find((item) => item.header === profile.header);
+        if (!recommendation) return false;
+        if (recommendation.recommendedStrategy === 'skip') return false;
+        const totalIssues = profile.issueCounts.reduce((sum, issue) => sum + issue.count, 0);
+        if (!totalIssues) return false;
+        if (profile.field) return true;
+        return (consensus?.outlierCount ?? 0) > 0;
+      })
+      .map((profile) => profile.header);
+
+    expect(selected).not.toContain('Location');
+    expect(selected).not.toContain('Isolate_Name');
+    expect(selected).not.toContain('Submitting_Sample_Id');
+  });
+
+  it('suppresses subtype formatting-only suggestions on the Australia raw fixture', () => {
+    const metadata = buildAnalysisFromFixture('raw/gisaid/australia-gisaid-raw.csv');
+    const workflow = analyzeWorkflow(metadata.dataset);
+    const selected = analyzeSelectedWorkflowColumns(workflow.analysis, ['Subtype']);
+    const proposals = generateDiffProposals(
+      workflow.analysis.dataset,
+      { Subtype: 'subtype' } as const,
+      workflow.defaultPolicy,
+      { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
+    );
+    expect(proposals.some((proposal) => proposal.header === 'Subtype' && ['separator', 'casing'].includes(proposal.issueType))).toBe(false);
   });
 });
