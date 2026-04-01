@@ -35,6 +35,20 @@ function buildAnalysisFromFixture(relativePath: string): AnalysisResult {
   return { ...analysis, recommendations: buildRecommendations(analysis) };
 }
 
+function readExpectedFixture(relativePath: string): {
+  fixture: string;
+  preset: string;
+  releaseGates: {
+    maxFixManually: number;
+    maxNeedsReview: number;
+    forbiddenIssueTypesByColumn: Record<string, string[]>;
+  };
+} {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const fixturePath = path.resolve(currentDir, '../../../genome-cleaner-fixtures', relativePath);
+  return JSON.parse(readFileSync(fixturePath, 'utf8'));
+}
+
 describe('genome metadata cleaner date parsing', () => {
   it('normalizes unambiguous dates while preserving YYYY and YYYY-MM', () => {
     expect(parseCollectionDate('2024').normalized).toBe('2024');
@@ -309,5 +323,31 @@ describe('genome metadata cleaner raw GISAID preset regression', () => {
       { selectedHeaders: selected.headers, consensusProfiles: selected.columnConsensus },
     );
     expect(proposals.some((proposal) => proposal.header === 'Subtype' && ['separator', 'casing'].includes(proposal.issueType))).toBe(false);
+  });
+
+  it('respects forbidden issue types from the Japan raw expectation file', () => {
+    const metadata = buildAnalysisFromFixture('raw/gisaid/japan-gisaid-raw.csv');
+    const expected = readExpectedFixture('expected/japan-gisaid-raw.expected.json');
+
+    Object.entries(expected.releaseGates.forbiddenIssueTypesByColumn).forEach(([header, forbiddenIssueTypes]) => {
+      const profile = metadata.profiles.find((item) => item.header === header);
+      const issueTypes = profile?.issueCounts.map((issue) => issue.type) ?? [];
+      forbiddenIssueTypes.forEach((issueType) => {
+        expect(issueTypes).not.toContain(issueType);
+      });
+    });
+  });
+
+  it('respects forbidden issue types from the Australia raw expectation file', () => {
+    const metadata = buildAnalysisFromFixture('raw/gisaid/australia-gisaid-raw.csv');
+    const expected = readExpectedFixture('expected/australia-gisaid-raw.expected.json');
+
+    Object.entries(expected.releaseGates.forbiddenIssueTypesByColumn).forEach(([header, forbiddenIssueTypes]) => {
+      const profile = metadata.profiles.find((item) => item.header === header);
+      const issueTypes = profile?.issueCounts.map((issue) => issue.type) ?? [];
+      forbiddenIssueTypes.forEach((issueType) => {
+        expect(issueTypes).not.toContain(issueType);
+      });
+    });
   });
 });
