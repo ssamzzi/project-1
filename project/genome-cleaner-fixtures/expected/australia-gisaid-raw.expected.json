@@ -1,0 +1,19 @@
+{
+  "fixture": "australia-gisaid-raw.csv",
+  "preset": "gisaid-influenza-raw",
+  "releaseGates": {
+    "maxFixManually": 0,
+    "maxNeedsReview": 50,
+    "forbiddenIssueTypesByColumn": {
+      "Subtype": ["separator", "casing"],
+      "Location": ["separator", "controlled-vocab"],
+      "Isolate_Name": ["separator", "casing"],
+      "Submitting_Sample_Id": ["mixed-date-format", "ambiguous-date", "impossible-date", "separator"],
+      "Originating_Sample_Id": ["mixed-date-format", "ambiguous-date", "impossible-date", "separator"],
+      "Host_Age": ["duplicate", "likely-duplicate", "missing-value"],
+      "Host_Age_Unit": ["duplicate", "likely-duplicate", "missing-value"],
+      "Host_Gender": ["duplicate", "likely-duplicate", "missing-value"],
+      "Patient_Status": ["duplicate", "likely-duplicate", "missing-value"]
+    }
+  }
+}
