@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import Script from 'next/script';
 import './globals.css';
 import { SiteHeader } from '../components/SiteHeader';
@@ -37,8 +36,6 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const initialTheme = cookies().get('biolt-theme')?.value === 'dark' ? 'dark' : 'light';
-
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -53,9 +50,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="en" data-theme={initialTheme} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="google-adsense-account" content={ADSENSE_CLIENT} />
+        <Script id="theme-bootstrap" strategy="beforeInteractive">
+          {`
+            try {
+              var stored = localStorage.getItem('biolt-theme');
+              var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+              var theme = stored === 'light' || stored === 'dark' ? stored : (prefersDark ? 'dark' : 'light');
+              document.documentElement.setAttribute('data-theme', theme);
+            } catch (error) {
+              document.documentElement.setAttribute('data-theme', 'light');
+            }
+          `}
+        </Script>
       </head>
       <body>
         <Script
@@ -88,7 +97,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
         <LocaleProvider>
           <AdminProvider>
-            <SiteHeader initialTheme={initialTheme} />
+            <SiteHeader initialTheme="light" />
             <main>{children}</main>
             <SiteFooter />
           </AdminProvider>

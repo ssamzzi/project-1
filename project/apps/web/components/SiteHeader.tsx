@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAdmin } from '../lib/context/AdminContext';
 import { useLocale } from '../lib/context/LocaleContext';
 
@@ -13,11 +13,24 @@ export function SiteHeader({ initialTheme }: { initialTheme: 'light' | 'dark' })
   const nextLocale = locale === 'en' ? 'ko' : 'en';
   const nextTheme = theme === 'light' ? 'dark' : 'light';
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const applied = root.getAttribute('data-theme');
+    if (applied === 'light' || applied === 'dark') {
+      setTheme(applied);
+      return;
+    }
+    const stored = window.localStorage.getItem('biolt-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const resolvedTheme = stored === 'light' || stored === 'dark' ? stored : prefersDark ? 'dark' : 'light';
+    root.setAttribute('data-theme', resolvedTheme);
+    setTheme(resolvedTheme);
+  }, []);
+
   const toggleTheme = () => {
     const root = document.documentElement;
     root.setAttribute('data-theme', nextTheme);
     window.localStorage.setItem('biolt-theme', nextTheme);
-    document.cookie = `biolt-theme=${nextTheme}; path=/; max-age=31536000; SameSite=Lax`;
     setTheme(nextTheme);
   };
 
