@@ -5,7 +5,7 @@ import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
 import { LocaleProvider } from '../lib/context/LocaleContext';
 import { AdminProvider } from '../lib/context/AdminContext';
-import { ADSENSE_CLIENT, CONTACT_EMAIL, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '../lib/site';
+import { ADSENSE_CLIENT, CONTACT_EMAIL, GOOGLE_SITE_VERIFICATION, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '../lib/site';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -21,6 +21,11 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     type: 'website',
   },
+  verification: GOOGLE_SITE_VERIFICATION
+    ? {
+        google: GOOGLE_SITE_VERIFICATION,
+      }
+    : undefined,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
