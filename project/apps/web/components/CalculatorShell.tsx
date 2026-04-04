@@ -34,6 +34,21 @@ export function CalculatorShell({
   tipContext: { values: Record<string, unknown>; computed: Record<string, unknown> };
   related: string;
 }) {
+  const labels =
+    locale === 'ko'
+      ? {
+          results: '결과',
+          formula: '계산식',
+          assumptions: '가정',
+          toolContext: '도구 맥락',
+        }
+      : {
+          results: 'Results',
+          formula: 'Formula',
+          assumptions: 'Assumptions',
+          toolContext: 'Tool context',
+        };
+
   const shareState = {
     ...tipContext.values,
     ...Object.fromEntries(
@@ -51,16 +66,16 @@ export function CalculatorShell({
             <ValidationBanner messages={validations} locale={locale} />
           </div>
         </SectionCard>
-        <SectionCard title="Results">
+        <SectionCard title={labels.results}>
           <ResultTable columns={results.columns} rows={results.rows} />
           <div className="mt-4 space-y-2 text-sm text-slate-700">
-            <p>Formula</p>
+            <p>{labels.formula}</p>
             <ul className="list-disc pl-5">
               {formulas.map((f) => (
                 <li key={f}>{f}</li>
               ))}
             </ul>
-            <p className="mt-2">Assumptions</p>
+            <p className="mt-2">{labels.assumptions}</p>
             <ul className="list-disc pl-5">
               {assumptions.map((a) => (
                 <li key={a}>{a}</li>
@@ -81,7 +96,7 @@ export function CalculatorShell({
         <RelatedTools id={calculatorId} locale={locale} />
         <section className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
           <p>
-            Tool context: {related}
+            {labels.toolContext}: {related}
           </p>
         </section>
       </div>
