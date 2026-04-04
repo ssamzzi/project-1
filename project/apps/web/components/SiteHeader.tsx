@@ -1,31 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAdmin } from '../lib/context/AdminContext';
 import { useLocale } from '../lib/context/LocaleContext';
 
-export function SiteHeader() {
+export function SiteHeader({ initialTheme }: { initialTheme: 'light' | 'dark' }) {
   const { locale, setLocale, t } = useLocale();
   const { isAdmin, logout } = useAdmin();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>(initialTheme);
 
   const nextLocale = locale === 'en' ? 'ko' : 'en';
   const nextTheme = theme === 'light' ? 'dark' : 'light';
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const stored = window.localStorage.getItem('biolt-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = stored === 'light' || stored === 'dark' ? stored : prefersDark ? 'dark' : 'light';
-    root.setAttribute('data-theme', initialTheme);
-    setTheme(initialTheme);
-  }, []);
 
   const toggleTheme = () => {
     const root = document.documentElement;
     root.setAttribute('data-theme', nextTheme);
     window.localStorage.setItem('biolt-theme', nextTheme);
+    document.cookie = `biolt-theme=${nextTheme}; path=/; max-age=31536000; SameSite=Lax`;
     setTheme(nextTheme);
   };
 

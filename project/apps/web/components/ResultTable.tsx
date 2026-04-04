@@ -1,4 +1,5 @@
 "use client";
+import { useState } from 'react';
 
 interface Column {
   key: string;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function ResultTable({ columns, rows }: Props) {
+  const [copyState, setCopyState] = useState<'idle' | 'success' | 'error'>('idle');
   const copy = async () => {
     const header = columns.map((c) => c.label).join('\t');
     const body = rows
@@ -21,7 +23,12 @@ export function ResultTable({ columns, rows }: Props) {
       )
       .join('\n');
     const tsv = `${header}\n${body}`;
-    await navigator.clipboard.writeText(tsv);
+    try {
+      await navigator.clipboard.writeText(tsv);
+      setCopyState('success');
+    } catch {
+      setCopyState('error');
+    }
   };
 
   return (
@@ -57,6 +64,8 @@ export function ResultTable({ columns, rows }: Props) {
       >
         Copy table (TSV)
       </button>
+      {copyState === 'success' ? <p className="text-xs text-emerald-700">Table copied.</p> : null}
+      {copyState === 'error' ? <p className="text-xs text-rose-700">Copy failed. Please select and copy manually.</p> : null}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { encodeCalculatorState } from '../lib/share/url';
 
 interface RecentCalculationItem {
@@ -54,6 +55,19 @@ function formatDate(ts: number, locale: 'en' | 'ko') {
   }
 }
 
+function getTrustedInternalPath(url: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.origin !== window.location.origin) {
+      return null;
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
 export function RecentCalculationsPanel({
   calculatorId,
   shareState,
@@ -65,6 +79,7 @@ export function RecentCalculationsPanel({
   locale: 'en' | 'ko';
   compact?: boolean;
 }) {
+  const router = useRouter();
   const [items, setItems] = useState<RecentCalculationItem[]>([]);
   const [page, setPage] = useState(1);
 
@@ -143,8 +158,10 @@ export function RecentCalculationsPanel({
             className="h-8 min-w-[180px] rounded border border-slate-300 px-2"
             defaultValue=""
             onChange={(event) => {
-              const url = event.target.value;
-              if (url) window.location.href = url;
+              const path = getTrustedInternalPath(event.target.value);
+              if (path) {
+                router.push(path);
+              }
             }}
           >
             <option value="" disabled>
@@ -169,7 +186,10 @@ export function RecentCalculationsPanel({
                 type="button"
                 className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-800"
                 onClick={() => {
-                  window.location.href = item.url;
+                  const path = getTrustedInternalPath(item.url);
+                  if (path) {
+                    router.push(path);
+                  }
                 }}
               >
                 {labels.load}

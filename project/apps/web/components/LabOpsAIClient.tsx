@@ -1,13 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { PlotParams } from "react-plotly.js";
 import { useMemo, useState } from "react";
 import { HF_MODEL } from "../lib/ai/config";
 import { useLocale } from "../lib/context/LocaleContext";
 import { TipsPanel } from "./TipsPanel";
 import type { CalculatorTip } from "../lib/types";
 
-const Plot = dynamic(() => import("react-plotly.js"), { ssr: false }) as any;
+const Plot = dynamic<PlotParams>(() => import("react-plotly.js"), { ssr: false });
 
 type LabTab = "omniparse" | "vision" | "protocolguard" | "inventory";
 type VisionMode = "western" | "colony";

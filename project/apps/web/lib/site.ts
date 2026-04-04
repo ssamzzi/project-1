@@ -7,3 +7,4 @@ export const CONTACT_EMAIL = 'kkgh6721255@naver.com';
 export const CONTACT_MAILTO = `mailto:${CONTACT_EMAIL}`;
 export const GOOGLE_SITE_VERIFICATION =
   process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || 'B2jKSnGrpQ9QlF_hiXL4BoJ54qAswFM9nPNAFEwNFcI';
+export const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_BIOLT_ADMIN_PASSWORD || '';

@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { notFound } from 'next/navigation';
 
 export async function readMarkdown(subdir: 'guides' | 'workflows', slug: string): Promise<string> {
   const candidates = [
@@ -18,7 +19,7 @@ export async function readMarkdown(subdir: 'guides' | 'workflows', slug: string)
   }
 
   if (!data) {
-    throw new Error(`Markdown file not found for ${slug} in ${subdir}`);
+    notFound();
   }
   return data;
 }

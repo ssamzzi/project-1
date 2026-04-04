@@ -1,11 +1,19 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import Script from 'next/script';
 import './globals.css';
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
 import { LocaleProvider } from '../lib/context/LocaleContext';
 import { AdminProvider } from '../lib/context/AdminContext';
-import { ADSENSE_CLIENT, CONTACT_EMAIL, GOOGLE_SITE_VERIFICATION, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '../lib/site';
+import {
+  ADSENSE_CLIENT,
+  CONTACT_EMAIL,
+  GOOGLE_SITE_VERIFICATION,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_URL,
+} from '../lib/site';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -29,6 +37,8 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const initialTheme = cookies().get('biolt-theme')?.value === 'dark' ? 'dark' : 'light';
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -43,7 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="en">
+    <html lang="en" data-theme={initialTheme} suppressHydrationWarning>
       <head>
         <meta name="google-adsense-account" content={ADSENSE_CLIENT} />
       </head>
@@ -78,7 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
         <LocaleProvider>
           <AdminProvider>
-            <SiteHeader />
+            <SiteHeader initialTheme={initialTheme} />
             <main>{children}</main>
             <SiteFooter />
           </AdminProvider>

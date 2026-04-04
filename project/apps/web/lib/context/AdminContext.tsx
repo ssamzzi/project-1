@@ -1,20 +1,22 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { ADMIN_PASSWORD } from '../site';
 
 const ADMIN_STORAGE_KEY = 'biolt-admin-mode';
-const ADMIN_PASSWORD = 'ssamzzi';
 
 type AdminContextValue = {
   isAdmin: boolean;
   login: (password: string) => boolean;
   logout: () => void;
+  isConfigured: boolean;
 };
 
 const AdminContext = createContext<AdminContextValue | undefined>(undefined);
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
+  const isConfigured = ADMIN_PASSWORD.trim().length > 0;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -25,6 +27,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = (password: string) => {
+    if (!isConfigured) {
+      return false;
+    }
     if (password === ADMIN_PASSWORD) {
       setIsAdmin(true);
       if (typeof window !== 'undefined') {
@@ -44,7 +49,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = useMemo(() => ({ isAdmin, login, logout }), [isAdmin]);
+  const value = useMemo(() => ({ isAdmin, login, logout, isConfigured }), [isAdmin, isConfigured]);
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 }
 
@@ -55,4 +60,3 @@ export function useAdmin() {
   }
   return ctx;
 }
-

@@ -41,6 +41,41 @@ const EMPTY_FEEDBACK: FeedbackState = {
   questions: [],
 };
 
+function isFeedbackItem(value: unknown): value is FeedbackItem {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.id === 'string' &&
+    typeof item.text === 'string' &&
+    typeof item.nickname === 'string' &&
+    typeof item.password === 'string' &&
+    typeof item.likes === 'number' &&
+    typeof item.dislikes === 'number' &&
+    typeof item.createdAt === 'number' &&
+    (item.updatedAt === undefined || typeof item.updatedAt === 'number')
+  );
+}
+
+function toFeedbackArray(value: unknown): FeedbackItem[] {
+  return Array.isArray(value) ? value.filter(isFeedbackItem) : [];
+}
+
+function isVoteType(value: unknown): value is VoteType {
+  return value === 'like' || value === 'dislike';
+}
+
+function sanitizeVoteState(value: unknown): VoteState {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(([, vote]) => isVoteType(vote))
+  );
+}
+
 function feedbackKey(calculatorId: string) {
   return `${FEEDBACK_KEY_PREFIX}:${calculatorId}`;
 }
@@ -60,18 +95,19 @@ function loadFeedback(calculatorId: string): FeedbackState {
   try {
     const raw = window.localStorage.getItem(feedbackKey(calculatorId));
     if (!raw) return EMPTY_FEEDBACK;
-    const parsed = JSON.parse(raw) as Partial<Record<TipTab | 'comments' | CommentTab, FeedbackItem[]>>;
+    const parsed = JSON.parse(raw) as Partial<Record<TipTab | 'comments' | CommentTab, unknown>>;
     const legacyAdvice = [
-      ...(Array.isArray(parsed.comments) ? parsed.comments : []),
-      ...(Array.isArray(parsed.protocol) ? parsed.protocol : []),
-      ...(Array.isArray(parsed.mistakes) ? parsed.mistakes : []),
-      ...(Array.isArray(parsed.ranges) ? parsed.ranges : []),
-      ...(Array.isArray(parsed.troubleshooting) ? parsed.troubleshooting : []),
+      ...toFeedbackArray(parsed.comments),
+      ...toFeedbackArray(parsed.protocol),
+      ...toFeedbackArray(parsed.mistakes),
+      ...toFeedbackArray(parsed.ranges),
+      ...toFeedbackArray(parsed.troubleshooting),
     ];
-    const advice = Array.isArray(parsed.advice) ? parsed.advice : legacyAdvice;
+    const directAdvice = toFeedbackArray(parsed.advice);
+    const advice = directAdvice.length ? directAdvice : legacyAdvice;
     return {
       advice,
-      questions: Array.isArray(parsed.questions) ? parsed.questions : [],
+      questions: toFeedbackArray(parsed.questions),
     };
   } catch {
     return EMPTY_FEEDBACK;
@@ -85,8 +121,7 @@ function loadVotes(calculatorId: string): VoteState {
   try {
     const raw = window.localStorage.getItem(votesKey(calculatorId));
     if (!raw) return {};
-    const parsed = JSON.parse(raw) as VoteState;
-    return typeof parsed === 'object' && parsed ? parsed : {};
+    return sanitizeVoteState(JSON.parse(raw) as unknown);
   } catch {
     return {};
   }
