@@ -25,9 +25,9 @@ export default function HomePage() {
   const valueCards =
     locale === 'ko'
       ? [
-          { title: '실전 계산', body: 'PCR, qPCR, 세포 시딩, 희석, 클로닝처럼 실제 실험 준비에서 반복되는 계산에 집중합니다.' },
-          { title: '예제 중심', body: '공식만 나열하지 않고 실제 실험 상황을 기준으로 worked example과 워크플로를 함께 제공합니다.' },
-          { title: '검증 지향', body: '가정, 경고, 자주 틀리는 지점, 정책 페이지를 함께 공개해 결과를 다시 확인하기 쉽게 했습니다.' },
+          { title: '실전 계산', body: 'PCR, qPCR, 세포 시딩, 희석, 클로닝처럼 벤치에서 반복되는 계산을 바로 점검합니다.' },
+          { title: '설명형 콘텐츠', body: '단순 계산 결과만이 아니라 worked example, 가이드, 워크플로를 함께 제공합니다.' },
+          { title: '검증 지향', body: '가정, 경고, 자주 하는 실수와 정책 페이지를 함께 노출해 결과를 다시 확인하기 쉽게 구성합니다.' },
         ]
       : [
           { title: 'Bench-ready calculations', body: 'Focused on PCR, qPCR, cell seeding, dilution, and cloning tasks that recur in real wet-lab work.' },
@@ -40,22 +40,22 @@ export default function HomePage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-8 lg:col-span-2">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
-            {locale === 'ko' ? '연구자 실전 계산 허브' : 'Bench Calculation Hub'}
+            {locale === 'ko' ? '연구 실전 계산 허브' : 'Bench Calculation Hub'}
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">{t('home.title')}</h1>
           <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-700 sm:text-lg">
             {locale === 'ko'
-              ? 'BioLT는 연구자가 실제로 반복해서 찾는 계산, worked example, 워크플로를 모아 실험 준비를 돕습니다.'
+              ? 'BioLT는 연구자가 실제로 반복해서 찾는 계산, worked example, 워크플로를 모아 실험 준비를 단순하게 돕습니다.'
               : 'BioLT combines practical calculators, worked examples, and workflow notes that researchers can reuse during experiment preparation.'}
           </p>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
             {locale === 'ko'
-              ? '단순 계산기 목록이 아니라 실험 전 검토와 재현성 확보를 위한 참고 사이트를 목표로 합니다.'
+              ? '단순 계산기 목록이 아니라, 벤치 전 검토와 재현성 있는 실험 준비를 위한 참고 사이트를 목표로 합니다.'
               : 'The goal is not a generic calculator list, but a reusable reference site for pre-bench checks and reproducibility.'}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-700">
             <p>
-              {locale === 'ko' ? '제작자' : 'Creator'}:{' '}
+              {locale === 'ko' ? '운영자' : 'Creator'}:{' '}
               <a href={t('about.instagramUrl')} target="_blank" rel="noreferrer" className="font-medium underline">
                 @biossom_._
               </a>
@@ -113,7 +113,7 @@ export default function HomePage() {
       </div>
 
       <div className="mt-6">
-        <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '가장 많이 찾는 계산' : 'Most useful calculators'}</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '자주 찾는 계산 도구' : 'Most useful calculators'}</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           {topTools.slice(0, 3).map((tool) => (
             <Link key={tool.slug} href={`/tools/${tool.slug}`} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-300">
@@ -126,19 +126,19 @@ export default function HomePage() {
 
       <div className="mt-6 rounded-2xl border border-cyan-200 bg-cyan-50/60 p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
-          {locale === 'ko' ? '신규 워크플로 도구' : 'New Workflow Tool'}
+          {locale === 'ko' ? '핵심 워크플로 도구' : 'New Workflow Tool'}
         </p>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <h2 className="text-2xl font-semibold text-slate-900">Genome Metadata Cleaner</h2>
             <p className="mt-2 text-sm leading-6 text-slate-700">
               {locale === 'ko'
-                ? 'CSV, TSV, XLSX, FASTA 헤더를 업로드해 메타데이터 문제를 먼저 분석하고, 필드별 정규화 전략을 고른 뒤 diff와 변경 로그까지 검토할 수 있습니다.'
+                ? 'CSV, TSV, XLSX, FASTA 헤더를 업로드해 메타데이터 문제를 먼저 분석하고, 필드별 정책 선택과 diff 미리보기, 변경 로그와 함께 결과를 내보낼 수 있습니다.'
                 : 'Upload CSV, TSV, XLSX, or FASTA headers to analyze metadata issues first, choose normalization per field, preview diffs, and export a cleaned file with an audit log.'}
             </p>
           </div>
           <Link href="/genome-metadata-cleaner" className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-medium text-white">
-            {locale === 'ko' ? '클리너 열기' : 'Open cleaner'}
+            {locale === 'ko' ? '도구 열기' : 'Open cleaner'}
           </Link>
         </div>
       </div>
@@ -169,7 +169,7 @@ export default function HomePage() {
           <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '실전 예제' : 'Worked examples'}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {locale === 'ko'
-              ? '실제 연구 상황을 기준으로 계산 결과를 어떻게 해석하고 적용하는지 보여줍니다.'
+              ? '실제 연구 상황을 기준으로 계산 결과를 어떻게 해석하고 적용하는지 보여 줍니다.'
               : 'Shows how a researcher would interpret and apply calculator outputs in realistic lab situations.'}
           </p>
           <ul className="mt-4 space-y-3 text-sm">
@@ -188,7 +188,7 @@ export default function HomePage() {
           <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '설명형 가이드' : 'Guides with context'}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {locale === 'ko'
-              ? '가이드는 계산식만이 아니라 해석 한계, 흔한 실수, 선택 기준까지 설명합니다.'
+              ? '가이드는 계산값만이 아니라 해석 근거, 한계, 자주 하는 실수까지 함께 설명합니다.'
               : 'Guides explain context, interpretation limits, common mistakes, and method choice.'}
           </p>
           <ul className="mt-4 space-y-3 text-sm">
@@ -207,7 +207,7 @@ export default function HomePage() {
           <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '실험 워크플로' : 'Workflows for experiments'}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {locale === 'ko'
-              ? '워크플로는 여러 도구를 하나의 실험 흐름으로 연결해 준비 순서와 검증 포인트를 보여줍니다.'
+              ? '워크플로는 여러 도구를 하나의 실험 순서로 연결해 준비 단계와 검증 지점을 보여 줍니다.'
               : 'Workflows connect several tools into one experimental sequence and expose validation checkpoints.'}
           </p>
           <ul className="mt-4 space-y-3 text-sm">

@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <div className="space-y-4 text-sm leading-7 text-slate-700">
           <p>
             {isKo
-              ? 'BioLT는 회원가입 없이 사용할 수 있지만, 서비스 운영과 트래픽 분석, 광고 운영을 위해 일부 브라우저 데이터가 처리될 수 있습니다.'
+              ? 'BioLT는 회원 가입 없이 사용할 수 있지만, 서비스 운영과 트래픽 분석, 광고 운영을 위해 일부 브라우저 데이터가 처리될 수 있습니다.'
               : 'BioLT can be used without account registration, but some browser data may be processed for service operations, analytics, and advertising.'}
           </p>
           <p>
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
               : 'Service quality improvement, debugging, traffic measurement, ad serving, and policy compliance.'}
           </p>
           <p>
-            <strong>{isKo ? '외부 서비스' : 'Third-party services'}:</strong> Google Analytics, Microsoft Clarity, Google AdSense.
+            <strong>{isKo ? '제3자 서비스' : 'Third-party services'}:</strong> Google Analytics, Microsoft Clarity, Google AdSense.
           </p>
           <p>
             <strong>{isKo ? '문의' : 'Contact'}:</strong>{' '}
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
               kkgh6721255@naver.com
             </a>
           </p>
-          <p className="text-xs text-slate-500">{isKo ? '최종 업데이트: 2026-03-19' : 'Last updated: 2026-03-19'}</p>
+          <p className="text-xs text-slate-500">{isKo ? '최종 업데이트: 2026-04-04' : 'Last updated: 2026-04-04'}</p>
         </div>
       </SectionCard>
     </section>

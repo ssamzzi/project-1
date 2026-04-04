@@ -14,19 +14,25 @@ export default function AboutPage() {
         <div className="space-y-4 text-sm leading-7 text-slate-700">
           <p>
             {isKo
-              ? 'BioLT는 분자생물학과 세포생물학 실험에서 자주 필요한 계산, 해설, 워크플로 정리를 제공하는 실험 보조 사이트입니다.'
-              : 'BioLT is a lab support site that publishes calculators, explanatory guides, and workflow references for molecular and cell biology work.'}
+              ? 'BioLT는 분자생물학과 세포생물학 실험 준비에 자주 필요한 계산, 예제, 워크플로 정리를 제공하는 실험실 보조 사이트입니다.'
+              : 'BioLT is a lab support site that publishes calculators, explanatory guides, worked examples, and workflow references for molecular and cell biology work.'}
           </p>
           <p>
             {isKo
-              ? '사이트의 목적은 실험 전에 필요한 값을 빠르게 검토하고, 계산식의 가정과 주의점을 함께 보여 주는 것입니다.'
-              : 'The goal is to help users review setup values quickly while also documenting assumptions, common mistakes, and practical caveats.'}
+              ? '사이트의 목적은 실험 전에 필요한 값을 빠르게 검토하고, 계산 결과의 가정과 주의점, 해석 맥락을 함께 보여 주는 것입니다.'
+              : 'The goal is to help users review setup values quickly while also documenting assumptions, common mistakes, and practical caveats around those values.'}
           </p>
           <p>
             {isKo
-              ? '계산 결과는 교육 및 준비 보조용이며, 최종 실험 조건은 반드시 실험실 SOP, 키트 매뉴얼, 장비 제약, 지도자 검토로 확정해야 합니다.'
+              ? 'BioLT는 단순히 계산기만 나열하는 페이지가 아니라, 실제 연구자가 벤치 전에 참고할 수 있는 설명형 자료와 검증 포인트를 함께 제공하는 것을 지향합니다.'
+              : 'BioLT is intended to be more than a list of calculators. Each public page is meant to provide reusable context that a researcher can refer to before bench work.'}
+          </p>
+          <p>
+            {isKo
+              ? '계산 결과는 교육 및 준비 보조용이며, 최종 실험 조건은 반드시 실험실 SOP, 키트 매뉴얼, 장비 제한, 지도자 검토를 통해 확정해야 합니다.'
               : 'Outputs are intended for educational support and experiment preparation. Final conditions must be confirmed with local SOPs, kit manuals, instrument limits, and supervisor review.'}
           </p>
+
           <div>
             <p className="font-semibold text-slate-900">{isKo ? '운영 및 문의' : 'Operator and contact'}</p>
             <p>
@@ -42,6 +48,7 @@ export default function AboutPage() {
               </a>
             </p>
           </div>
+
           <div>
             <p className="font-semibold text-slate-900">{isKo ? '정책 문서' : 'Policy pages'}</p>
             <p>

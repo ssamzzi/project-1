@@ -13,13 +13,13 @@ export default function EditorialPage() {
         <div className="space-y-4 text-sm leading-7 text-slate-700">
           <p>
             {isKo
-              ? 'BioLT는 단순 자동 생성 페이지를 늘리는 대신, 실제 실험 준비에 도움이 되는 계산 근거와 사용 맥락을 함께 설명하는 것을 목표로 합니다.'
+              ? 'BioLT는 자동 생성된 얇은 페이지보다, 실제 연구자가 실험 전에 참고할 수 있는 실용 콘텐츠를 우선합니다.'
               : 'BioLT aims to publish pages with practical value, not auto-generated thin pages. Each page should explain why a calculation matters and how it should be used.'}
           </p>
           <p>
             <strong>{isKo ? '콘텐츠 원칙' : 'Content principles'}:</strong>{' '}
             {isKo
-              ? '계산식, 입력값, 가정, 경고 조건, 실수하기 쉬운 포인트, 관련 워크플로를 가능한 한 함께 제시합니다.'
+              ? '가능한 경우 계산식, 입력값 의미, 가정, 경고 조건, 자주 하는 실수, 관련 워크플로를 함께 제시합니다.'
               : 'Where possible, pages document formulas, inputs, assumptions, warning conditions, common mistakes, and related workflows.'}
           </p>
           <p>
@@ -31,7 +31,7 @@ export default function EditorialPage() {
           <p>
             <strong>{isKo ? '수정 정책' : 'Correction policy'}:</strong>{' '}
             {isKo
-              ? '오류 제보나 업데이트 필요 사항이 있으면 우선 검토 후 반영합니다.'
+              ? '오류 제보 또는 업데이트 필요 사항이 있으면 검토 후 반영합니다.'
               : 'Reported errors or unclear explanations are reviewed and corrected when needed.'}
           </p>
           <p>
