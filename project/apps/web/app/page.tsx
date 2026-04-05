@@ -16,11 +16,23 @@ export default function HomePage() {
   const collator = locale === 'ko' ? 'ko-KR' : 'en-US';
   const sortedTools = [...toolMetas].sort((a, b) => (locale === 'ko' ? a.nameKo : a.nameEn).localeCompare(locale === 'ko' ? b.nameKo : b.nameEn, collator));
   const topTools = sortedTools.slice(0, 9);
-  const featuredExamples = exampleMetas.slice(0, 3);
-  const featuredGuides = guideMetas.slice(0, 3);
-  const featuredWorkflows = workflowMetas.slice(0, 3);
+  const featuredExamples = exampleMetas.slice(0, 4);
+  const featuredGuides = guideMetas.slice(0, 4);
+  const featuredWorkflows = workflowMetas.slice(0, 4);
   const contactHref = t('about.placeholder');
   const contactEmail = contactHref.replace(/^mailto:/, '');
+  const libraryStats =
+    locale === 'ko'
+      ? [
+          { label: '도구', value: toolMetas.length, detail: '실험 준비에 바로 쓰는 계산 도구' },
+          { label: '예제', value: exampleMetas.length, detail: '입력값과 해석이 함께 있는 worked example' },
+          { label: '가이드/워크플로', value: guideMetas.length + workflowMetas.length, detail: '개념 설명과 단계별 참고 문서' },
+        ]
+      : [
+          { label: 'Tools', value: toolMetas.length, detail: 'Bench-ready calculators for routine planning' },
+          { label: 'Examples', value: exampleMetas.length, detail: 'Worked examples with realistic inputs and interpretation' },
+          { label: 'Guides + workflows', value: guideMetas.length + workflowMetas.length, detail: 'Reference pages that add context beyond formulas' },
+        ];
 
   const valueCards =
     locale === 'ko'
@@ -110,6 +122,16 @@ export default function HomePage() {
             ))}
           </ul>
         </aside>
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        {libraryStats.map((item) => (
+          <div key={item.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{item.label}</p>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{item.value}</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{item.detail}</p>
+          </div>
+        ))}
       </div>
 
       <div className="mt-6">

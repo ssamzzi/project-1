@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { workflowMetas } from '../../lib/data/workflows';
 
 export default function WorkflowsPage() {
+  const workflowCount = workflowMetas.length;
+
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
       <div className="max-w-3xl">
@@ -10,6 +12,10 @@ export default function WorkflowsPage() {
         <p className="mt-4 text-base leading-7 text-slate-700">
           BioLT is not only a calculator directory. These workflow pages connect several tools into a single experiment sequence so
           users can understand where each calculation fits in practice.
+        </p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          The workflow library currently includes {workflowCount} practical sequences covering quantification, PCR setup, cloning,
+          qPCR standards, cell counting, and plating decisions.
         </p>
       </div>
 

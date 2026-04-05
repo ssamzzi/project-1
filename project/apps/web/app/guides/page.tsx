@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { guideMetas } from '../../lib/data/guides';
 
 export default function GuidesPage() {
+  const guideCount = guideMetas.length;
+
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
       <div className="max-w-3xl">
@@ -10,6 +12,10 @@ export default function GuidesPage() {
         <p className="mt-4 text-base leading-7 text-slate-700">
           These pages add context that a calculator alone cannot provide: when to use a method, common interpretation mistakes,
           practical caveats, and what to check before you trust the output.
+        </p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          The guide library currently includes {guideCount} original reference pages focused on assay planning, interpretation,
+          troubleshooting, and pre-bench checks.
         </p>
       </div>
 
