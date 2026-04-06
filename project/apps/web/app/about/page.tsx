@@ -19,17 +19,17 @@ export default function AboutPage() {
           </p>
           <p>
             {isKo
-              ? '사이트의 목적은 실험 전에 필요한 값을 빠르게 검토하고, 계산 결과의 가정과 주의점, 해석 맥락을 함께 보여 주는 것입니다.'
+              ? '사이트의 목적은 실험 전에 필요한 값을 빠르게 검토하고 계산 결과의 가정과 주의점까지 함께 보여 주는 것입니다.'
               : 'The goal is to help users review setup values quickly while also documenting assumptions, common mistakes, and practical caveats around those values.'}
           </p>
           <p>
             {isKo
-              ? 'BioLT는 단순히 계산기만 나열하는 페이지가 아니라, 실제 연구자가 벤치 전에 참고할 수 있는 설명형 자료와 검증 포인트를 함께 제공하는 것을 지향합니다.'
+              ? 'BioLT는 단순한 계산기 목록이 아니라 실제 연구자가 벤치 전에 참고할 수 있는 설명형 자료와 검증 체크포인트를 함께 제공하는 것을 지향합니다.'
               : 'BioLT is intended to be more than a list of calculators. Each public page is meant to provide reusable context that a researcher can refer to before bench work.'}
           </p>
           <p>
             {isKo
-              ? '계산 결과는 교육 및 준비 보조용이며, 최종 실험 조건은 반드시 실험실 SOP, 키트 매뉴얼, 장비 제한, 지도자 검토를 통해 확정해야 합니다.'
+              ? '계산 결과는 교육 및 준비 보조용이며 최종 실험 조건은 반드시 실험실 SOP, 키트 매뉴얼, 장비 제한, 지도자 검토를 통해 확정해야 합니다.'
               : 'Outputs are intended for educational support and experiment preparation. Final conditions must be confirmed with local SOPs, kit manuals, instrument limits, and supervisor review.'}
           </p>
 

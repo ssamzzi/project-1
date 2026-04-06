@@ -18,7 +18,7 @@ export default function ToolsPage() {
         <h2 className="mt-2 text-2xl font-semibold text-slate-900">Genome Metadata Cleaner</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
           {locale === 'ko'
-            ? 'CSV, TSV, XLSX, FASTA 헤더를 업로드하고, 스키마 문제를 탐지한 뒤, 필드별 정규화 규칙을 선택하고, diff를 미리 본 다음, 정리된 파일과 변경 로그를 내보낼 수 있습니다.'
+            ? 'CSV, TSV, XLSX, FASTA 헤더를 업로드하고 스키마 문제를 먼저 찾은 뒤, 필드별 정규화 규칙을 선택하고 diff를 미리 본 다음, 정리된 파일과 변경 로그를 내보낼 수 있습니다.'
             : 'Upload CSV, TSV, XLSX, or FASTA headers, detect schema issues, choose normalization rules per field, preview diffs, and export a cleaned file with a change log.'}
         </p>
         <Link className="mt-4 inline-block rounded-lg bg-cyan-700 px-4 py-2 text-sm font-medium text-white" href="/genome-metadata-cleaner">

@@ -25,7 +25,7 @@ export default function HomePage() {
     locale === 'ko'
       ? [
           { label: '도구', value: toolMetas.length, detail: '실험 준비에 바로 쓰는 계산 도구' },
-          { label: '예제', value: exampleMetas.length, detail: '입력값과 해석이 함께 있는 worked example' },
+          { label: '예제', value: exampleMetas.length, detail: '입력값과 해석을 함께 보는 worked example' },
           { label: '가이드/워크플로', value: guideMetas.length + workflowMetas.length, detail: '개념 설명과 단계별 참고 문서' },
         ]
       : [
@@ -37,7 +37,7 @@ export default function HomePage() {
   const valueCards =
     locale === 'ko'
       ? [
-          { title: '실전 계산', body: 'PCR, qPCR, 세포 시딩, 희석, 클로닝처럼 벤치에서 반복되는 계산을 바로 점검합니다.' },
+          { title: '실전 계산', body: 'PCR, qPCR, 세포 시딩, 희석, 클로닝처럼 벤치에서 반복되는 계산을 바로 정리합니다.' },
           { title: '설명형 콘텐츠', body: '단순 계산 결과만이 아니라 worked example, 가이드, 워크플로를 함께 제공합니다.' },
           { title: '검증 지향', body: '가정, 경고, 자주 하는 실수와 정책 페이지를 함께 노출해 결과를 다시 확인하기 쉽게 구성합니다.' },
         ]
@@ -57,12 +57,12 @@ export default function HomePage() {
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">{t('home.title')}</h1>
           <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-700 sm:text-lg">
             {locale === 'ko'
-              ? 'BioLT는 연구자가 실제로 반복해서 찾는 계산, worked example, 워크플로를 모아 실험 준비를 단순하게 돕습니다.'
+              ? 'BioLT는 연구자가 실제로 반복해서 찾는 계산, worked example, 워크플로를 모아 실험 준비를 단순하게 만듭니다.'
               : 'BioLT combines practical calculators, worked examples, and workflow notes that researchers can reuse during experiment preparation.'}
           </p>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
             {locale === 'ko'
-              ? '단순 계산기 목록이 아니라, 벤치 전 검토와 재현성 있는 실험 준비를 위한 참고 사이트를 목표로 합니다.'
+              ? '단순 계산기 목록이 아니라 벤치 전 검토와 재현성 있는 실험 준비를 위한 참고 사이트를 목표로 합니다.'
               : 'The goal is not a generic calculator list, but a reusable reference site for pre-bench checks and reproducibility.'}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-700">
@@ -148,14 +148,14 @@ export default function HomePage() {
 
       <div className="mt-6 rounded-2xl border border-cyan-200 bg-cyan-50/60 p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
-          {locale === 'ko' ? '핵심 워크플로 도구' : 'New Workflow Tool'}
+          {locale === 'ko' ? '신규 워크플로 도구' : 'New Workflow Tool'}
         </p>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <h2 className="text-2xl font-semibold text-slate-900">Genome Metadata Cleaner</h2>
             <p className="mt-2 text-sm leading-6 text-slate-700">
               {locale === 'ko'
-                ? 'CSV, TSV, XLSX, FASTA 헤더를 업로드해 메타데이터 문제를 먼저 분석하고, 필드별 정책 선택과 diff 미리보기, 변경 로그와 함께 결과를 내보낼 수 있습니다.'
+                ? 'CSV, TSV, XLSX, FASTA 헤더를 업로드해 메타데이터 문제를 먼저 분석하고, 필드별 정규화 선택과 diff 미리보기, 변경 로그를 함께 내보낼 수 있습니다.'
                 : 'Upload CSV, TSV, XLSX, or FASTA headers to analyze metadata issues first, choose normalization per field, preview diffs, and export a cleaned file with an audit log.'}
             </p>
           </div>
@@ -210,7 +210,7 @@ export default function HomePage() {
           <h2 className="text-lg font-semibold text-slate-900">{locale === 'ko' ? '설명형 가이드' : 'Guides with context'}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {locale === 'ko'
-              ? '가이드는 계산값만이 아니라 해석 근거, 한계, 자주 하는 실수까지 함께 설명합니다.'
+              ? '가이드는 계산값만이 아니라 해석 근거, 선택 기준, 자주 하는 실수까지 함께 설명합니다.'
               : 'Guides explain context, interpretation limits, common mistakes, and method choice.'}
           </p>
           <ul className="mt-4 space-y-3 text-sm">

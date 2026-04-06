@@ -72,7 +72,10 @@ export function SearchClient() {
     const cleaner = {
       kind: 'workflow' as const,
       title: 'Genome Metadata Cleaner',
-      summary: locale === 'ko' ? '메타데이터 오류를 먼저 분석하고, 미리보기와 검토를 거쳐 정리된 파일을 내보냅니다.' : 'Analyze and normalize genome metadata files with preview, review, and export controls.',
+      summary:
+        locale === 'ko'
+          ? '메타데이터 오류를 먼저 분석하고, 미리보기와 검토를 거쳐 정리된 파일을 내보냅니다.'
+          : 'Analyze and normalize genome metadata files with preview, review, and export controls.',
       href: '/genome-metadata-cleaner',
       haystack: 'genome metadata cleaner csv tsv xlsx fasta normalization cleaning schema duplicate date country host subtype segment',
     };

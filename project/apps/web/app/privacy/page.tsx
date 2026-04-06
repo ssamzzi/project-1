@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <div className="space-y-4 text-sm leading-7 text-slate-700">
           <p>
             {isKo
-              ? 'BioLT는 회원 가입 없이 사용할 수 있지만, 서비스 운영과 트래픽 분석, 광고 운영을 위해 일부 브라우저 데이터가 처리될 수 있습니다.'
+              ? 'BioLT는 회원 가입 없이 사용할 수 있지만 서비스 운영, 트래픽 분석, 광고 운영을 위해 일부 브라우저 데이터가 처리될 수 있습니다.'
               : 'BioLT can be used without account registration, but some browser data may be processed for service operations, analytics, and advertising.'}
           </p>
           <p>
