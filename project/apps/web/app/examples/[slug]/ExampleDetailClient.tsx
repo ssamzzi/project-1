@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import type { ExampleMeta } from '../../../lib/data/examples';
-import { getExampleSectionHeading, getExampleText } from '../../../lib/data/exampleTranslations';
+import { getExampleSections, getExampleText } from '../../../lib/data/exampleTranslations';
 import { useLocale } from '../../../lib/context/LocaleContext';
 
 export function ExampleDetailClient({ example }: { example: ExampleMeta }) {
   const { locale } = useLocale();
   const isKo = locale === 'ko';
   const text = getExampleText(locale, example);
+  const sections = getExampleSections(locale, example);
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8">
@@ -33,9 +34,9 @@ export function ExampleDetailClient({ example }: { example: ExampleMeta }) {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <article className="space-y-6">
-          {example.sections.map((section) => (
+          {sections.map((section) => (
             <section key={section.heading} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900">{getExampleSectionHeading(locale, section.heading)}</h2>
+              <h2 className="text-xl font-semibold text-slate-900">{section.heading}</h2>
               <div className="mt-3 space-y-3 text-sm leading-7 text-slate-700">
                 {section.body.map((paragraph) => (
                   <p key={paragraph}>{paragraph}</p>
@@ -50,16 +51,16 @@ export function ExampleDetailClient({ example }: { example: ExampleMeta }) {
             <h2 className="text-lg font-semibold text-slate-900">{isKo ? '이 페이지가 있는 이유' : 'Why this page exists'}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-700">
               {isKo
-                ? '실전 예제는 연구자에게 구체적인 시작점을 제공하고, 심사자에게도 독립적인 교육 가치가 있는 페이지로 보이게 합니다.'
+                ? '실전 예제는 계산기가 어떤 상황에서 쓰이는지 보여 주고, 페이지 자체도 독립적인 학습 자료가 되도록 돕습니다.'
                 : 'A worked example gives researchers a concrete starting point and gives reviewers a page with standalone educational value.'}
             </p>
           </section>
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">{isKo ? '벤치 작업 전 확인' : 'Use before the bench'}</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{isKo ? '사용 전 확인' : 'Use before the bench'}</h2>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-700">
               <li>{isKo ? '실제 stock 농도와 단위를 확인하세요.' : 'Confirm the actual stock concentration and units.'}</li>
               <li>{isKo ? 'control과 replicate가 포함되었는지 확인하세요.' : 'Check whether controls and replicates are included.'}</li>
-              <li>{isKo ? '계산 후 최종 세팅을 실험노트에 기록하세요.' : 'Record the final setup in the lab notebook after calculation.'}</li>
+              <li>{isKo ? '계산 후 최종 세팅을 노트에 기록하세요.' : 'Record the final setup in the lab notebook after calculation.'}</li>
             </ul>
           </section>
         </aside>

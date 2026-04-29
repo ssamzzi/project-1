@@ -78,7 +78,7 @@ export function SiteHeader({ initialTheme }: { initialTheme: 'light' | 'dark' })
               <li>
                 <div className="flex items-center gap-1">
                   <Link href="/admin" className="rounded-md border border-slate-300 px-2 py-1 text-xs">
-                    Admin Panel
+                    {locale === 'ko' ? '관리자 패널' : 'Admin Panel'}
                   </Link>
                   <button type="button" className="rounded-md border border-slate-300 px-2 py-1 text-xs" onClick={logout}>
                     {t('admin.logout')}

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { MarkdownArticle } from '../../../components/MarkdownArticle';
 import { useLocale } from '../../../lib/context/LocaleContext';
 import { toolMetas } from '../../../lib/data/tools';
+import { workflowMarkdownKo } from '../../../lib/data/workflowContentKo';
 import type { WorkflowMeta } from '../../../lib/data/workflows';
 
 export function WorkflowDetailClient({ workflow, markdown }: { workflow: WorkflowMeta; markdown: string }) {
@@ -11,6 +12,7 @@ export function WorkflowDetailClient({ workflow, markdown }: { workflow: Workflo
   const isKo = locale === 'ko';
   const title = isKo ? workflow.titleKo : workflow.titleEn;
   const summary = isKo ? workflow.shortKo : workflow.shortEn;
+  const localizedMarkdown = isKo ? workflowMarkdownKo[workflow.slug] || markdown : markdown;
   const linkedTools = workflow.tools.reduce<(typeof toolMetas)[number][]>((items, toolId) => {
     const tool = toolMetas.find((entry) => entry.id === toolId);
     if (tool) {
@@ -28,7 +30,7 @@ export function WorkflowDetailClient({ workflow, markdown }: { workflow: Workflo
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <MarkdownArticle title={title} markdown={markdown} />
+        <MarkdownArticle title={title} markdown={localizedMarkdown} />
         <aside className="space-y-4">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">{isKo ? '사용할 도구' : 'Use these tools'}</h2>
@@ -46,7 +48,7 @@ export function WorkflowDetailClient({ workflow, markdown }: { workflow: Workflo
             <h2 className="text-lg font-semibold text-slate-900">{isKo ? '운영 메모' : 'Operational note'}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-700">
               {isKo
-                ? '워크플로 페이지는 계산을 전체 실험 순서와 연결해, 독자가 목적, 단계, 검증 지점을 함께 이해하도록 돕기 위해 만들어졌습니다.'
+                ? '워크플로 페이지는 계산을 전체 준비 순서와 연결해, 독자가 목적, 단계, 검증 지점을 함께 이해하도록 돕기 위해 만들어졌습니다.'
                 : 'The purpose of these workflow pages is to connect calculations to a full experimental sequence, which helps readers understand intent, sequencing, and validation checks.'}
             </p>
             <div className="mt-4 flex flex-wrap gap-3 text-sm">
