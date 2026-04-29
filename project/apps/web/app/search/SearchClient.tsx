@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocale } from '../../lib/context/LocaleContext';
 import { exampleMetas } from '../../lib/data/examples';
+import { getExampleText } from '../../lib/data/exampleTranslations';
 import { guideMetas } from '../../lib/data/guides';
 import { toolMetas } from '../../lib/data/tools';
 import { workflowMetas } from '../../lib/data/workflows';
@@ -61,13 +62,16 @@ export function SearchClient() {
       haystack: [workflow.titleEn, workflow.titleKo, workflow.shortEn, workflow.shortKo, workflow.slug, workflow.tools.join(' ')].join(' '),
     }));
 
-    const examples = exampleMetas.map((example) => ({
-      kind: 'example' as const,
-      title: example.title,
-      summary: example.summary,
-      href: `/examples/${example.slug}`,
-      haystack: [example.title, example.summary, example.audience, example.slug].join(' '),
-    }));
+    const examples = exampleMetas.map((example) => {
+      const text = getExampleText(locale, example);
+      return {
+        kind: 'example' as const,
+        title: text.title,
+        summary: text.summary,
+        href: `/examples/${example.slug}`,
+        haystack: [example.title, example.summary, example.audience, text.title, text.summary, text.audience, example.slug].join(' '),
+      };
+    });
 
     const cleaner = {
       kind: 'workflow' as const,
