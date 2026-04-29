@@ -409,6 +409,246 @@ export const exampleMetas: ExampleMeta[] = [
       },
     ],
   },
+  {
+    slug: 'pipetting-overage-planning-example',
+    title: 'Pipetting Overage Planning Example',
+    summary: 'Worked example for deciding how much extra master mix to prepare when small dead volumes and repeat dispensing are expected.',
+    audience: 'Researchers preparing PCR, qPCR, enzyme reactions, or plate-based assays with repeated dispensing.',
+    toolHref: '/tools/pcr-master-mix',
+    workflowHref: '/workflows/experiment-review-cycle',
+    sections: [
+      {
+        heading: 'Scenario',
+        body: [
+          'You need enough reaction mix for 24 wells, but the exact calculated volume leaves no margin for tip retention, tube dead volume, or small transfer losses.',
+          'The example shows how to choose overage as a practical bench decision rather than a random percentage.',
+        ],
+      },
+      {
+        heading: 'Inputs to confirm',
+        body: [
+          'Number of reactions and final volume per reaction.',
+          'Whether the mix will be dispensed from a tube, strip, or reservoir.',
+          'Whether the limiting reagent can tolerate extra prepared volume.',
+        ],
+      },
+      {
+        heading: 'How to use the result',
+        body: [
+          'Calculate the exact required total, then add a defined overage such as 10 percent or one extra reaction depending on scale.',
+          'Record the overage rule so the next person understands why the prepared volume is larger than the mathematical minimum.',
+        ],
+      },
+      {
+        heading: 'Common failure points',
+        body: [
+          'Preparing exactly the required volume and running short in the final wells.',
+          'Adding too much overage when an expensive enzyme or rare sample is limiting.',
+          'Changing overage between plates without recording the reason.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'rna-no-rt-control-example',
+    title: 'No-RT Control Example for RNA qPCR',
+    summary: 'Worked example for using no-RT controls to distinguish true cDNA signal from genomic DNA carryover.',
+    audience: 'Researchers preparing expression analysis from RNA samples.',
+    toolHref: '/tools/qpcr-relative-quant',
+    workflowHref: '/workflows/rna-to-qpcr',
+    sections: [
+      {
+        heading: 'Scenario',
+        body: [
+          'A qPCR target amplifies in both the reverse-transcribed sample and the no-RT control.',
+          'The example focuses on deciding whether the signal can still be interpreted or whether sample preparation must be reviewed first.',
+        ],
+      },
+      {
+        heading: 'Inputs to confirm',
+        body: [
+          'Ct values for RT-positive and no-RT reactions.',
+          'Primer design context, especially whether primers span exon junctions when applicable.',
+          'Whether DNase treatment or genomic DNA removal was performed.',
+        ],
+      },
+      {
+        heading: 'How a researcher would use the result',
+        body: [
+          'Compare no-RT signal to the true sample signal before calculating fold change.',
+          'If the no-RT control is close to the sample Ct, interpret expression cautiously and review RNA cleanup or primer design.',
+        ],
+      },
+      {
+        heading: 'Common failure points',
+        body: [
+          'Ignoring no-RT amplification because the sample Ct looks strong.',
+          'Using a reference gene without checking genomic DNA sensitivity.',
+          'Treating DNase treatment as guaranteed rather than verified.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'gel-smear-troubleshooting-example',
+    title: 'Gel Smear Troubleshooting Example',
+    summary: 'Worked example for interpreting a smeared gel lane before deciding whether PCR, sample quality, or electrophoresis conditions are responsible.',
+    audience: 'Researchers troubleshooting endpoint PCR, cleanup products, or extracted nucleic acids.',
+    toolHref: '/tools/gel-loading',
+    workflowHref: '/workflows/gel-check-to-cleanup',
+    sections: [
+      {
+        heading: 'Scenario',
+        body: [
+          'The expected band is weak and the sample lane shows broad smearing.',
+          'The goal is to avoid blaming PCR immediately when loading amount, salt, degraded template, or voltage may explain the pattern.',
+        ],
+      },
+      {
+        heading: 'Inputs to confirm',
+        body: [
+          'DNA amount loaded per lane.',
+          'Gel percentage and running voltage.',
+          'Whether the ladder and controls separated normally.',
+        ],
+      },
+      {
+        heading: 'How to use the result',
+        body: [
+          'First confirm whether the gel system behaved normally using the ladder and controls.',
+          'If only one sample smears, review sample quality and loading amount before changing the entire PCR program.',
+        ],
+      },
+      {
+        heading: 'Common failure points',
+        body: [
+          'Overloading a lane and interpreting the smear as template degradation.',
+          'Using the wrong gel percentage for the expected size range.',
+          'Running too hot and distorting bands across the gel.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'cell-viability-plating-decision-example',
+    title: 'Cell Viability Plating Decision Example',
+    summary: 'Worked example for deciding whether to seed, recount, or recover cells when viability is lower than expected.',
+    audience: 'Researchers preparing treatment plates or routine culture passages after manual counting.',
+    toolHref: '/tools/hemocytometer',
+    workflowHref: '/workflows/cell-treatment-plate-plan',
+    sections: [
+      {
+        heading: 'Scenario',
+        body: [
+          'A harvested culture has enough total cells but lower viability than usual.',
+          'The example shows how to decide whether the count can still support plating or whether the culture condition should be reviewed first.',
+        ],
+      },
+      {
+        heading: 'Inputs to confirm',
+        body: [
+          'Live and dead counts rather than total count alone.',
+          'Time between harvest, staining, counting, and plating.',
+          'Whether the untreated culture morphology already looked stressed.',
+        ],
+      },
+      {
+        heading: 'How to use the result',
+        body: [
+          'Use viable cell concentration for seeding calculations, not total cells.',
+          'If viability is unexpectedly low, consider whether the experiment should be delayed, repeated, or documented as a compromised setup.',
+        ],
+      },
+      {
+        heading: 'Common failure points',
+        body: [
+          'Seeding by total cell count after viability drops.',
+          'Ignoring clumps that distort live/dead counts.',
+          'Treating stressed cells as comparable to a healthy control culture.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'buffer-working-stock-example',
+    title: 'Buffer Working Stock Preparation Example',
+    summary: 'Worked example for preparing a working stock while preserving concentration, labeling, and storage records.',
+    audience: 'Researchers preparing buffers, supplements, additives, or routine working stocks.',
+    toolHref: '/tools/reconstitution',
+    workflowHref: '/workflows/buffer-media-prep',
+    sections: [
+      {
+        heading: 'Scenario',
+        body: [
+          'You need to prepare a lower-concentration working stock from a concentrated reagent.',
+          'The example focuses on making the result usable later by recording source, dilution factor, solvent, and storage conditions.',
+        ],
+      },
+      {
+        heading: 'Inputs to confirm',
+        body: [
+          'Source stock concentration and solvent.',
+          'Target working concentration and final volume.',
+          'Storage temperature, light sensitivity, and expiration or review date.',
+        ],
+      },
+      {
+        heading: 'How to use the result',
+        body: [
+          'Calculate the source volume and diluent volume, then prepare enough for expected use without creating an oversized aging stock.',
+          'Label the tube with concentration and date, and record the calculation assumptions in the preparation log.',
+        ],
+      },
+      {
+        heading: 'Common failure points',
+        body: [
+          'Preparing a correct dilution but failing to label the solvent or concentration.',
+          'Using an old working stock without checking storage history.',
+          'Forgetting that some additives are unstable after thawing or dilution.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'plate-layout-edge-effect-example',
+    title: 'Plate Layout Example for Edge Effects',
+    summary: 'Worked example for arranging samples and controls so plate position does not masquerade as biology.',
+    audience: 'Researchers planning cell assays, qPCR plates, or plate-reader experiments.',
+    toolHref: '/tools/cell-seeding',
+    workflowHref: '/workflows/cell-treatment-plate-plan',
+    sections: [
+      {
+        heading: 'Scenario',
+        body: [
+          'A plate-based assay shows stronger signal in wells near one side of the plate.',
+          'This example shows how layout planning can reduce the chance that location effects are mistaken for treatment effects.',
+        ],
+      },
+      {
+        heading: 'Inputs to confirm',
+        body: [
+          'Number of conditions, controls, and replicates.',
+          'Whether outer wells are known to behave differently for this assay.',
+          'Whether sample order can be balanced across plate regions.',
+        ],
+      },
+      {
+        heading: 'How to use the result',
+        body: [
+          'Place controls deliberately and distribute conditions rather than grouping every replicate in one region.',
+          'Keep a clear plate map so later analysis can identify whether a pattern follows biology or position.',
+        ],
+      },
+      {
+        heading: 'Common failure points',
+        body: [
+          'Putting all controls in one corner.',
+          'Using unclear abbreviations that become ambiguous during analysis.',
+          'Ignoring empty or edge wells when comparing conditions.',
+        ],
+      },
+    ],
+  },
 ];
 
 export function exampleBySlug(slug: string) {
