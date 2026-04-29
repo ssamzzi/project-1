@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { useAdmin } from '../../lib/context/AdminContext';
 import { useLocale } from '../../lib/context/LocaleContext';
 import { AI_DEBUG_STORAGE_KEY, AI_MODEL_STORAGE_KEY, AI_TOKEN_STORAGE_KEY, HF_MODEL } from '../../lib/ai/config';
@@ -58,7 +58,7 @@ function parseRows(): AdminRow[] {
       advice.forEach((item) => rows.push({ ...item, calculatorId, tab: 'advice' }));
       questions.forEach((item) => rows.push({ ...item, calculatorId, tab: 'questions' }));
     } catch {
-      // ignore malformed local item
+      // Ignore malformed local items.
     }
   }
   return rows.sort((a, b) => b.createdAt - a.createdAt);
@@ -91,13 +91,15 @@ function updateStorageRow(target: AdminRow, updater: (item: FeedbackItem) => Fee
     normalized[target.tab] = next;
     window.localStorage.setItem(key, JSON.stringify(normalized));
   } catch {
-    // ignore
+    // Ignore malformed storage.
   }
 }
 
 export default function AdminPage() {
-  const { isAdmin } = useAdmin();
+  const { isAdmin, login, isConfigured } = useAdmin();
   const { locale } = useLocale();
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [rows, setRows] = useState<AdminRow[]>(() => parseRows());
   const [apiKey, setApiKey] = useState<string>(() => (typeof window === 'undefined' ? '' : window.localStorage.getItem(AI_TOKEN_STORAGE_KEY) || ''));
   const [model, setModel] = useState<string>(() => (typeof window === 'undefined' ? HF_MODEL : window.localStorage.getItem(AI_MODEL_STORAGE_KEY) || HF_MODEL));
@@ -114,8 +116,13 @@ export default function AdminPage() {
     () =>
       locale === 'ko'
         ? {
-            title: '관리자 창',
-            blocked: '관리자 로그인 후 접근 가능합니다.',
+            title: '관리자 패널',
+            blocked: '관리자 비밀번호를 입력하면 접근할 수 있습니다.',
+            notConfigured: '관리자 비밀번호 환경변수 NEXT_PUBLIC_BIOLT_ADMIN_PASSWORD가 아직 설정되지 않았습니다.',
+            password: '관리자 비밀번호',
+            passwordPlaceholder: '비밀번호 입력',
+            login: '로그인',
+            badPassword: '비밀번호가 올바르지 않습니다.',
             reload: '새로고침',
             all: '전체',
             empty: '의견이 없습니다.',
@@ -134,10 +141,18 @@ export default function AdminPage() {
             apiSave: '저장',
             aiTest: 'AI 연결 테스트',
             apiSaved: '저장됨',
+            testing: '테스트 중...',
+            advice: '실험 조언',
+            questions: '문의사항',
           }
         : {
             title: 'Admin Panel',
-            blocked: 'Admin login is required.',
+            blocked: 'Enter the admin password to continue.',
+            notConfigured: 'Admin password is not configured. Set NEXT_PUBLIC_BIOLT_ADMIN_PASSWORD.',
+            password: 'Admin password',
+            passwordPlaceholder: 'Enter password',
+            login: 'Sign in',
+            badPassword: 'Wrong password.',
             reload: 'Reload',
             all: 'All',
             empty: 'No comments.',
@@ -156,15 +171,55 @@ export default function AdminPage() {
             apiSave: 'Save',
             aiTest: 'Test AI connection',
             apiSaved: 'Saved',
+            testing: 'Testing...',
+            advice: 'Experimental Advice',
+            questions: 'Questions',
           },
     [locale]
   );
 
+  const submitLogin = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoginError('');
+    if (!login(loginPassword.trim())) {
+      setLoginError(labels.badPassword);
+      return;
+    }
+    setLoginPassword('');
+    setRows(parseRows());
+  };
+
   if (!isAdmin) {
     return (
       <section className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="text-2xl font-semibold">{labels.title}</h1>
-        <p className="mt-2 text-sm text-slate-600">{labels.blocked}</p>
+        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-semibold">{labels.title}</h1>
+          <p className="mt-2 text-sm text-slate-600">{labels.blocked}</p>
+          {!isConfigured ? (
+            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{labels.notConfigured}</p>
+          ) : null}
+          <form className="mt-5 space-y-3" onSubmit={submitLogin}>
+            <label className="block text-sm font-medium text-slate-700">
+              {labels.password}
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                className="mt-2 h-11 w-full rounded-lg border border-slate-300 px-3"
+                placeholder={labels.passwordPlaceholder}
+                autoComplete="current-password"
+              />
+            </label>
+            {loginError ? <p className="text-sm text-rose-700">{loginError}</p> : null}
+            <button
+              type="submit"
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!isConfigured || loginPassword.trim().length === 0}
+            >
+              {labels.login}
+            </button>
+          </form>
+        </div>
       </section>
     );
   }
@@ -190,7 +245,7 @@ export default function AdminPage() {
           <option value="all">{labels.all}</option>
           {COMMENT_TABS.map((tab) => (
             <option key={tab} value={tab}>
-              {tab === 'advice' ? (locale === 'ko' ? '실험 조언' : 'Experimental Advice') : locale === 'ko' ? '문의사항' : 'Questions'}
+              {tab === 'advice' ? labels.advice : labels.questions}
             </option>
           ))}
         </select>
@@ -256,7 +311,7 @@ export default function AdminPage() {
               }
             }}
           >
-            {isTestingAi ? (locale === 'ko' ? '테스트 중...' : 'Testing...') : labels.aiTest}
+            {isTestingAi ? labels.testing : labels.aiTest}
           </button>
         </div>
         {aiTestResult ? <p className="mt-1 text-[11px] text-slate-500">{aiTestResult}</p> : null}
